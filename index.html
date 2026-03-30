@@ -1118,17 +1118,33 @@ const LIKERT_QUESTIONS = [
 ];
 
 // Visitor counter (simulated with localStorage)
-function initCounters() {
-  let v = parseInt(localStorage.getItem('htpn_visitors') || '0');
-  const lastVisit = localStorage.getItem('htpn_last_visit');
+async function initCounters() {
+  // Real shared visitor counter via CountAPI
   const today = new Date().toDateString();
-  if (lastVisit !== today) {
-    v++;
-    localStorage.setItem('htpn_visitors', v);
-    localStorage.setItem('htpn_last_visit', today);
+  const visitorEl = document.getElementById('visitor-count');
+  try {
+    // Hit counter — increments once per user per day using localStorage gate
+    if (localStorage.getItem('htpn_vday') !== today) {
+      localStorage.setItem('htpn_vday', today);
+      const res = await fetch('https://api.countapi.xyz/hit/htpn-clinical-checker/visitors');
+      const data = await res.json();
+      visitorEl.textContent = data.value.toLocaleString();
+    } else {
+      // Already counted today — just fetch current value
+      const res = await fetch('https://api.countapi.xyz/get/htpn-clinical-checker/visitors');
+      const data = await res.json();
+      visitorEl.textContent = data.value.toLocaleString();
+    }
+  } catch(e) {
+    // Fallback to localStorage if CountAPI unavailable
+    let v = parseInt(localStorage.getItem('htpn_visitors') || '0');
+    if (localStorage.getItem('htpn_vday') !== today) {
+      v++; localStorage.setItem('htpn_visitors', v); localStorage.setItem('htpn_vday', today);
+    }
+    visitorEl.textContent = v;
   }
-  document.getElementById('visitor-count').textContent = v + (v === 1 ? ' (you)' : '');
-  
+
+  // Analysis counter (per-device — counts this user's analyses)
   const a = parseInt(localStorage.getItem('htpn_analyses') || '0');
   document.getElementById('analysis-count').textContent = a;
 }
@@ -1788,7 +1804,7 @@ async function submitFeedback() {
 
   try {
     // EmailJS send — user must configure their own service ID and template ID
-    await emailjs.send('service_z0rh03y', 'template_6bzqjul', templateParams);
+    await emailjs.send('service_z0rh03y', 'template_lz0rzuy', templateParams);
     statusEl.className = 'alert alert-info';
     statusEl.innerHTML = '<span>✅</span><span>Feedback submitted to Dr Naim & AI Team HTPN (ppnaim@moh.gov.my). Thank you for helping improve Clinical Document Checker!</span>';
     document.getElementById('fb-text').value = '';

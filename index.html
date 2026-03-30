@@ -648,7 +648,7 @@ footer {
 </header>
 
 <!-- API KEY BAR (shown outside main) -->
-<div style="background:var(--navy);padding:0 24px;">
+<div style="background:var(--navy);padding:0 24px;display:none;">
   <div style="max-width:1100px;margin:0 auto;">
     <div class="api-key-bar">
       <label>🔑 API Keys (session only — not stored)</label>
@@ -1297,7 +1297,7 @@ async function processInput() {
       transcriptEl.value = `[Audio file: ${audioFile.name} — ${(audioFile.size/1024).toFixed(0)} KB]\n\nPlease enter your OpenAI API key above to use Whisper transcription, or paste the clinical notes manually here.`;
     }
   } else if (images.length > 0 && activeMode.includes('Image')) {
-    if (apiKeys.claude) {
+    if (true) { // proxy handles auth
       statusEl.innerHTML = '<span>⏳</span><span>Extracting text from images via Claude Vision...</span>';
       statusEl.className = 'alert alert-info';
       try {
@@ -1315,9 +1315,9 @@ async function processInput() {
             ]
           }]
         };
-        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        const resp = await fetch('/api/claude', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': apiKeys.claude, 'anthropic-version': '2023-06-01' },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
         const data = await resp.json();
@@ -1376,7 +1376,7 @@ async function fillSOAP() {
     return;
   }
   goStep(4);
-  if (!apiKeys.claude) {
+  if (false) { // proxy handles auth
     // Fill demo data
     fillDemoSOAP(transcript);
     return;
@@ -1389,9 +1389,9 @@ Text:
 ${transcript.substring(0, 3000)}
 
 Respond with valid JSON only, no explanation.`;
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch('/api/claude', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKeys.claude, 'anthropic-version': '2023-06-01' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
     });
     const data = await resp.json();
@@ -1487,7 +1487,7 @@ async function runAnalysis() {
   
   animateProgress();
   
-  if (!apiKeys.claude) {
+  if (false) { // proxy handles auth
     await sleep(2200);
     fillDemoAnalysis(d);
     return;
@@ -1524,9 +1524,9 @@ Generate a response as a JSON object with these keys:
 Respond with valid JSON only.`;
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch('/api/claude', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKeys.claude, 'anthropic-version': '2023-06-01' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
     });
     const data = await resp.json();
@@ -1788,9 +1788,7 @@ async function submitFeedback() {
 
   try {
     // EmailJS send — user must configure their own service ID and template ID
-    // await emailjs.send('SERVICE_ID', 'TEMPLATE_ID', templateParams);
-    // Simulated for demo
-    await sleep(1500);
+    await emailjs.send('service_z0rh03y', 'template_6bzqjul', templateParams);
     statusEl.className = 'alert alert-info';
     statusEl.innerHTML = '<span>✅</span><span>Feedback submitted to Dr Naim & AI Team HTPN (ppnaim@moh.gov.my). Thank you for helping improve Clinical Document Checker!</span>';
     document.getElementById('fb-text').value = '';

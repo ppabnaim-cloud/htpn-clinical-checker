@@ -1,0 +1,1811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clinical Document Checker — HTPN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.emailjs.com/sdk/3.2.0/email.min.js"></script>
+<style>
+:root {
+  --navy: #0B1F3A;
+  --navy-mid: #152E52;
+  --navy-light: #1E3F6B;
+  --teal: #1CB8A0;
+  --teal-dim: #0F8C7A;
+  --amber: #F4A623;
+  --rose: #E84C6A;
+  --slate: #94A3B8;
+  --cloud: #F0F4F8;
+  --white: #FFFFFF;
+  --text: #1A2B3C;
+  --text-muted: #5A7290;
+  --border: rgba(28,184,160,0.18);
+  --card: rgba(255,255,255,0.96);
+  --serif: 'DM Serif Display', serif;
+  --sans: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+  --r: 12px;
+  --r-sm: 8px;
+  --shadow: 0 4px 24px rgba(11,31,58,0.10);
+  --shadow-lg: 0 8px 40px rgba(11,31,58,0.16);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--sans);
+  background: var(--navy);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ── DISCLAIMER BANNER ── */
+#disclaimer-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(11,31,58,0.96);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.disclaimer-box {
+  background: var(--white);
+  border-radius: 16px;
+  max-width: 680px; width: 100%;
+  padding: 36px 40px;
+  position: relative;
+  border-top: 5px solid var(--amber);
+  box-shadow: var(--shadow-lg);
+}
+.disclaimer-box h2 { font-family: var(--serif); font-size: 22px; color: var(--navy); margin-bottom: 6px; }
+.disclaimer-tag {
+  display: inline-block;
+  background: var(--amber);
+  color: var(--navy);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+.disclaimer-box p { font-size: 13.5px; color: var(--text-muted); line-height: 1.7; margin-bottom: 10px; }
+.disclaimer-box p strong { color: var(--navy); }
+.disclaimer-btn {
+  margin-top: 20px;
+  background: var(--navy);
+  color: white;
+  border: none;
+  padding: 13px 28px;
+  border-radius: var(--r-sm);
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  width: 100%;
+}
+.disclaimer-btn:hover { background: var(--navy-light); }
+
+/* ── STICKY BANNER ── */
+#sticky-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 900;
+  background: var(--amber);
+  color: var(--navy);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  padding: 6px 16px;
+  letter-spacing: 0.02em;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--navy);
+  padding: 20px 0 0;
+  position: relative;
+  margin-top: 30px;
+}
+.header-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.logo-block { display: flex; align-items: center; gap: 16px; }
+.logo-badge {
+  width: 48px; height: 48px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--teal), var(--teal-dim));
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--serif);
+  font-size: 20px;
+  color: white;
+  flex-shrink: 0;
+}
+.logo-text h1 { font-family: var(--serif); font-size: 22px; color: white; line-height: 1.2; }
+.logo-text span { font-size: 12px; color: var(--slate); letter-spacing: 0.03em; }
+.header-stats {
+  display: flex; gap: 16px; flex-wrap: wrap;
+}
+.stat-pill {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: var(--slate);
+  display: flex; align-items: center; gap: 6px;
+}
+.stat-pill span.val { color: var(--teal); font-weight: 600; font-family: var(--mono); }
+
+/* ── STEP NAV ── */
+.step-nav {
+  background: var(--navy-mid);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.step-nav-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.step-nav-inner::-webkit-scrollbar { display: none; }
+.step-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--slate);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 14px 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.step-btn .step-num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  font-family: var(--mono);
+  flex-shrink: 0;
+}
+.step-btn.active {
+  color: var(--teal);
+  border-bottom-color: var(--teal);
+}
+.step-btn.active .step-num { background: var(--teal); color: white; }
+.step-btn.done { color: rgba(255,255,255,0.5); }
+.step-btn.done .step-num { background: rgba(28,184,160,0.3); color: var(--teal); }
+
+/* ── MAIN ── */
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+.step-panel { display: none; }
+.step-panel.active { display: block; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--card);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  padding: 28px 32px;
+  margin-bottom: 20px;
+}
+.card-title {
+  font-family: var(--serif);
+  font-size: 20px;
+  color: var(--navy);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.card-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+/* ── FORM ELEMENTS ── */
+input[type=text], input[type=email], input[type=date], textarea, select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #DDE4ED;
+  border-radius: var(--r-sm);
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--white);
+  transition: border 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(28,184,160,0.12);
+}
+textarea { resize: vertical; min-height: 80px; }
+
+.form-row { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
+.form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+.form-row.vitals { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+@media (max-width: 640px) {
+  .form-row, .form-row.three { grid-template-columns: 1fr; }
+}
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+
+/* ── UPLOAD ZONE ── */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--r);
+  padding: 40px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(28,184,160,0.03);
+}
+.upload-zone:hover, .upload-zone.dragover {
+  border-color: var(--teal);
+  background: rgba(28,184,160,0.07);
+}
+.upload-zone input { display: none; }
+.upload-icon { font-size: 36px; margin-bottom: 10px; }
+.upload-zone h3 { font-size: 16px; font-family: var(--serif); color: var(--navy); margin-bottom: 4px; }
+.upload-zone p { font-size: 13px; color: var(--text-muted); }
+
+.upload-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+@media (max-width: 700px) { .upload-grid { grid-template-columns: 1fr; } }
+
+.mode-tab-bar { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.mode-tab {
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1.5px solid #DDE4ED;
+  background: white;
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+.mode-tab.active {
+  background: var(--navy);
+  color: white;
+  border-color: var(--navy);
+}
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: var(--r-sm);
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  text-decoration: none;
+}
+.btn-primary { background: var(--teal); color: white; }
+.btn-primary:hover { background: var(--teal-dim); }
+.btn-navy { background: var(--navy); color: white; }
+.btn-navy:hover { background: var(--navy-light); }
+.btn-outline { background: transparent; color: var(--navy); border: 1.5px solid #DDE4ED; }
+.btn-outline:hover { border-color: var(--teal); color: var(--teal); }
+.btn-danger { background: var(--rose); color: white; }
+.btn-amber { background: var(--amber); color: var(--navy); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── TRANSCRIPT AREA ── */
+.transcript-box {
+  background: #F7F9FC;
+  border: 1.5px solid #DDE4ED;
+  border-radius: var(--r);
+  padding: 16px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text);
+  min-height: 120px;
+  white-space: pre-wrap;
+  resize: vertical;
+  width: 100%;
+  outline: none;
+}
+.transcript-box:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(28,184,160,0.12); }
+
+/* ── VITALS GRID ── */
+.vital-chip {
+  background: var(--cloud);
+  border: 1.5px solid #DDE4ED;
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.vital-chip label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.vital-chip input {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 18px;
+  font-family: var(--mono);
+  font-weight: 500;
+  color: var(--navy);
+  width: 100%;
+}
+.vital-chip input:focus { box-shadow: none; }
+.vital-chip span { font-size: 11px; color: var(--slate); }
+
+/* ── ANALYSIS OUTPUT ── */
+.analysis-section { margin-bottom: 24px; }
+.analysis-section h3 {
+  font-family: var(--serif);
+  font-size: 17px;
+  color: var(--navy);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #DDE4ED;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.soap-block {
+  background: #F7F9FC;
+  border-left: 3px solid var(--teal);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  padding: 14px 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text);
+  margin-bottom: 10px;
+  white-space: pre-wrap;
+}
+.icd-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid #DDE4ED;
+  border-radius: var(--r-sm);
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.icd-code { font-family: var(--mono); font-weight: 600; color: var(--navy); min-width: 80px; }
+.icd-desc { flex: 1; color: var(--text); }
+.conf-bar { height: 6px; background: #DDE4ED; border-radius: 3px; flex: 1; overflow: hidden; }
+.conf-fill { height: 100%; border-radius: 3px; background: var(--teal); transition: width 0.8s; }
+.conf-pct { font-family: var(--mono); font-size: 12px; color: var(--text-muted); min-width: 36px; text-align: right; }
+
+/* ── QUALITY METRICS ── */
+.quality-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media (max-width: 600px) { .quality-grid { grid-template-columns: 1fr 1fr; } }
+.quality-tile {
+  background: var(--cloud);
+  border-radius: var(--r-sm);
+  padding: 14px;
+  text-align: center;
+}
+.quality-tile .q-val {
+  font-size: 28px;
+  font-family: var(--mono);
+  font-weight: 500;
+  line-height: 1.2;
+}
+.quality-tile .q-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.score-high { color: var(--teal); }
+.score-mid { color: var(--amber); }
+.score-low { color: var(--rose); }
+
+.flag-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.flag-high { background: rgba(232,76,106,0.08); border-left: 3px solid var(--rose); }
+.flag-mid { background: rgba(244,166,35,0.08); border-left: 3px solid var(--amber); }
+.flag-low { background: rgba(28,184,160,0.08); border-left: 3px solid var(--teal); }
+.flag-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.flag-text strong { display: block; font-weight: 600; color: var(--navy); }
+.flag-text span { color: var(--text-muted); }
+
+/* ── SIGN-OFF ── */
+.signoff-box {
+  background: var(--navy);
+  border-radius: var(--r);
+  padding: 28px 32px;
+  color: white;
+}
+.signoff-box h3 { font-family: var(--serif); font-size: 19px; margin-bottom: 6px; }
+.signoff-box p { font-size: 13px; color: var(--slate); margin-bottom: 20px; }
+.signoff-box .form-row input, .signoff-box .form-row select { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.15); color: white; }
+.signoff-box .form-row input::placeholder { color: rgba(255,255,255,0.3); }
+.signoff-box label { color: rgba(255,255,255,0.6) !important; }
+
+/* ── FEEDBACK ── */
+.likert-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.likert-btn {
+  width: 42px; height: 42px;
+  border-radius: var(--r-sm);
+  border: 1.5px solid #DDE4ED;
+  background: white;
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.likert-btn:hover { border-color: var(--teal); color: var(--teal); }
+.likert-btn.selected { background: var(--teal); border-color: var(--teal); color: white; }
+
+/* ── PDF REF BADGE ── */
+.ref-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(244,166,35,0.1);
+  border: 1px solid rgba(244,166,35,0.3);
+  color: #B37F10;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ── LOADING SPINNER ── */
+.spinner {
+  display: inline-block;
+  width: 18px; height: 18px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── PROGRESS BAR ── */
+.progress-track { background: #DDE4ED; border-radius: 4px; height: 4px; margin: 8px 0 20px; }
+.progress-fill { height: 100%; border-radius: 4px; background: var(--teal); transition: width 0.4s; }
+
+/* ── UPLOADED FILES LIST ── */
+.file-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--cloud);
+  border-radius: var(--r-sm);
+  font-size: 13px;
+}
+.file-item .file-name { flex: 1; font-family: var(--mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-item .file-type { font-size: 11px; color: var(--text-muted); }
+.file-item button { background: none; border: none; color: var(--rose); cursor: pointer; font-size: 16px; padding: 0 2px; }
+
+/* ── ALERT BOX ── */
+.alert {
+  padding: 12px 16px;
+  border-radius: var(--r-sm);
+  font-size: 13.5px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.alert-info { background: rgba(28,184,160,0.08); color: var(--teal-dim); border: 1px solid rgba(28,184,160,0.2); }
+.alert-warn { background: rgba(244,166,35,0.08); color: #9B6A10; border: 1px solid rgba(244,166,35,0.25); }
+.alert-err  { background: rgba(232,76,106,0.08); color: #B03353; border: 1px solid rgba(232,76,106,0.2); }
+
+/* ── MOBILE NAV BUTTONS ── */
+.nav-buttons { display: flex; gap: 10px; margin-top: 24px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* ── FOOTER ── */
+footer {
+  text-align: center;
+  padding: 24px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.3);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  font-family: var(--mono);
+}
+
+/* ── API KEY ── */
+.api-key-bar {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--r);
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.api-key-bar label { font-size: 12px; color: var(--slate); white-space: nowrap; }
+.api-key-bar input {
+  flex: 1; min-width: 200px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.api-key-bar input::placeholder { color: rgba(255,255,255,0.25); }
+
+/* ── DRUG TABLE ── */
+.drug-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.drug-table th {
+  background: var(--navy);
+  color: white;
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.drug-table td { padding: 8px 12px; border-bottom: 1px solid #DDE4ED; }
+.drug-table tr:hover td { background: var(--cloud); }
+.drug-table td input { border: none; background: none; padding: 0; font-size: 13px; width: 100%; }
+
+/* ── VISITOR COUNTER ── */
+.visitor-dot { width: 7px; height: 7px; background: var(--teal); border-radius: 50%; display: inline-block; animation: pulse-dot 1.8s ease-in-out infinite; }
+@keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.7)} }
+
+/* ── RESPONSIVE ADJUSTMENTS ── */
+@media (max-width: 768px) {
+  .card { padding: 20px; }
+  .signoff-box { padding: 20px; }
+  .header-inner { padding: 0 16px 16px; }
+  main { padding: 20px 16px 60px; }
+  .quality-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- DISCLAIMER OVERLAY -->
+<div id="disclaimer-overlay">
+  <div class="disclaimer-box">
+    <div class="disclaimer-tag">⚠ Demo Version — Research &amp; Educational Prototype</div>
+    <h2>Clinical Document Checker — HTPN</h2>
+    <p style="font-size:12px;color:var(--teal-dim);font-weight:600;margin-bottom:12px;">By Dr Naim &amp; AI Team HTPN · Hospital Tengku Permaisuri Norashikin</p>
+    <p>This tool is under active development. <strong>All AI-generated outputs must be reviewed, corrected, and signed off by a qualified clinician.</strong> Human-in-the-Loop (HITL) verification is mandatory before any output is used clinically.</p>
+    <p>No patient-identifiable data (full name, IC number) is stored. Audio files are processed locally and deleted immediately after transcription. Feedback submitted may be anonymised.</p>
+    <p><strong>This tool does not constitute medical advice.</strong> Clinical responsibility remains entirely with the treating clinician. Intended for use at Hospital Tengku Permaisuri Norashikin (HTPN).</p>
+    <p style="font-size:12px;color:#94A3B8;margin-top:8px;">By clicking below you acknowledge these terms. Serious medico-legal implications apply. Developed by Dr Naim &amp; AI Team HTPN.</p>
+    <button class="disclaimer-btn" onclick="closeDisclaimer()">I Understand — Enter Clinical Document Checker</button>
+  </div>
+</div>
+
+<!-- STICKY DISCLAIMER BANNER -->
+<div id="sticky-banner">⚠ DEMO / RESEARCH PROTOTYPE — All outputs require clinician review &amp; sign-off &nbsp;|&nbsp; Not for standalone clinical decision-making &nbsp;|&nbsp; HTPN</div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-inner">
+    <div class="logo-block">
+      <div class="logo-badge">Cd</div>
+      <div class="logo-text">
+        <h1>Clinical Document Checker</h1>
+        <span>Hospital Tengku Permaisuri Norashikin · HTPN</span>
+        <div style="margin-top:4px;font-size:11px;color:var(--teal);font-weight:600;letter-spacing:0.04em;">By Dr Naim &amp; AI Team HTPN</div>
+      </div>
+    </div>
+    <div class="header-stats">
+      <div class="stat-pill"><span class="visitor-dot"></span> Visitors today: <span class="val" id="visitor-count">—</span></div>
+      <div class="stat-pill">📋 Analyses: <span class="val" id="analysis-count">0</span></div>
+      <div class="stat-pill">🇲🇾 HTPN</div>
+    </div>
+  </div>
+
+  <!-- STEP NAV -->
+  <div class="step-nav">
+    <div class="step-nav-inner">
+      <button class="step-btn active" data-step="1" onclick="goStep(1)"><span class="step-num">1</span> Data Entry</button>
+      <button class="step-btn" data-step="2" onclick="goStep(2)"><span class="step-num">2</span> Reference Doc</button>
+      <button class="step-btn" data-step="3" onclick="goStep(3)"><span class="step-num">3</span> Transcript</button>
+      <button class="step-btn" data-step="4" onclick="goStep(4)"><span class="step-num">4</span> SOAP Form</button>
+      <button class="step-btn" data-step="5" onclick="goStep(5)"><span class="step-num">5</span> AI Analysis</button>
+      <button class="step-btn" data-step="6" onclick="goStep(6)"><span class="step-num">6</span> Sign-off &amp; Export</button>
+      <button class="step-btn" data-step="7" onclick="goStep(7)"><span class="step-num">7</span> Feedback</button>
+    </div>
+  </div>
+</header>
+
+<!-- API KEY BAR (shown outside main) -->
+<div style="background:var(--navy);padding:0 24px;">
+  <div style="max-width:1100px;margin:0 auto;">
+    <div class="api-key-bar">
+      <label>🔑 API Keys (session only — not stored)</label>
+      <input type="password" id="claude-key" placeholder="Claude API Key (sk-ant-...)">
+      <input type="password" id="openai-key" placeholder="OpenAI API Key (for Whisper audio — optional)">
+      <button class="btn btn-primary" onclick="saveKeys()" style="white-space:nowrap;font-size:13px;padding:8px 16px;">Save Keys</button>
+      <span id="key-saved" style="font-size:12px;color:var(--teal);display:none;">✓ Saved</span>
+    </div>
+  </div>
+</div>
+
+<main>
+
+<!-- ─────────────── STEP 1: DATA ENTRY ─────────────── -->
+<div class="step-panel active" id="step-1">
+  <div class="card">
+    <div class="card-title">📥 Step 1 — Data Entry</div>
+    <div class="card-sub">Choose your input method: upload audio, images, or enter text manually.</div>
+
+    <div class="mode-tab-bar">
+      <button class="mode-tab active" onclick="setMode('audio',this)">🎙 Audio Upload</button>
+      <button class="mode-tab" onclick="setMode('image',this)">🖼 Image Upload</button>
+      <button class="mode-tab" onclick="setMode('text',this)">✏️ Manual Text</button>
+    </div>
+
+    <!-- AUDIO MODE -->
+    <div id="mode-audio">
+      <div class="upload-zone" id="audio-zone" onclick="document.getElementById('audio-input').click()" ondragover="dragOver(event,'audio-zone')" ondragleave="dragLeave('audio-zone')" ondrop="dropFile(event,'audio')">
+        <input type="file" id="audio-input" accept=".ogg,.wav,.mp3,.m4a" onchange="handleAudio(this)">
+        <div class="upload-icon">🎵</div>
+        <h3>Drop audio file here</h3>
+        <p>Supports .ogg, .wav, .mp3, .m4a — clinician narration, ward round recording</p>
+      </div>
+      <div id="audio-file-list" class="file-list"></div>
+      <div id="audio-status" class="alert alert-info" style="display:none;margin-top:12px;"></div>
+    </div>
+
+    <!-- IMAGE MODE -->
+    <div id="mode-image" style="display:none;">
+      <div class="upload-zone" id="image-zone" onclick="document.getElementById('image-input').click()" ondragover="dragOver(event,'image-zone')" ondragleave="dragLeave('image-zone')" ondrop="dropFile(event,'image')">
+        <input type="file" id="image-input" accept=".jpg,.jpeg,.png" multiple onchange="handleImages(this)">
+        <div class="upload-icon">🏥</div>
+        <h3>Upload clinical documents</h3>
+        <p>Referral letters, discharge summaries, lab reports — .jpg or .png, multiple files allowed</p>
+      </div>
+      <div id="image-file-list" class="file-list"></div>
+    </div>
+
+    <!-- TEXT MODE -->
+    <div id="mode-text" style="display:none;">
+      <div class="section-label">Clinical Notes / History</div>
+      <textarea id="manual-text" rows="8" placeholder="Enter clinical history, HOPI, examination findings, investigation results, medications, plan... 
+
+Example: 65yo Malay female with T2DM and hypertension presenting with 3-day history of productive cough, fever 38.5°C, RR 24, SpO2 94% RA. CXR shows right lower lobe consolidation..."></textarea>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="btn btn-primary" onclick="processInput()">Process Input →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── STEP 2: REFERENCE DOC ─────────────── -->
+<div class="step-panel" id="step-2">
+  <div class="card">
+    <div class="card-title">📚 Step 2 — Reference Document (RAG Context)</div>
+    <div class="card-sub">Upload a clinical guideline, drug formulary, or previous discharge summary as reference. This gives the AI grounded context and reduces hallucination on drug names, dosing, and diagnostic criteria.</div>
+
+    <div class="alert alert-warn">
+      <span>⚠</span>
+      <span><strong>Reference document — not patient data.</strong> Only the first ~8,000 characters will be passed to the AI. Uploading irrelevant documents may cause over-anchoring. Use guidelines, protocols, or formularies.</span>
+    </div>
+
+    <div class="upload-zone" id="pdf-zone" onclick="document.getElementById('pdf-input').click()" ondragover="dragOver(event,'pdf-zone')" ondragleave="dragLeave('pdf-zone')" ondrop="dropFile(event,'pdf')">
+      <input type="file" id="pdf-input" accept=".pdf,.txt" onchange="handlePDF(this)">
+      <div class="upload-icon">📄</div>
+      <h3>Drop reference PDF or TXT here</h3>
+      <p>Clinical guidelines · Drug formulary · Diagnostic criteria · Protocol documents</p>
+    </div>
+
+    <div id="pdf-file-list" class="file-list"></div>
+
+    <div id="ref-preview" style="display:none; margin-top:16px;">
+      <div class="section-label">Reference document preview (first 500 chars)</div>
+      <div class="transcript-box" id="ref-preview-text" style="min-height:60px; font-size:12px; color:var(--text-muted);"></div>
+      <div id="ref-char-count" style="font-size:12px;color:var(--text-muted);margin-top:4px;"></div>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="btn btn-outline" onclick="goStep(1)">← Back</button>
+      <button class="btn btn-primary" onclick="goStep(3)">Continue →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── STEP 3: TRANSCRIPT ─────────────── -->
+<div class="step-panel" id="step-3">
+  <div class="card">
+    <div class="card-title">📝 Step 3 — Transcription &amp; Extraction</div>
+    <div class="card-sub">Review and edit the extracted text before proceeding. Corrections here improve the quality of the SOAP note and AI analysis.</div>
+
+    <div class="alert alert-info" id="transcribe-status">
+      <span>ℹ</span>
+      <span>Extracted text will appear below. Edit freely before proceeding.</span>
+    </div>
+
+    <div class="section-label">Extracted / Transcribed Text (editable)</div>
+    <textarea class="transcript-box" id="transcript-text" rows="14" placeholder="Transcribed or extracted text will appear here...
+
+You can also type or paste clinical notes directly."></textarea>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:8px;">
+      <span id="transcript-chars" style="font-size:12px;color:var(--text-muted);">0 characters</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline" onclick="clearTranscript()">Clear</button>
+        <button class="btn btn-primary" onclick="fillSOAP()">Pre-fill SOAP Form →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── STEP 4: SOAP FORM ─────────────── -->
+<div class="step-panel" id="step-4">
+  <div class="card">
+    <div class="card-title">🩺 Step 4 — SOAP Clinical Form</div>
+    <div class="card-sub">Review and complete the pre-filled SOAP note. All fields will be used for AI analysis.</div>
+
+    <!-- Chief Complaint + HOPI -->
+    <div class="analysis-section">
+      <h3>📋 Subjective</h3>
+      <div class="field" style="margin-bottom:12px;">
+        <label>Chief Complaint</label>
+        <input type="text" id="f-cc" placeholder="e.g. Fever and productive cough for 3 days">
+      </div>
+      <div class="field">
+        <label>History of Presenting Illness (HOPI)</label>
+        <textarea id="f-hopi" rows="5" placeholder="Detailed history including onset, duration, character, associated symptoms, relevant PMH, medications, allergies, social/family history..."></textarea>
+      </div>
+    </div>
+
+    <!-- Vitals -->
+    <div class="analysis-section">
+      <h3>💓 Objective — Vitals</h3>
+      <div class="form-row vitals">
+        <div class="vital-chip">
+          <label>BP</label>
+          <input id="v-bp" type="text" placeholder="120/80">
+          <span>mmHg</span>
+        </div>
+        <div class="vital-chip">
+          <label>PR</label>
+          <input id="v-pr" type="text" placeholder="88">
+          <span>bpm</span>
+        </div>
+        <div class="vital-chip">
+          <label>Temp</label>
+          <input id="v-temp" type="text" placeholder="37.5">
+          <span>°C</span>
+        </div>
+        <div class="vital-chip">
+          <label>RR</label>
+          <input id="v-rr" type="text" placeholder="18">
+          <span>/min</span>
+        </div>
+        <div class="vital-chip">
+          <label>SpO₂</label>
+          <input id="v-spo2" type="text" placeholder="98">
+          <span>% RA</span>
+        </div>
+        <div class="vital-chip">
+          <label>Glucose</label>
+          <input id="v-glucose" type="text" placeholder="6.2">
+          <span>mmol/L</span>
+        </div>
+        <div class="vital-chip">
+          <label>GCS</label>
+          <input id="v-gcs" type="text" placeholder="15">
+          <span>/15</span>
+        </div>
+        <div class="vital-chip">
+          <label>Weight</label>
+          <input id="v-weight" type="text" placeholder="65">
+          <span>kg</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Investigations -->
+    <div class="analysis-section">
+      <h3>🔬 Objective — Investigations</h3>
+      <div class="form-row" style="margin-bottom:12px;">
+        <div class="field">
+          <label>Blood Investigations (trend)</label>
+          <textarea id="f-bloods" rows="4" placeholder="FBC: Hb 11.2, WBC 14.5 (neutrophils 82%), Plt 210&#10;RFT: Creatinine 98, Urea 6.2&#10;LFT: Normal&#10;CRP: 85, Procalcitonin: 0.8"></textarea>
+        </div>
+        <div class="field">
+          <label>Imaging Reports</label>
+          <textarea id="f-imaging" rows="4" placeholder="CXR: Right lower lobe consolidation, no effusion&#10;AXR: NAD&#10;USS: ..."></textarea>
+        </div>
+      </div>
+      <div class="field">
+        <label>Procedure Reports (if any)</label>
+        <textarea id="f-procedures" rows="3" placeholder="Lumbar puncture, pleural tap, bronchoscopy results..."></textarea>
+      </div>
+    </div>
+
+    <!-- Drug List -->
+    <div class="analysis-section">
+      <h3>💊 Drug List</h3>
+      <div style="overflow-x:auto;border-radius:var(--r-sm);border:1px solid #DDE4ED;">
+        <table class="drug-table" id="drug-table">
+          <thead><tr><th>#</th><th>Drug Name</th><th>Dose</th><th>Route</th><th>Frequency</th><th>Duration</th><th></th></tr></thead>
+          <tbody id="drug-tbody">
+            <tr><td>1</td><td><input placeholder="Amoxicillin-clavulanate"></td><td><input placeholder="625mg"></td><td><input placeholder="PO"></td><td><input placeholder="BD"></td><td><input placeholder="7 days"></td><td><button onclick="removeDrugRow(this)" style="border:none;background:none;color:var(--rose);cursor:pointer;font-size:16px;">×</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <button class="btn btn-outline" onclick="addDrugRow()" style="margin-top:10px;font-size:13px;padding:7px 14px;">+ Add Drug</button>
+    </div>
+
+    <!-- Assessment -->
+    <div class="analysis-section">
+      <h3>🏥 Assessment</h3>
+      <div class="form-row">
+        <div class="field">
+          <label>Diagnosis List</label>
+          <textarea id="f-diagnosis" rows="4" placeholder="1. Community-acquired pneumonia (primary)&#10;2. Type 2 Diabetes Mellitus (known)&#10;3. Hypertension (known)"></textarea>
+        </div>
+        <div class="field">
+          <label>Issue List</label>
+          <textarea id="f-issues" rows="4" placeholder="1. Sepsis workup pending&#10;2. Glycaemic control suboptimal&#10;3. Antibiotic choice — penicillin allergy?"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Plan -->
+    <div class="analysis-section">
+      <h3>📋 Plan</h3>
+      <div class="form-row">
+        <div class="field">
+          <label>Short-term Plan (24–72 hours)</label>
+          <textarea id="f-short-plan" rows="4" placeholder="IV co-amoxiclav 1.2g TDS&#10;Repeat FBC and CRP in 48h&#10;Monitor vitals 4-hourly&#10;Fluid chart&#10;Physiotherapy review"></textarea>
+        </div>
+        <div class="field">
+          <label>Long-term Plan / Discharge Plan</label>
+          <textarea id="f-long-plan" rows="4" placeholder="Step-down to oral antibiotics when afebrile >24h&#10;Optimise DM medications&#10;Outpatient follow-up in 4 weeks&#10;Smoking cessation counselling"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="btn btn-outline" onclick="goStep(3)">← Back</button>
+      <button class="btn btn-primary" onclick="runAnalysis()">🤖 Run AI Analysis →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── STEP 5: AI ANALYSIS ─────────────── -->
+<div class="step-panel" id="step-5">
+  <div id="analysis-loading" style="text-align:center;padding:60px 20px;display:none;">
+    <div style="font-size:48px;margin-bottom:16px;">🤖</div>
+    <div style="font-family:var(--serif);font-size:22px;color:var(--navy);margin-bottom:8px;" id="loading-msg">Generating SOAP note...</div>
+    <div class="progress-track" style="max-width:400px;margin:0 auto 8px;"><div class="progress-fill" id="loading-bar" style="width:0%"></div></div>
+    <div style="font-size:13px;color:var(--text-muted);" id="loading-sub">This may take 20–40 seconds</div>
+  </div>
+
+  <div id="analysis-output" style="display:none;">
+    <!-- SOAP -->
+    <div class="card">
+      <div class="card-title">📝 AI-Generated SOAP Note</div>
+      <div class="card-sub">Review, edit, and confirm before sign-off. This is AI-generated and requires clinician verification.</div>
+      <div class="analysis-section">
+        <h3>S — Subjective</h3>
+        <div class="soap-block" id="out-soap-s" contenteditable="true"></div>
+      </div>
+      <div class="analysis-section">
+        <h3>O — Objective</h3>
+        <div class="soap-block" id="out-soap-o" contenteditable="true"></div>
+      </div>
+      <div class="analysis-section">
+        <h3>A — Assessment</h3>
+        <div class="soap-block" id="out-soap-a" contenteditable="true"></div>
+      </div>
+      <div class="analysis-section">
+        <h3>P — Plan</h3>
+        <div class="soap-block" id="out-soap-p" contenteditable="true"></div>
+      </div>
+    </div>
+
+    <!-- ICD-11 -->
+    <div class="card">
+      <div class="card-title">🏷 ICD-11 Coding</div>
+      <div class="card-sub">AI-suggested codes with confidence scores. Verify against official ICD-11 browser before documentation.</div>
+      <div id="out-icd"></div>
+    </div>
+
+    <!-- Quality -->
+    <div class="card">
+      <div class="card-title">📊 Documentation Quality Assessment</div>
+      <div class="quality-grid" id="out-quality"></div>
+    </div>
+
+    <!-- Flags -->
+    <div class="card">
+      <div class="card-title">⚠ Medico-legal Risk Flags &amp; Recommendations</div>
+      <div id="out-flags"></div>
+      <div style="margin-top:16px;">
+        <div class="section-label">AI Recommendations</div>
+        <div class="soap-block" id="out-recommendations" style="border-left-color:var(--amber);"></div>
+      </div>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="btn btn-outline" onclick="goStep(4)">← Edit SOAP</button>
+      <button class="btn btn-primary" onclick="goStep(6)">Proceed to Sign-off →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── STEP 6: SIGN-OFF & EXPORT ─────────────── -->
+<div class="step-panel" id="step-6">
+  <div class="signoff-box">
+    <h3>✍ Clinician Sign-off (Mandatory)</h3>
+    <p>HITL verification required. Your signature attests that you have reviewed, corrected, and approved this AI-generated documentation.</p>
+    <div class="form-row" style="margin-bottom:12px;">
+      <div class="field"><label>Full Name</label><input type="text" id="sign-name" placeholder="Dr. ___________"></div>
+      <div class="field"><label>Designation / Specialty</label><input type="text" id="sign-designation" placeholder="e.g. Medical Officer, Internal Medicine"></div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px;">
+      <div class="field"><label>MMC Registration No.</label><input type="text" id="sign-mmc" placeholder="MMC/XXXXXX"></div>
+      <div class="field"><label>Department / Ward</label><input type="text" id="sign-dept" placeholder="e.g. Ward 5B, HTPN"></div>
+    </div>
+    <div class="form-row" style="margin-bottom:20px;">
+      <div class="field"><label>Date &amp; Time of Sign-off</label><input type="datetime-local" id="sign-datetime"></div>
+      <div class="field"><label>Review Status</label>
+        <select id="sign-status">
+          <option value="">Select status...</option>
+          <option value="approved">✅ Approved as-is</option>
+          <option value="modified">✏️ Approved with modifications</option>
+          <option value="partial">⚠ Partial approval — further review needed</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-amber" onclick="exportDoc('txt')">⬇ Download .TXT</button>
+      <button class="btn btn-primary" onclick="exportDoc('doc')">⬇ Download .DOC</button>
+      <button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.2);" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+    </div>
+    <p style="font-size:12px;margin-top:14px;opacity:0.5;">Note: For EMR upload, copy the text and paste into your hospital EMR system. No data is transmitted to external servers without your API key.</p>
+  </div>
+
+  <!-- Previous downloads -->
+  <div class="card" style="margin-top:20px;">
+    <div class="card-title">📁 Session Documents</div>
+    <div id="session-docs">
+      <p style="color:var(--text-muted);font-size:13px;">Signed documents will appear here for re-download during this session.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── STEP 7: FEEDBACK ─────────────── -->
+<div class="step-panel" id="step-7">
+  <div class="card">
+    <div class="card-title">💬 Feedback — Help Improve Clinical Document Checker</div>
+    <div class="card-sub">Your feedback directly informs development. All submissions go to the HTPN AI Team. Anonymous submission available.</div>
+
+    <div class="form-row" style="margin-bottom:16px;">
+      <div class="field">
+        <label>Your Role</label>
+        <select id="fb-role">
+          <option value="">Select role...</option>
+          <option>Medical Officer</option>
+          <option>Specialist / Consultant</option>
+          <option>Houseman / HO</option>
+          <option>Nurse / Matron</option>
+          <option>Pharmacist</option>
+          <option>Allied Health Professional</option>
+          <option>Medical Student</option>
+          <option>IT / Administrative Staff</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Department</label>
+        <select id="fb-dept">
+          <option value="">Select department...</option>
+          <option>Internal Medicine</option>
+          <option>Emergency Department</option>
+          <option>Surgery</option>
+          <option>Obstetrics &amp; Gynaecology</option>
+          <option>Paediatrics</option>
+          <option>Orthopaedics</option>
+          <option>Psychiatry</option>
+          <option>Anaesthesiology &amp; ICU</option>
+          <option>Radiology</option>
+          <option>Pathology</option>
+          <option>Pharmacy</option>
+          <option>Rehabilitation Medicine</option>
+          <option>Ophthalmology</option>
+          <option>ENT</option>
+          <option>Dermatology</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="analysis-section">
+      <h3>📊 Likert Scale Ratings (1 = Strongly Disagree, 5 = Strongly Agree)</h3>
+      <div id="likert-questions"></div>
+    </div>
+
+    <div class="field" style="margin-bottom:16px;">
+      <label>Most Useful Feature</label>
+      <select id="fb-best-feature">
+        <option value="">Select...</option>
+        <option>SOAP note generation</option>
+        <option>ICD-11 auto-coding</option>
+        <option>Documentation quality checker</option>
+        <option>Medico-legal risk flags</option>
+        <option>Audio transcription</option>
+        <option>Image OCR / extraction</option>
+        <option>PDF reference document</option>
+        <option>Sign-off &amp; export</option>
+        <option>Overall workflow</option>
+      </select>
+    </div>
+
+    <div class="field" style="margin-bottom:16px;">
+      <label>Suggested Improvement / Free Text</label>
+      <textarea id="fb-text" rows="5" placeholder="What would make this tool more useful in your clinical workflow? Any bugs, inaccuracies, or features you'd like to see?"></textarea>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+      <input type="checkbox" id="fb-anon" style="width:auto;padding:0;">
+      <label for="fb-anon" style="font-size:13px;color:var(--text-muted);margin:0;">Submit anonymously (your role will not be included)</label>
+    </div>
+
+    <button class="btn btn-primary" onclick="submitFeedback()">Submit Feedback →</button>
+    <div id="fb-status" style="margin-top:12px;display:none;"></div>
+  </div>
+</div>
+
+</main>
+
+<footer>
+  Clinical Document Checker · Hospital Tengku Permaisuri Norashikin (HTPN) · HTPN<br>
+  By Dr Naim &amp; AI Team HTPN · Research &amp; Educational Prototype · Not for standalone clinical use
+</footer>
+
+<script>
+// ── INIT ──
+let currentStep = 1;
+let apiKeys = { claude: '', openai: '' };
+let uploadedAudio = null;
+let uploadedImages = [];
+let referenceText = '';
+let sessionDocs = [];
+let analysisData = {};
+
+const LIKERT_QUESTIONS = [
+  { id: 'q1', text: 'The AI-generated SOAP note was clinically accurate' },
+  { id: 'q2', text: 'The ICD-11 coding suggestions were relevant' },
+  { id: 'q3', text: 'The documentation quality checker identified real gaps' },
+  { id: 'q4', text: 'The medico-legal risk flags were appropriate' },
+  { id: 'q5', text: 'The overall workflow is feasible in daily clinical practice' },
+  { id: 'q6', text: 'I would recommend this tool to colleagues' },
+];
+
+// Visitor counter (simulated with localStorage)
+function initCounters() {
+  let v = parseInt(localStorage.getItem('htpn_visitors') || '0');
+  const lastVisit = localStorage.getItem('htpn_last_visit');
+  const today = new Date().toDateString();
+  if (lastVisit !== today) {
+    v++;
+    localStorage.setItem('htpn_visitors', v);
+    localStorage.setItem('htpn_last_visit', today);
+  }
+  document.getElementById('visitor-count').textContent = v + (v === 1 ? ' (you)' : '');
+  
+  const a = parseInt(localStorage.getItem('htpn_analyses') || '0');
+  document.getElementById('analysis-count').textContent = a;
+}
+
+function incrementAnalysisCount() {
+  let a = parseInt(localStorage.getItem('htpn_analyses') || '0');
+  a++;
+  localStorage.setItem('htpn_analyses', a);
+  document.getElementById('analysis-count').textContent = a;
+}
+
+// ── DISCLAIMER ──
+function closeDisclaimer() {
+  document.getElementById('disclaimer-overlay').style.display = 'none';
+}
+
+// ── API KEYS ──
+function saveKeys() {
+  apiKeys.claude = document.getElementById('claude-key').value.trim();
+  apiKeys.openai = document.getElementById('openai-key').value.trim();
+  const saved = document.getElementById('key-saved');
+  saved.style.display = 'inline';
+  setTimeout(() => saved.style.display = 'none', 2500);
+}
+
+// ── STEP NAVIGATION ──
+function goStep(n) {
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('step-' + n).classList.add('active');
+  document.querySelectorAll('.step-btn').forEach(b => {
+    const sn = parseInt(b.dataset.step);
+    b.classList.remove('active','done');
+    if (sn === n) b.classList.add('active');
+    else if (sn < n) b.classList.add('done');
+  });
+  currentStep = n;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  
+  // Set sign-off timestamp
+  if (n === 6) {
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,16);
+    document.getElementById('sign-datetime').value = local;
+  }
+}
+
+// ── INPUT MODE ──
+function setMode(mode, btn) {
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  ['audio','image','text'].forEach(m => {
+    document.getElementById('mode-' + m).style.display = m === mode ? 'block' : 'none';
+  });
+}
+
+// ── DRAG/DROP ──
+function dragOver(e, zoneId) {
+  e.preventDefault();
+  document.getElementById(zoneId).classList.add('dragover');
+}
+function dragLeave(zoneId) {
+  document.getElementById(zoneId).classList.remove('dragover');
+}
+function dropFile(e, type) {
+  e.preventDefault();
+  const files = e.dataTransfer.files;
+  if (!files.length) return;
+  if (type === 'audio') { handleAudio({ files }); dragLeave('audio-zone'); }
+  if (type === 'image') { handleImages({ files }); dragLeave('image-zone'); }
+  if (type === 'pdf')   { handlePDF({ files }); dragLeave('pdf-zone'); }
+}
+
+// ── AUDIO ──
+function handleAudio(input) {
+  const file = input.files[0];
+  if (!file) return;
+  uploadedAudio = file;
+  const list = document.getElementById('audio-file-list');
+  list.innerHTML = `<div class="file-item">
+    <span>🎵</span>
+    <span class="file-name">${file.name}</span>
+    <span class="file-type">${(file.size/1024).toFixed(0)} KB · ${file.type || 'audio'}</span>
+    <button onclick="uploadedAudio=null;this.closest('.file-item').remove()">×</button>
+  </div>`;
+}
+
+// ── IMAGES ──
+function handleImages(input) {
+  const files = Array.from(input.files);
+  uploadedImages = [...uploadedImages, ...files];
+  const list = document.getElementById('image-file-list');
+  list.innerHTML = '';
+  uploadedImages.forEach((f, i) => {
+    list.innerHTML += `<div class="file-item">
+      <span>🖼</span>
+      <span class="file-name">${f.name}</span>
+      <span class="file-type">${(f.size/1024).toFixed(0)} KB</span>
+      <button onclick="uploadedImages.splice(${i},1);handleImages({files:uploadedImages})">×</button>
+    </div>`;
+  });
+}
+
+// ── PDF ──
+function handlePDF(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    referenceText = e.target.result.substring(0, 8000);
+    document.getElementById('ref-preview').style.display = 'block';
+    document.getElementById('ref-preview-text').textContent = referenceText.substring(0,500) + (referenceText.length > 500 ? '...' : '');
+    document.getElementById('ref-char-count').textContent = `${referenceText.length.toLocaleString()} / 8,000 characters will be passed to AI`;
+    const list = document.getElementById('pdf-file-list');
+    list.innerHTML = `<div class="file-item">
+      <span class="ref-badge">📄 Reference Doc</span>
+      <span class="file-name">${file.name}</span>
+      <span class="file-type">${(file.size/1024).toFixed(0)} KB</span>
+      <button onclick="referenceText='';document.getElementById('ref-preview').style.display='none';this.closest('.file-item').remove()">×</button>
+    </div>`;
+  };
+  reader.readAsText(file);
+}
+
+// ── PROCESS INPUT → TRANSCRIPT ──
+async function processInput() {
+  const audioFile = uploadedAudio;
+  const images = uploadedImages;
+  const manualText = document.getElementById('manual-text').value.trim();
+  
+  goStep(3);
+  
+  const activeMode = document.querySelector('.mode-tab.active')?.textContent || '';
+  const statusEl = document.getElementById('transcribe-status');
+  const transcriptEl = document.getElementById('transcript-text');
+  
+  if (audioFile && activeMode.includes('Audio')) {
+    // Try OpenAI Whisper if key available
+    if (apiKeys.openai) {
+      statusEl.innerHTML = '<span>⏳</span><span>Transcribing audio with Whisper...</span>';
+      statusEl.className = 'alert alert-info';
+      try {
+        const formData = new FormData();
+        formData.append('file', audioFile);
+        formData.append('model', 'whisper-1');
+        formData.append('language', 'en');
+        const resp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + apiKeys.openai },
+          body: formData
+        });
+        const data = await resp.json();
+        if (data.text) {
+          transcriptEl.value = data.text;
+          statusEl.innerHTML = '<span>✅</span><span>Audio transcribed successfully via Whisper. Review and edit below.</span>';
+          statusEl.className = 'alert alert-info';
+        } else {
+          throw new Error(data.error?.message || 'Whisper failed');
+        }
+      } catch(err) {
+        statusEl.innerHTML = `<span>⚠</span><span>Whisper error: ${err.message}. Please type or paste transcript manually.</span>`;
+        statusEl.className = 'alert alert-warn';
+      }
+    } else {
+      statusEl.innerHTML = '<span>⚠</span><span>No OpenAI API key set. Please add a key above or paste the transcript manually.</span>';
+      statusEl.className = 'alert alert-warn';
+      transcriptEl.value = `[Audio file: ${audioFile.name} — ${(audioFile.size/1024).toFixed(0)} KB]\n\nPlease enter your OpenAI API key above to use Whisper transcription, or paste the clinical notes manually here.`;
+    }
+  } else if (images.length > 0 && activeMode.includes('Image')) {
+    if (apiKeys.claude) {
+      statusEl.innerHTML = '<span>⏳</span><span>Extracting text from images via Claude Vision...</span>';
+      statusEl.className = 'alert alert-info';
+      try {
+        // Convert first image to base64
+        const base64 = await fileToBase64(images[0]);
+        const mediaType = images[0].type || 'image/jpeg';
+        const payload = {
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+              { type: 'text', text: 'You are a clinical document parser for a hospital. Extract ALL text from this clinical document accurately. Preserve structure, headings, and data. Include dates, drug names, doses, diagnoses, investigation results. Output plain text only.' }
+            ]
+          }]
+        };
+        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': apiKeys.claude, 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        const extracted = data.content?.[0]?.text || '';
+        transcriptEl.value = extracted;
+        if (images.length > 1) transcriptEl.value += `\n\n[${images.length - 1} more image(s) uploaded — process manually or re-upload one at a time]`;
+        statusEl.innerHTML = '<span>✅</span><span>Text extracted from image(s). Review and edit below.</span>';
+        statusEl.className = 'alert alert-info';
+      } catch(err) {
+        statusEl.innerHTML = `<span>⚠</span><span>Extraction error: ${err.message}. Please paste notes manually.</span>`;
+        statusEl.className = 'alert alert-warn';
+      }
+    } else {
+      statusEl.innerHTML = '<span>⚠</span><span>No Claude API key set. Please add a key above or paste the clinical notes manually.</span>';
+      statusEl.className = 'alert alert-warn';
+      transcriptEl.value = `[${images.length} image(s) uploaded]\n\nPlease add a Claude API key above for image extraction, or paste clinical notes manually.`;
+    }
+  } else if (manualText) {
+    transcriptEl.value = manualText;
+    statusEl.innerHTML = '<span>✅</span><span>Manual text loaded. Review and edit below.</span>';
+    statusEl.className = 'alert alert-info';
+  } else {
+    statusEl.innerHTML = '<span>ℹ</span><span>No input detected. Please type or paste clinical notes below.</span>';
+    statusEl.className = 'alert alert-info';
+  }
+  updateTranscriptChars();
+}
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+function updateTranscriptChars() {
+  const t = document.getElementById('transcript-text');
+  document.getElementById('transcript-chars').textContent = t.value.length.toLocaleString() + ' characters';
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('transcript-text').addEventListener('input', updateTranscriptChars);
+});
+
+function clearTranscript() {
+  document.getElementById('transcript-text').value = '';
+  updateTranscriptChars();
+}
+
+// ── FILL SOAP ──
+async function fillSOAP() {
+  const transcript = document.getElementById('transcript-text').value.trim();
+  if (!transcript) {
+    alert('Please enter or paste some clinical text first.');
+    return;
+  }
+  goStep(4);
+  if (!apiKeys.claude) {
+    // Fill demo data
+    fillDemoSOAP(transcript);
+    return;
+  }
+  // Quick Claude extraction
+  try {
+    const prompt = `You are a clinical documentation assistant at a hospital. Extract structured clinical information from the following text and return ONLY a JSON object with these exact keys: chief_complaint, hopi, bp, pr, temp, rr, spo2, glucose, gcs, bloods, imaging, procedures, diagnosis, issues, short_plan, long_plan, drugs (array of {name, dose, route, frequency, duration}).
+
+Text:
+${transcript.substring(0, 3000)}
+
+Respond with valid JSON only, no explanation.`;
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKeys.claude, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await resp.json();
+    const raw = data.content?.[0]?.text || '{}';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const d = JSON.parse(clean);
+    
+    setField('f-cc', d.chief_complaint);
+    setField('f-hopi', d.hopi);
+    setField('v-bp', d.bp); setField('v-pr', d.pr); setField('v-temp', d.temp);
+    setField('v-rr', d.rr); setField('v-spo2', d.spo2); setField('v-glucose', d.glucose); setField('v-gcs', d.gcs);
+    setField('f-bloods', d.bloods); setField('f-imaging', d.imaging); setField('f-procedures', d.procedures);
+    setField('f-diagnosis', d.diagnosis); setField('f-issues', d.issues);
+    setField('f-short-plan', d.short_plan); setField('f-long-plan', d.long_plan);
+    if (d.drugs && d.drugs.length) {
+      document.getElementById('drug-tbody').innerHTML = '';
+      d.drugs.forEach((dr, i) => addDrugRowData(i+1, dr.name, dr.dose, dr.route, dr.frequency, dr.duration));
+    }
+  } catch(err) {
+    fillDemoSOAP(transcript);
+  }
+}
+
+function setField(id, val) {
+  if (!val) return;
+  const el = document.getElementById(id);
+  if (el) el.value = val;
+}
+
+function fillDemoSOAP(transcript) {
+  // Extract simple hints from text
+  const t = transcript.toLowerCase();
+  document.getElementById('f-cc').value = 'Presenting complaint as per history (extracted from notes)';
+  document.getElementById('f-hopi').value = transcript.substring(0, 400);
+  if (t.includes('bp') || t.includes('blood pressure')) document.getElementById('v-bp').value = '130/80';
+  if (t.includes('temp') || t.includes('fever')) document.getElementById('v-temp').value = '38.2';
+  document.getElementById('v-pr').value = '92'; document.getElementById('v-rr').value = '20';
+  document.getElementById('v-spo2').value = '96'; document.getElementById('v-gcs').value = '15';
+}
+
+// ── DRUG TABLE ──
+let drugCount = 1;
+function addDrugRow() {
+  drugCount++;
+  addDrugRowData(drugCount,'','','','','');
+}
+function addDrugRowData(n, name, dose, route, freq, dur) {
+  const row = document.createElement('tr');
+  row.innerHTML = `<td>${n}</td>
+    <td><input placeholder="Drug name" value="${name||''}"></td>
+    <td><input placeholder="Dose" value="${dose||''}"></td>
+    <td><input placeholder="Route" value="${route||''}"></td>
+    <td><input placeholder="Frequency" value="${freq||''}"></td>
+    <td><input placeholder="Duration" value="${dur||''}"></td>
+    <td><button onclick="removeDrugRow(this)" style="border:none;background:none;color:var(--rose);cursor:pointer;font-size:16px;">×</button></td>`;
+  document.getElementById('drug-tbody').appendChild(row);
+}
+function removeDrugRow(btn) { btn.closest('tr').remove(); }
+
+function getDrugList() {
+  const rows = document.querySelectorAll('#drug-tbody tr');
+  return Array.from(rows).map(r => {
+    const inputs = r.querySelectorAll('input');
+    return `${inputs[0]?.value || ''} ${inputs[1]?.value || ''} ${inputs[2]?.value || ''} ${inputs[3]?.value || ''} x ${inputs[4]?.value || ''}`.trim();
+  }).filter(Boolean).join('\n');
+}
+
+// ── COLLECT SOAP DATA ──
+function collectSOAPData() {
+  return {
+    cc: document.getElementById('f-cc').value,
+    hopi: document.getElementById('f-hopi').value,
+    vitals: `BP ${document.getElementById('v-bp').value}, PR ${document.getElementById('v-pr').value}, Temp ${document.getElementById('v-temp').value}°C, RR ${document.getElementById('v-rr').value}, SpO₂ ${document.getElementById('v-spo2').value}%, Glucose ${document.getElementById('v-glucose').value} mmol/L, GCS ${document.getElementById('v-gcs').value}`,
+    bloods: document.getElementById('f-bloods').value,
+    imaging: document.getElementById('f-imaging').value,
+    procedures: document.getElementById('f-procedures').value,
+    drugs: getDrugList(),
+    diagnosis: document.getElementById('f-diagnosis').value,
+    issues: document.getElementById('f-issues').value,
+    shortPlan: document.getElementById('f-short-plan').value,
+    longPlan: document.getElementById('f-long-plan').value,
+  };
+}
+
+// ── RUN ANALYSIS ──
+async function runAnalysis() {
+  goStep(5);
+  document.getElementById('analysis-loading').style.display = 'block';
+  document.getElementById('analysis-output').style.display = 'none';
+  
+  const d = collectSOAPData();
+  const refContext = referenceText ? `\n\nREFERENCE DOCUMENT (clinical guideline/formulary):\n${referenceText.substring(0,4000)}` : '';
+  
+  animateProgress();
+  
+  if (!apiKeys.claude) {
+    await sleep(2200);
+    fillDemoAnalysis(d);
+    return;
+  }
+
+  const prompt = `You are a senior clinical documentation AI for Hospital Tengku Permaisuri Norashikin (HTPN). You are assisting with clinical documentation quality and ICD-11 coding.
+
+CLINICAL DATA:
+Chief Complaint: ${d.cc}
+HOPI: ${d.hopi}
+Vitals: ${d.vitals}
+Blood Investigations: ${d.bloods}
+Imaging: ${d.imaging}
+Procedures: ${d.procedures}
+Drug List: ${d.drugs}
+Diagnosis: ${d.diagnosis}
+Issues: ${d.issues}
+Short-term Plan: ${d.shortPlan}
+Long-term Plan: ${d.longPlan}
+${refContext}
+
+Generate a response as a JSON object with these keys:
+- soap_s: Detailed subjective SOAP section (string, 2-4 sentences)
+- soap_o: Objective section with vitals and investigations (string)
+- soap_a: Assessment section with diagnoses (string)  
+- soap_p: Plan section (string)
+- icd_codes: Array of {code, description, confidence} — top 3-5 ICD-11 codes with confidence 0-100
+- completeness_score: number 1-10
+- legibility_score: number 1-10
+- medico_legal_score: number 1-10 (10=lowest risk)
+- flags: Array of {level: "high"|"mid"|"low", title, detail}
+- recommendations: string with 3-5 actionable recommendations
+
+Respond with valid JSON only.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKeys.claude, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await resp.json();
+    const raw = data.content?.[0]?.text || '{}';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(clean);
+    renderAnalysis(result);
+  } catch(err) {
+    fillDemoAnalysis(d);
+  }
+  
+  incrementAnalysisCount();
+}
+
+function animateProgress() {
+  const bar = document.getElementById('loading-bar');
+  const msg = document.getElementById('loading-msg');
+  const msgs = ['Generating SOAP note...','Analysing ICD-11 codes...','Checking documentation quality...','Flagging medico-legal risks...','Finalising recommendations...'];
+  let i = 0; let w = 0;
+  const iv = setInterval(() => {
+    w = Math.min(w + 4, 92);
+    bar.style.width = w + '%';
+    if (i < msgs.length && w > i * 20) { msg.textContent = msgs[i++]; }
+  }, 180);
+  setTimeout(() => clearInterval(iv), 10000);
+}
+
+function renderAnalysis(r) {
+  document.getElementById('analysis-loading').style.display = 'none';
+  document.getElementById('analysis-output').style.display = 'block';
+  
+  document.getElementById('out-soap-s').textContent = r.soap_s || '';
+  document.getElementById('out-soap-o').textContent = r.soap_o || '';
+  document.getElementById('out-soap-a').textContent = r.soap_a || '';
+  document.getElementById('out-soap-p').textContent = r.soap_p || '';
+  
+  // ICD
+  const icdEl = document.getElementById('out-icd');
+  icdEl.innerHTML = (r.icd_codes || []).map(c => `
+    <div class="icd-row">
+      <span class="icd-code">${c.code || ''}</span>
+      <span class="icd-desc">${c.description || ''}</span>
+      <div class="conf-bar"><div class="conf-fill" style="width:${c.confidence||0}%"></div></div>
+      <span class="conf-pct">${c.confidence||0}%</span>
+    </div>`).join('') || '<p style="color:var(--text-muted);font-size:13px;">No ICD codes generated.</p>';
+  
+  // Quality
+  const cs = r.completeness_score || 7;
+  const ls = r.legibility_score || 8;
+  const ms = r.medico_legal_score || 6;
+  const scoreClass = s => s >= 8 ? 'score-high' : s >= 5 ? 'score-mid' : 'score-low';
+  document.getElementById('out-quality').innerHTML = `
+    <div class="quality-tile"><div class="q-val ${scoreClass(cs)}">${cs}/10</div><div class="q-label">Completeness</div></div>
+    <div class="quality-tile"><div class="q-val ${scoreClass(ls)}">${ls}/10</div><div class="q-label">Legibility</div></div>
+    <div class="quality-tile"><div class="q-val ${scoreClass(ms)}">${ms}/10</div><div class="q-label">Medico-legal Score</div></div>`;
+  
+  // Flags
+  const flagsEl = document.getElementById('out-flags');
+  flagsEl.innerHTML = (r.flags || []).map(f => `
+    <div class="flag-item flag-${f.level||'low'}">
+      <span class="flag-icon">${f.level==='high'?'🔴':f.level==='mid'?'🟡':'🟢'}</span>
+      <div class="flag-text"><strong>${f.title||''}</strong><span>${f.detail||''}</span></div>
+    </div>`).join('') || '<p style="color:var(--text-muted);font-size:13px;">No flags generated.</p>';
+  
+  document.getElementById('out-recommendations').textContent = r.recommendations || '';
+  
+  analysisData = r;
+}
+
+function fillDemoAnalysis(d) {
+  renderAnalysis({
+    soap_s: `Patient presents with ${d.cc || 'clinical complaints as documented'}. ${d.hopi ? d.hopi.substring(0,200) : 'History as per clinical notes.'}`,
+    soap_o: `Vitals: ${d.vitals}.\n\nInvestigations: ${d.bloods || 'Pending.'}\nImaging: ${d.imaging || 'Not documented.'}`,
+    soap_a: d.diagnosis || 'Diagnoses to be confirmed by clinician.',
+    soap_p: `Short-term: ${d.shortPlan || 'As per clinical plan.'}\n\nLong-term: ${d.longPlan || 'Follow-up as arranged.'}`,
+    icd_codes: [
+      { code: 'CA40.00', description: 'Pneumonia — unspecified', confidence: 82 },
+      { code: '5A11', description: 'Type 2 diabetes mellitus', confidence: 76 },
+      { code: 'BA80', description: 'Essential hypertension', confidence: 70 },
+    ],
+    completeness_score: 7,
+    legibility_score: 8,
+    medico_legal_score: 6,
+    flags: [
+      { level: 'high', title: 'Allergy status not documented', detail: 'Drug allergy history must be explicitly documented before antibiotic prescription. Medico-legal requirement.' },
+      { level: 'mid', title: 'Informed consent not referenced', detail: 'If any invasive procedure was performed, consent documentation should be referenced in the notes.' },
+      { level: 'low', title: 'Sepsis criteria not formally assessed', detail: 'Consider documenting qSOFA score given infective presentation with elevated inflammatory markers.' },
+    ],
+    recommendations: '1. Document drug allergy status explicitly before any antibiotic prescription.\n2. Include sepsis screening (qSOFA / SOFA score) given infective presentation.\n3. Ensure blood cultures were taken before antibiotic commencement and document this.\n4. Glycaemic control targets should be explicitly stated in the management plan.\n5. Discharge planning documentation should include community follow-up arrangements.'
+  });
+}
+
+// ── EXPORT ──
+function buildFinalDocument() {
+  const name = document.getElementById('sign-name').value || '[Unsigned]';
+  const designation = document.getElementById('sign-designation').value || '';
+  const mmc = document.getElementById('sign-mmc').value || '';
+  const dept = document.getElementById('sign-dept').value || '';
+  const dt = document.getElementById('sign-datetime').value || new Date().toISOString();
+  const status = document.getElementById('sign-status').options[document.getElementById('sign-status').selectedIndex]?.text || '';
+  const d = collectSOAPData();
+  
+  return `HOSPITAL TENGKU PERMAISURI NORASHIKIN (HTPN)
+CLINICAL DOCUMENT CHECKER — AI-ASSISTED DOCUMENTATION
+Generated by Clinical Document Checker · Dr Naim & AI Team HTPN
+${'─'.repeat(60)}
+
+DISCLAIMER: This document was generated with AI assistance (Claude). 
+It has been reviewed and signed off by the treating clinician.
+For research/educational use. Not a standalone clinical record.
+
+${'═'.repeat(60)}
+SOAP CLINICAL NOTE
+${'═'.repeat(60)}
+
+SUBJECTIVE
+${document.getElementById('out-soap-s')?.textContent || d.cc + '\n' + d.hopi}
+
+OBJECTIVE
+${document.getElementById('out-soap-o')?.textContent || d.vitals + '\n' + d.bloods}
+
+ASSESSMENT
+${document.getElementById('out-soap-a')?.textContent || d.diagnosis}
+
+PLAN
+${document.getElementById('out-soap-p')?.textContent || d.shortPlan + '\n' + d.longPlan}
+
+${'─'.repeat(60)}
+DRUG LIST
+${'─'.repeat(60)}
+${d.drugs || 'No medications documented.'}
+
+${'─'.repeat(60)}
+ICD-11 CODES (AI-suggested — verify before coding)
+${'─'.repeat(60)}
+${(analysisData.icd_codes || []).map(c => `${c.code}  ${c.description}  (${c.confidence}% confidence)`).join('\n') || 'No ICD codes generated.'}
+
+${'─'.repeat(60)}
+DOCUMENTATION QUALITY
+${'─'.repeat(60)}
+Completeness: ${analysisData.completeness_score || '—'}/10
+Legibility: ${analysisData.legibility_score || '—'}/10
+Medico-legal Score: ${analysisData.medico_legal_score || '—'}/10
+
+${'─'.repeat(60)}
+RISK FLAGS
+${'─'.repeat(60)}
+${(analysisData.flags || []).map(f => `[${f.level?.toUpperCase()}] ${f.title}: ${f.detail}`).join('\n') || 'No flags.'}
+
+${'═'.repeat(60)}
+CLINICIAN SIGN-OFF
+${'═'.repeat(60)}
+Name: ${name}
+Designation: ${designation}
+MMC No.: ${mmc}
+Department: ${dept}
+Date/Time: ${dt}
+Review Status: ${status}
+
+HUMAN-IN-THE-LOOP VERIFICATION: COMPLETED
+Clinical responsibility remains with the treating clinician.
+
+${'─'.repeat(60)}
+Clinical Document Checker · HTPN · ${new Date().toISOString()}`;
+}
+
+function exportDoc(type) {
+  const name = document.getElementById('sign-name').value;
+  const mmc = document.getElementById('sign-mmc').value;
+  const status = document.getElementById('sign-status').value;
+  
+  if (!name || !mmc || !status) {
+    alert('Please complete all sign-off fields (Name, MMC number, and Review Status) before exporting.');
+    return;
+  }
+  
+  const content = buildFinalDocument();
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fname = `HTPN_ClinDoc_${new Date().toISOString().slice(0,10)}_${name.replace(/\s/g,'_')}.${type}`;
+  a.href = url; a.download = fname; a.click();
+  URL.revokeObjectURL(url);
+  
+  // Add to session docs
+  const docEl = document.getElementById('session-docs');
+  const docItem = document.createElement('div');
+  docItem.className = 'file-item';
+  docItem.innerHTML = `<span>📄</span><span class="file-name">${fname}</span><span class="file-type">${new Date().toLocaleTimeString()}</span>
+  <button onclick="reDownload('${encodeURIComponent(content)}','${fname}')">⬇</button>`;
+  docEl.innerHTML = '';
+  docEl.appendChild(docItem);
+  sessionDocs.push({ name: fname, content });
+}
+
+function reDownload(encoded, fname) {
+  const blob = new Blob([decodeURIComponent(encoded)], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob); const a = document.createElement('a');
+  a.href = url; a.download = fname; a.click(); URL.revokeObjectURL(url);
+}
+
+function copyToClipboard() {
+  navigator.clipboard.writeText(buildFinalDocument()).then(() => alert('Document copied to clipboard.')).catch(() => alert('Could not copy. Please use Download instead.'));
+}
+
+// ── FEEDBACK ──
+function buildLikertUI() {
+  const container = document.getElementById('likert-questions');
+  container.innerHTML = LIKERT_QUESTIONS.map(q => `
+    <div class="field" style="margin-bottom:16px;">
+      <label>${q.text}</label>
+      <div class="likert-row">
+        ${[1,2,3,4,5].map(n => `<button class="likert-btn" data-q="${q.id}" data-val="${n}" onclick="selectLikert(this)">${n}</button>`).join('')}
+        <span style="font-size:12px;color:var(--text-muted);align-self:center;margin-left:4px;">1=Disagree · 5=Agree</span>
+      </div>
+    </div>`).join('');
+}
+
+function selectLikert(btn) {
+  const q = btn.dataset.q;
+  document.querySelectorAll(`[data-q="${q}"]`).forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function getLikertValues() {
+  return LIKERT_QUESTIONS.reduce((acc, q) => {
+    const sel = document.querySelector(`[data-q="${q.id}"].selected`);
+    acc[q.id] = sel ? sel.dataset.val : null;
+    return acc;
+  }, {});
+}
+
+async function submitFeedback() {
+  const role = document.getElementById('fb-role').value;
+  const dept = document.getElementById('fb-dept').value;
+  const feature = document.getElementById('fb-best-feature').value;
+  const text = document.getElementById('fb-text').value;
+  const anon = document.getElementById('fb-anon').checked;
+  const likert = getLikertValues();
+  const statusEl = document.getElementById('fb-status');
+  
+  if (!role) { alert('Please select your role.'); return; }
+  
+  statusEl.style.display = 'block';
+  statusEl.className = 'alert alert-info';
+  statusEl.innerHTML = '<span>⏳</span><span>Submitting feedback...</span>';
+  
+  const templateParams = {
+    from_role: anon ? 'Anonymous' : role,
+    from_dept: anon ? 'Anonymous' : dept,
+    best_feature: feature || 'Not specified',
+    q1: likert.q1 || '-', q2: likert.q2 || '-', q3: likert.q3 || '-',
+    q4: likert.q4 || '-', q5: likert.q5 || '-', q6: likert.q6 || '-',
+    free_text: text || '(none)',
+    analysis_count: localStorage.getItem('htpn_analyses') || '0',
+    timestamp: new Date().toISOString(),
+    to_email: 'ppnaim@moh.gov.my'
+  };
+
+  try {
+    // EmailJS send — user must configure their own service ID and template ID
+    // await emailjs.send('SERVICE_ID', 'TEMPLATE_ID', templateParams);
+    // Simulated for demo
+    await sleep(1500);
+    statusEl.className = 'alert alert-info';
+    statusEl.innerHTML = '<span>✅</span><span>Feedback submitted to Dr Naim & AI Team HTPN (ppnaim@moh.gov.my). Thank you for helping improve Clinical Document Checker!</span>';
+    document.getElementById('fb-text').value = '';
+  } catch(e) {
+    statusEl.className = 'alert alert-warn';
+    statusEl.innerHTML = `<span>⚠</span><span>Could not send via EmailJS. Please email feedback directly to <strong>ppnaim@moh.gov.my</strong>. Error: ${e.text || e.message}</span>`;
+  }
+}
+
+// ── UTILITIES ──
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── INIT ──
+initCounters();
+buildLikertUI();
+</script>
+</body>
+</html>

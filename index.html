@@ -50,7 +50,7 @@ body {
   display: flex; align-items: center; justify-content: center;
   padding: 24px;
 }
-#disclaimer-overlay[style*="none"] { pointer-events: none; }
+#disclaimer-overlay.hidden { display: none !important; pointer-events: none !important; }
 .disclaimer-box {
   background: var(--white);
   border-radius: 16px;
@@ -610,7 +610,7 @@ footer {
     <p>It is advisable not to enter patient-identifiable information such as full name or IC number. Audio files are processed locally and deleted immediately after transcription. Feedback submitted may be anonymised.</p>
     <p><strong>This tool does not constitute medical advice.</strong> Clinical responsibility remains entirely with the treating clinician.</p>
     <p style="font-size:12px;color:#94A3B8;margin-top:8px;">By clicking below you acknowledge these terms.</p>
-    <button class="disclaimer-btn" onclick="document.getElementById('disclaimer-overlay').style.cssText='display:none!important';">I Understand — Enter Clinical Document Checker</button>
+    <button class="disclaimer-btn" onclick="document.getElementById('disclaimer-overlay').classList.add('hidden')">I Understand — Enter Clinical Document Checker</button>
   </div>
 </div>
 
@@ -678,7 +678,11 @@ footer {
 
     <!-- AUDIO MODE — Web Speech API -->
     <div id="mode-audio">
-      <div class="alert alert-info" style="margin-bottom:14px;">
+      <div id="browser-warning" class="alert alert-warn" style="display:none;margin-bottom:14px;">
+        <span>⚠</span>
+        <div><strong>Voice Dictation is not supported in Safari or this browser.</strong> Please open this app in <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> to use Voice Dictation. Alternatively, switch to <strong>Image Upload</strong> or <strong>Manual Text</strong> above.</div>
+      </div>
+      <div class="alert alert-info" id="speech-info-banner" style="margin-bottom:14px;">
         <span>ℹ</span>
         <span>Uses your browser's built-in speech recognition — <strong>free, no API key needed.</strong> Works best in Chrome or Edge. Speak clearly in English or Malay. Click Start, dictate your clinical notes, then click Stop.</span>
       </div>
@@ -1117,10 +1121,29 @@ You can also type or paste clinical notes directly."></textarea>
 let recognition = null;
 let speechFinal = '';
 
+function checkSpeechSupport() {
+  const supported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
+  const warn = document.getElementById('browser-warning');
+  const info = document.getElementById('speech-info-banner');
+  const startBtn = document.getElementById('speech-start-btn');
+  if (!supported || isSafari || isFirefox) {
+    if (warn) warn.style.display = 'flex';
+    if (info) info.style.display = 'none';
+    if (startBtn) startBtn.disabled = true;
+  } else {
+    if (warn) warn.style.display = 'none';
+    if (info) info.style.display = 'flex';
+    if (startBtn) startBtn.disabled = false;
+  }
+}
+
 function startSpeech() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    alert('Speech recognition is not supported in this browser. Please use Chrome or Edge.');
+    document.getElementById('browser-warning').style.display = 'flex';
+    document.getElementById('speech-info-banner').style.display = 'none';
     return;
   }
   recognition = new SpeechRecognition();
@@ -1232,7 +1255,7 @@ function incrementAnalysisCount() {
 
 // ── DISCLAIMER ──
 function closeDisclaimer() {
-  document.getElementById('disclaimer-overlay').style.display = 'none';
+  document.getElementById('disclaimer-overlay').classList.add('hidden');
 }
 
 // ── API KEYS ──
@@ -1272,6 +1295,7 @@ function setMode(mode, btn) {
   ['audio','image','text'].forEach(m => {
     document.getElementById('mode-' + m).style.display = m === mode ? 'block' : 'none';
   });
+  if (mode === 'audio') checkSpeechSupport();
 }
 
 // ── DRAG/DROP ──
@@ -1871,69 +1895,10 @@ async function submitFeedback() {
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 
-// ── WEB SPEECH API ──
-let recognition = null;
-let speechFinal = '';
-
-function startSpeech() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    alert('Speech recognition is not supported in this browser. Please use Chrome or Edge.');
-    return;
-  }
-  recognition = new SpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = 'en-MY'; // English (Malaysia)
-  speechFinal = document.getElementById('speech-live').value;
-
-  recognition.onresult = function(event) {
-    let interim = '';
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      if (event.results[i].isFinal) {
-        speechFinal += event.results[i][0].transcript + ' ';
-      } else {
-        interim += event.results[i][0].transcript;
-      }
-    }
-    document.getElementById('speech-live').value = speechFinal + interim;
-  };
-
-  recognition.onerror = function(e) {
-    document.getElementById('audio-status').style.display = 'flex';
-    document.getElementById('audio-status').innerHTML = `<span>⚠</span><span>Microphone error: ${e.error}. Please allow microphone access and try again.</span>`;
-    stopSpeech();
-  };
-
-  recognition.onend = function() {
-    if (document.getElementById('speech-indicator').style.display !== 'none') {
-      recognition.start(); // keep going until user stops
-    }
-  };
-
-  recognition.start();
-  document.getElementById('speech-start-btn').style.display = 'none';
-  document.getElementById('speech-stop-btn').style.display = 'inline-flex';
-  document.getElementById('speech-indicator').style.display = 'flex';
-  document.getElementById('audio-status').style.display = 'none';
-}
-
-function stopSpeech() {
-  if (recognition) { recognition.stop(); recognition = null; }
-  document.getElementById('speech-start-btn').style.display = 'inline-flex';
-  document.getElementById('speech-stop-btn').style.display = 'none';
-  document.getElementById('speech-indicator').style.display = 'none';
-  const text = document.getElementById('speech-live').value.trim();
-  if (text) {
-    document.getElementById('audio-status').style.display = 'flex';
-    document.getElementById('audio-status').className = 'alert alert-info';
-    document.getElementById('audio-status').innerHTML = '<span>✅</span><span>Dictation complete. Click "Process Input" to continue.</span>';
-  }
-}
-
 // ── INIT ──
 initCounters();
 buildLikertUI();
+checkSpeechSupport();
 </script>
 </body>
 </html>

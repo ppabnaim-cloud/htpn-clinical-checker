@@ -1282,36 +1282,27 @@ async function processInput() {
   const transcriptEl = document.getElementById('transcript-text');
   
   if (audioFile && activeMode.includes('Audio')) {
-    // Try OpenAI Whisper if key available
-    if (apiKeys.openai) {
-      statusEl.innerHTML = '<span>⏳</span><span>Transcribing audio with Whisper...</span>';
-      statusEl.className = 'alert alert-info';
-      try {
-        const formData = new FormData();
-        formData.append('file', audioFile);
-        formData.append('model', 'whisper-1');
-        formData.append('language', 'en');
-        const resp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + apiKeys.openai },
-          body: formData
-        });
-        const data = await resp.json();
-        if (data.text) {
-          transcriptEl.value = data.text;
-          statusEl.innerHTML = '<span>✅</span><span>Audio transcribed successfully via Whisper. Review and edit below.</span>';
-          statusEl.className = 'alert alert-info';
-        } else {
-          throw new Error(data.error?.message || 'Whisper failed');
-        }
-      } catch(err) {
-        statusEl.innerHTML = `<span>⚠</span><span>Whisper error: ${err.message}. Please type or paste transcript manually.</span>`;
-        statusEl.className = 'alert alert-warn';
+    // Whisper via server proxy — no API key needed from user
+    statusEl.innerHTML = '<span>⏳</span><span>Transcribing audio with Whisper...</span>';
+    statusEl.className = 'alert alert-info';
+    try {
+      const formData = new FormData();
+      formData.append('file', audioFile);
+      const resp = await fetch('/api/whisper', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await resp.json();
+      if (data.text) {
+        transcriptEl.value = data.text;
+        statusEl.innerHTML = '<span>✅</span><span>Audio transcribed successfully. Review and edit below.</span>';
+        statusEl.className = 'alert alert-info';
+      } else {
+        throw new Error(data.error || 'Transcription failed');
       }
-    } else {
-      statusEl.innerHTML = '<span>⚠</span><span>No OpenAI API key set. Please add a key above or paste the transcript manually.</span>';
+    } catch(err) {
+      statusEl.innerHTML = `<span>⚠</span><span>Transcription error: ${err.message}. Please paste clinical notes manually.</span>`;
       statusEl.className = 'alert alert-warn';
-      transcriptEl.value = `[Audio file: ${audioFile.name} — ${(audioFile.size/1024).toFixed(0)} KB]\n\nPlease enter your OpenAI API key above to use Whisper transcription, or paste the clinical notes manually here.`;
     }
   } else if (images.length > 0 && activeMode.includes('Image')) {
     if (true) { // proxy handles auth

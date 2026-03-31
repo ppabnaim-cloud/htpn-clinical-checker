@@ -670,20 +670,31 @@ footer {
     <div class="card-sub">Choose your input method: upload audio, images, or enter text manually.</div>
 
     <div class="mode-tab-bar">
-      <button class="mode-tab active" onclick="setMode('audio',this)">🎙 Audio Upload</button>
+      <button class="mode-tab active" onclick="setMode('audio',this)">🎙 Voice Dictation</button>
       <button class="mode-tab" onclick="setMode('image',this)">🖼 Image Upload</button>
       <button class="mode-tab" onclick="setMode('text',this)">✏️ Manual Text</button>
     </div>
 
-    <!-- AUDIO MODE -->
+    <!-- AUDIO MODE — Web Speech API -->
     <div id="mode-audio">
-      <div class="upload-zone" id="audio-zone" onclick="document.getElementById('audio-input').click()" ondragover="dragOver(event,'audio-zone')" ondragleave="dragLeave('audio-zone')" ondrop="dropFile(event,'audio')">
-        <input type="file" id="audio-input" accept=".ogg,.wav,.mp3,.m4a" onchange="handleAudio(this)">
-        <div class="upload-icon">🎵</div>
-        <h3>Drop audio file here</h3>
-        <p>Supports .ogg, .wav, .mp3, .m4a — clinician narration, ward round recording</p>
+      <div class="alert alert-info" style="margin-bottom:14px;">
+        <span>ℹ</span>
+        <span>Uses your browser's built-in speech recognition — <strong>free, no API key needed.</strong> Works best in Chrome or Edge. Speak clearly in English or Malay. Click Start, dictate your clinical notes, then click Stop.</span>
       </div>
-      <div id="audio-file-list" class="file-list"></div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+        <button class="btn btn-primary" id="speech-start-btn" onclick="startSpeech()" style="gap:8px;">
+          🎙 Start Dictation
+        </button>
+        <button class="btn btn-danger" id="speech-stop-btn" onclick="stopSpeech()" style="display:none;">
+          ⏹ Stop
+        </button>
+        <div id="speech-indicator" style="display:none;align-items:center;gap:8px;font-size:13px;color:var(--rose);">
+          <span style="width:10px;height:10px;background:var(--rose);border-radius:50%;animation:pulse-dot 1s ease-in-out infinite;display:inline-block;"></span>
+          Recording...
+        </div>
+      </div>
+      <div class="section-label">Live Transcript (editable)</div>
+      <textarea id="speech-live" rows="6" placeholder="Your dictation will appear here in real time as you speak..." style="background:#F7F9FC;border:1.5px solid #DDE4ED;border-radius:var(--r);padding:14px;font-family:var(--mono);font-size:13px;line-height:1.8;width:100%;resize:vertical;outline:none;"></textarea>
       <div id="audio-status" class="alert alert-info" style="display:none;margin-top:12px;"></div>
     </div>
 
@@ -1100,6 +1111,67 @@ You can also type or paste clinical notes directly."></textarea>
 </footer>
 
 <script>
+
+// ── WEB SPEECH API ──
+let recognition = null;
+let speechFinal = '';
+
+function startSpeech() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert('Speech recognition is not supported in this browser. Please use Chrome or Edge.');
+    return;
+  }
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-MY'; // English (Malaysia)
+  speechFinal = document.getElementById('speech-live').value;
+
+  recognition.onresult = function(event) {
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        speechFinal += event.results[i][0].transcript + ' ';
+      } else {
+        interim += event.results[i][0].transcript;
+      }
+    }
+    document.getElementById('speech-live').value = speechFinal + interim;
+  };
+
+  recognition.onerror = function(e) {
+    document.getElementById('audio-status').style.display = 'flex';
+    document.getElementById('audio-status').innerHTML = `<span>⚠</span><span>Microphone error: ${e.error}. Please allow microphone access and try again.</span>`;
+    stopSpeech();
+  };
+
+  recognition.onend = function() {
+    if (document.getElementById('speech-indicator').style.display !== 'none') {
+      recognition.start(); // keep going until user stops
+    }
+  };
+
+  recognition.start();
+  document.getElementById('speech-start-btn').style.display = 'none';
+  document.getElementById('speech-stop-btn').style.display = 'inline-flex';
+  document.getElementById('speech-indicator').style.display = 'flex';
+  document.getElementById('audio-status').style.display = 'none';
+}
+
+function stopSpeech() {
+  if (recognition) { recognition.stop(); recognition = null; }
+  document.getElementById('speech-start-btn').style.display = 'inline-flex';
+  document.getElementById('speech-stop-btn').style.display = 'none';
+  document.getElementById('speech-indicator').style.display = 'none';
+  const text = document.getElementById('speech-live').value.trim();
+  if (text) {
+    document.getElementById('audio-status').style.display = 'flex';
+    document.getElementById('audio-status').className = 'alert alert-info';
+    document.getElementById('audio-status').innerHTML = '<span>✅</span><span>Dictation complete. Click "Process Input" to continue.</span>';
+  }
+}
+
 // ── INIT ──
 let currentStep = 1;
 let apiKeys = { claude: '', openai: '' };
@@ -1281,29 +1353,15 @@ async function processInput() {
   const statusEl = document.getElementById('transcribe-status');
   const transcriptEl = document.getElementById('transcript-text');
   
-  if (audioFile && activeMode.includes('Audio')) {
-    // Whisper via server proxy — no API key needed from user
-    statusEl.innerHTML = '<span>⏳</span><span>Transcribing audio with Whisper...</span>';
-    statusEl.className = 'alert alert-info';
-    try {
-      const formData = new FormData();
-      formData.append('file', audioFile);
-      formData.append('model', 'whisper-1');
-      formData.append('language', 'en');
-      const resp = await fetch('/api/whisper', {
-        method: 'POST',
-        body: formData
-      });
-      const data = await resp.json();
-      if (data.text) {
-        transcriptEl.value = data.text;
-        statusEl.innerHTML = '<span>✅</span><span>Audio transcribed successfully. Review and edit below.</span>';
-        statusEl.className = 'alert alert-info';
-      } else {
-        throw new Error(data.error || 'Transcription failed');
-      }
-    } catch(err) {
-      statusEl.innerHTML = `<span>⚠</span><span>Transcription error: ${err.message}. Please paste clinical notes manually.</span>`;
+  if (activeMode.includes('Voice') || activeMode.includes('Audio')) {
+    // Web Speech API — pull from live transcript box
+    const speechText = document.getElementById('speech-live')?.value.trim();
+    if (speechText) {
+      transcriptEl.value = speechText;
+      statusEl.innerHTML = '<span>✅</span><span>Voice dictation loaded. Review and edit below.</span>';
+      statusEl.className = 'alert alert-info';
+    } else {
+      statusEl.innerHTML = '<span>⚠</span><span>No dictation detected. Please click "Start Dictation", speak your clinical notes, then click "Stop" and try again.</span>';
       statusEl.className = 'alert alert-warn';
     }
   } else if (images.length > 0 && activeMode.includes('Image')) {
@@ -1810,6 +1868,67 @@ async function submitFeedback() {
 
 // ── UTILITIES ──
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+
+// ── WEB SPEECH API ──
+let recognition = null;
+let speechFinal = '';
+
+function startSpeech() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert('Speech recognition is not supported in this browser. Please use Chrome or Edge.');
+    return;
+  }
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-MY'; // English (Malaysia)
+  speechFinal = document.getElementById('speech-live').value;
+
+  recognition.onresult = function(event) {
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        speechFinal += event.results[i][0].transcript + ' ';
+      } else {
+        interim += event.results[i][0].transcript;
+      }
+    }
+    document.getElementById('speech-live').value = speechFinal + interim;
+  };
+
+  recognition.onerror = function(e) {
+    document.getElementById('audio-status').style.display = 'flex';
+    document.getElementById('audio-status').innerHTML = `<span>⚠</span><span>Microphone error: ${e.error}. Please allow microphone access and try again.</span>`;
+    stopSpeech();
+  };
+
+  recognition.onend = function() {
+    if (document.getElementById('speech-indicator').style.display !== 'none') {
+      recognition.start(); // keep going until user stops
+    }
+  };
+
+  recognition.start();
+  document.getElementById('speech-start-btn').style.display = 'none';
+  document.getElementById('speech-stop-btn').style.display = 'inline-flex';
+  document.getElementById('speech-indicator').style.display = 'flex';
+  document.getElementById('audio-status').style.display = 'none';
+}
+
+function stopSpeech() {
+  if (recognition) { recognition.stop(); recognition = null; }
+  document.getElementById('speech-start-btn').style.display = 'inline-flex';
+  document.getElementById('speech-stop-btn').style.display = 'none';
+  document.getElementById('speech-indicator').style.display = 'none';
+  const text = document.getElementById('speech-live').value.trim();
+  if (text) {
+    document.getElementById('audio-status').style.display = 'flex';
+    document.getElementById('audio-status').className = 'alert alert-info';
+    document.getElementById('audio-status').innerHTML = '<span>✅</span><span>Dictation complete. Click "Process Input" to continue.</span>';
+  }
+}
 
 // ── INIT ──
 initCounters();

@@ -1288,6 +1288,8 @@ async function processInput() {
     try {
       const formData = new FormData();
       formData.append('file', audioFile);
+      formData.append('model', 'whisper-1');
+      formData.append('language', 'en');
       const resp = await fetch('/api/whisper', {
         method: 'POST',
         body: formData

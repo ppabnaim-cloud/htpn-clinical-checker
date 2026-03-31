@@ -50,6 +50,7 @@ body {
   display: flex; align-items: center; justify-content: center;
   padding: 24px;
 }
+#disclaimer-overlay[style*="none"] { pointer-events: none; }
 .disclaimer-box {
   background: var(--white);
   border-radius: 16px;
@@ -609,7 +610,7 @@ footer {
     <p>It is advisable not to enter patient-identifiable information such as full name or IC number. Audio files are processed locally and deleted immediately after transcription. Feedback submitted may be anonymised.</p>
     <p><strong>This tool does not constitute medical advice.</strong> Clinical responsibility remains entirely with the treating clinician.</p>
     <p style="font-size:12px;color:#94A3B8;margin-top:8px;">By clicking below you acknowledge these terms.</p>
-    <button class="disclaimer-btn" onclick="closeDisclaimer()">I Understand — Enter Clinical Document Checker</button>
+    <button class="disclaimer-btn" onclick="document.getElementById('disclaimer-overlay').style.cssText='display:none!important';">I Understand — Enter Clinical Document Checker</button>
   </div>
 </div>
 

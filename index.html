@@ -609,7 +609,15 @@ footer {
     <p>It is advisable not to enter patient-identifiable information such as full name or IC number. Audio files are processed locally and deleted immediately after transcription. Feedback submitted may be anonymised.</p>
     <p><strong>This tool does not constitute medical advice.</strong> Clinical responsibility remains entirely with the treating clinician.</p>
     <p style="font-size:12px;color:#94A3B8;margin-top:8px;">By clicking below you acknowledge these terms.</p>
-    <button class="disclaimer-btn" onclick="document.getElementById('disclaimer-overlay').classList.add('hidden')">I Understand — Enter Clinical Document Checker</button>
+    <button class="disclaimer-btn" onclick="
+  var o=document.getElementById('disclaimer-overlay');
+  o.classList.add('hidden');
+  o.style.display='none';
+  o.style.visibility='hidden';
+  o.style.pointerEvents='none';
+  o.style.position='absolute';
+  o.style.zIndex='-1';
+">I Understand — Enter Clinical Document Checker</button>
   </div>
 </div>
 
@@ -1315,35 +1323,21 @@ const LIKERT_QUESTIONS = [
 ];
 
 // Visitor counter (simulated with localStorage)
-async function initCounters() {
-  // Real shared visitor counter via CountAPI
+function initCounters() {
+  // Simple localStorage visitor counter (no external API dependency)
   const today = new Date().toDateString();
-  const visitorEl = document.getElementById('visitor-count');
-  try {
-    // Hit counter — increments once per user per day using localStorage gate
-    if (localStorage.getItem('htpn_vday') !== today) {
-      localStorage.setItem('htpn_vday', today);
-      const res = await fetch('https://api.countapi.xyz/hit/htpn-clinical-checker/visitors');
-      const data = await res.json();
-      visitorEl.textContent = data.value.toLocaleString();
-    } else {
-      // Already counted today — just fetch current value
-      const res = await fetch('https://api.countapi.xyz/get/htpn-clinical-checker/visitors');
-      const data = await res.json();
-      visitorEl.textContent = data.value.toLocaleString();
-    }
-  } catch(e) {
-    // Fallback to localStorage if CountAPI unavailable
-    let v = parseInt(localStorage.getItem('htpn_visitors') || '0');
-    if (localStorage.getItem('htpn_vday') !== today) {
-      v++; localStorage.setItem('htpn_visitors', v); localStorage.setItem('htpn_vday', today);
-    }
-    visitorEl.textContent = v;
+  let v = parseInt(localStorage.getItem('htpn_visitors') || '0');
+  if (localStorage.getItem('htpn_vday') !== today) {
+    v++;
+    localStorage.setItem('htpn_visitors', v);
+    localStorage.setItem('htpn_vday', today);
   }
+  const visitorEl = document.getElementById('visitor-count');
+  if (visitorEl) visitorEl.textContent = v;
 
-  // Analysis counter (per-device — counts this user's analyses)
   const a = parseInt(localStorage.getItem('htpn_analyses') || '0');
-  document.getElementById('analysis-count').textContent = a;
+  const analysisEl = document.getElementById('analysis-count');
+  if (analysisEl) analysisEl.textContent = a;
 }
 
 function incrementAnalysisCount() {
@@ -1355,7 +1349,12 @@ function incrementAnalysisCount() {
 
 // ── DISCLAIMER ──
 function closeDisclaimer() {
-  document.getElementById('disclaimer-overlay').classList.add('hidden');
+  var o=document.getElementById('disclaimer-overlay');
+  o.classList.add('hidden');
+  o.style.display='none';
+  o.style.visibility='hidden';
+  o.style.pointerEvents='none';
+  o.style.zIndex='-1';
 }
 
 // ── API KEYS ──

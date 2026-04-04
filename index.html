@@ -721,9 +721,36 @@ footer {
 
       <!-- FILE UPLOAD (Groq Whisper) -->
       <div id="audio-sub-file" style="display:none;">
-        <div class="alert alert-info" style="margin-bottom:14px;">
-          <span>ℹ</span>
-          <span>Upload a pre-recorded audio file. Uses <strong>Groq Whisper</strong> — free, fast, no cost. Supports .mp3, .m4a, .wav, .ogg.</span>
+        <div style="background:#F0F9F6;border:1.5px solid rgba(28,184,160,0.25);border-radius:var(--r);padding:16px 18px;margin-bottom:14px;font-size:13px;">
+          <div style="font-weight:600;color:var(--navy);margin-bottom:10px;font-size:13.5px;">🎙 Recording Guidelines — Please Read Before Uploading</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <div style="font-weight:600;color:#0F8C7A;margin-bottom:6px;">✅ DO</div>
+              <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px;color:var(--text-muted);">
+                <li>🔇 Record in a quiet environment</li>
+                <li>🗣 Speak clearly and at normal pace</li>
+                <li>📋 Include patient's age, gender, complaint</li>
+                <li>💊 State drug name, dose and frequency clearly</li>
+                <li>🔢 Speak out vitals explicitly (e.g. "BP one-fifty-eight over ninety-six")</li>
+                <li>📁 Use .mp3, .m4a, .wav or .ogg format</li>
+                <li>⏱ Keep recordings under 10 minutes for best accuracy</li>
+              </ul>
+            </div>
+            <div>
+              <div style="font-weight:600;color:var(--rose);margin-bottom:6px;">❌ DON'T</div>
+              <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px;color:var(--text-muted);">
+                <li>🚫 State patient's full name or IC number</li>
+                <li>🚫 Record in noisy wards without a microphone</li>
+                <li>🚫 Speak too fast or mumble drug names</li>
+                <li>🚫 Upload files larger than 25MB</li>
+                <li>🚫 Use highly specialised abbreviations without spelling out</li>
+                <li>🚫 Rely solely on AI output — always verify</li>
+              </ul>
+            </div>
+          </div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(28,184,160,0.15);color:var(--text-muted);font-size:12px;">
+            💡 Powered by <strong>Groq Whisper</strong> — free, fast, supports English &amp; Malay. Best results with structured clinical narration.
+          </div>
         </div>
 
         <div class="upload-zone" id="audio-file-zone" onclick="document.getElementById('audio-file-input').click()" ondragover="dragOver(event,'audio-file-zone')" ondragleave="dragLeave('audio-file-zone')" ondrop="dropFile(event,'audiofile')">
@@ -1596,6 +1623,100 @@ function clearTranscript() {
   updateTranscriptChars();
 }
 
+
+// ── SMART LOCAL EXTRACTION (no API needed) ──
+function smartLocalExtract(text) {
+  let filled = 0;
+  const t = text;
+  const tl = text.toLowerCase();
+
+  // Chief complaint — first sentence or presenting complaint
+  const ccPatterns = [
+    /(?:presenting complaint|chief complaint|referred for|presents? with|referred with)[:\s]+([^.\n]{10,120})/i,
+    /(?:patient|he|she) (?:is a|was|presents?)[^.]{0,30}(?:with|for) ([^.]{10,100})/i,
+  ];
+  let ccFilled = false;
+  for (const p of ccPatterns) {
+    const m = t.match(p);
+    if (m) { document.getElementById('f-cc').value = m[1].trim(); filled++; ccFilled = true; break; }
+  }
+  if (!ccFilled) {
+    // Fall back to first sentence of transcript
+    const firstSentence = t.split(/[.!?]/)[0].trim();
+    if (firstSentence.length > 5) {
+      document.getElementById('f-cc').value = firstSentence.substring(0, 120);
+      filled++;
+    }
+  }
+
+  // HOPI — full transcript as history
+  const hopi = document.getElementById('f-hopi');
+  if (hopi) { hopi.value = t.substring(0, 1200); filled++; }
+
+  // Vitals extraction
+  const vitals = {
+    'v-bp': [/[Bb][Pp][:\s]+(\d{2,3}\/\d{2,3})/, /blood pressure[:\s]+(\d{2,3}\/\d{2,3})/i],
+    'v-pr': [/[Pp][Rr][:\s]+(\d{2,3})\s*(?:bpm)?/, /(?:pulse|heart rate)[:\s]+(\d{2,3})/i],
+    'v-temp': [/[Tt]emp(?:erature)?[:\s]+(\d{2}\.?\d?)\s*°?[Cc]?/, /(\d{2}\.?\d?)\s*°C/],
+    'v-rr': [/[Rr][Rr][:\s]+(\d{1,2})/, /respiratory rate[:\s]+(\d{1,2})/i],
+    'v-spo2': [/[Ss]p[Oo]2[:\s]+(\d{2,3})/, /(?:oxygen saturation|sats?)[:\s]+(\d{2,3})/i],
+    'v-glucose': [/(?:glucose|RBS|FBS|fasting blood glucose)[:\s]+(\d+\.?\d*)\s*mmol/i],
+    'v-gcs': [/[Gg][Cc][Ss][:\s]+(\d{1,2})/],
+    'v-weight': [/weight[:\s]+(\d{2,3})\s*kg/i],
+  };
+  for (const [id, patterns] of Object.entries(vitals)) {
+    for (const p of patterns) {
+      const m = t.match(p);
+      if (m) { const el = document.getElementById(id); if (el && !el.value) { el.value = m[1]; filled++; } break; }
+    }
+  }
+
+  // Blood investigations
+  const bloodPatterns = [/(?:FBC|FBE|CBC|full blood count)[:\s]([^\n.]{20,300})/i, /Hb(?:aemoglobin)?[:\s]+(\d+\.?\d*)/i];
+  let bloods = '';
+  for (const p of bloodPatterns) { const m = t.match(p); if (m) { bloods += m[0] + '\n'; } }
+  if (bloods) { document.getElementById('f-bloods').value = bloods.trim(); filled++; }
+
+  // Imaging
+  const imagingMatch = t.match(/(?:CXR|X-ray|CT|MRI|ultrasound|USS|ECG)[:\s]([^.\n]{10,200})/i);
+  if (imagingMatch) { document.getElementById('f-imaging').value = imagingMatch[0].trim(); filled++; }
+
+  // Diagnosis
+  const dxPatterns = [
+    /(?:diagnosis|impression|assessment)[:\s]+([^.\n]{10,200})/i,
+    /(?:likely|probable|confirmed)[:\s]+([^.\n]{10,150})/i,
+  ];
+  for (const p of dxPatterns) {
+    const m = t.match(p);
+    if (m) { document.getElementById('f-diagnosis').value = m[1].trim(); filled++; break; }
+  }
+
+  // Plan
+  const planPatterns = [/(?:management|plan|treatment)[:\s]+([^\n]{20,400})/i];
+  for (const p of planPatterns) {
+    const m = t.match(p);
+    if (m) { document.getElementById('f-short-plan').value = m[1].trim(); filled++; break; }
+  }
+
+  // Medications — simple dose pattern extraction
+  const doseRx = /(\w{4,})\s+(\d+\s*(?:mg|mcg|g|IU))\s*(BD|TDS|QID|OD|PRN|daily|nocte|once|twice)?/gi;
+  const drugs = [];
+  let dm;
+  const skipWords = /^(the|and|for|with|was|has|his|her|are|per|not|day|age|rate|dose|each|that|this|from|also|been)$/i;
+  while ((dm = doseRx.exec(t)) !== null && drugs.length < 8) {
+    if (!skipWords.test(dm[1])) {
+      drugs.push({ name: dm[1], dose: dm[2], route: 'PO', frequency: dm[3] || '', duration: '' });
+    }
+  }
+  if (drugs.length > 0) {
+    document.getElementById('drug-tbody').innerHTML = '';
+    drugs.forEach((dr, i) => addDrugRowData(i+1, dr.name, dr.dose, dr.route, dr.frequency, dr.duration));
+    filled++;
+  }
+
+  return filled;
+}
+
 // ── FILL SOAP ──
 async function fillSOAP() {
   const transcript = document.getElementById('transcript-text').value.trim();
@@ -1604,15 +1725,21 @@ async function fillSOAP() {
     return;
   }
 
-  // Show loading on Step 3 first — do NOT switch to Step 4 yet
   const transcribeStatus = document.getElementById('transcribe-status');
   if (transcribeStatus) {
     transcribeStatus.style.display = 'flex';
     transcribeStatus.className = 'alert alert-info';
-    transcribeStatus.innerHTML = '<span>⏳</span><span>Extracting clinical data with AI — please wait before proceeding...</span>';
+    transcribeStatus.innerHTML = '<span>⏳</span><span>Extracting clinical data — please wait...</span>';
   }
 
-  // Prepare banner for Step 4 (create it even while hidden)
+  // Navigate to step 4 and wait for DOM
+  goStep(4);
+  await sleep(400);
+
+  // ALWAYS do local smart extraction first (instant, no API needed)
+  const localFilled = smartLocalExtract(transcript);
+
+  // Show banner
   let soapBanner = document.getElementById('soap-loading-banner');
   if (!soapBanner) {
     soapBanner = document.createElement('div');
@@ -1623,8 +1750,9 @@ async function fillSOAP() {
     if (soapCard) soapCard.insertBefore(soapBanner, soapCard.firstChild);
   }
   soapBanner.style.display = 'flex';
-  soapBanner.innerHTML = '<span>⏳</span><span>Extracting clinical data with AI — please wait...</span>';
+  soapBanner.innerHTML = `<span>✅</span><span>Form pre-filled from transcript (${localFilled} fields). AI is enhancing — please wait...</span>`;
 
+  // Then try Claude API to enhance/override with better extraction
   try {
     const prompt = `You are a clinical documentation assistant at a hospital. Extract structured clinical information from the following text and return ONLY a JSON object with these exact keys: chief_complaint, hopi, bp, pr, temp, rr, spo2, glucose, gcs, bloods, imaging, procedures, diagnosis, issues, short_plan, long_plan, drugs (array of {name, dose, route, frequency, duration}).
 
@@ -1657,44 +1785,19 @@ Respond with valid JSON only, no explanation.`;
     }
     console.log('Parsed fields:', Object.keys(d));
 
-    // Step 1: navigate to step 4
-    goStep(4);
-    // Step 2: wait 300ms for full DOM render
-    await sleep(300);
-    // Step 3: fill all fields
     const filledCount = fillAllFields(d);
-
-    // Step 4: update banner
-    let banner2 = document.getElementById('soap-loading-banner');
-    if (!banner2) {
-      banner2 = document.createElement('div');
-      banner2.id = 'soap-loading-banner';
+    const banner2 = document.getElementById('soap-loading-banner');
+    if (banner2) {
       banner2.className = 'alert alert-info';
-      banner2.style.marginBottom = '16px';
-      const soapCard = document.querySelector('#step-4 .card');
-      if (soapCard) soapCard.insertBefore(banner2, soapCard.firstChild);
+      banner2.innerHTML = `<span>✅</span><span>SOAP form enhanced by AI (${filledCount} fields updated). Review and edit before proceeding.</span>`;
     }
-    banner2.className = 'alert alert-info';
-    banner2.style.display = 'flex';
-    banner2.innerHTML = `<span>✅</span><span>SOAP form pre-filled by AI (${filledCount} fields filled). Review and edit all fields before proceeding.</span>`;
-
   } catch(err) {
-    console.error('fillSOAP error:', err);
-    goStep(4);
-    await sleep(300);
-    fillDemoSOAP(transcript);
-    let banner2 = document.getElementById('soap-loading-banner');
-    if (!banner2) {
-      banner2 = document.createElement('div');
-      banner2.id = 'soap-loading-banner';
-      banner2.className = 'alert alert-warn';
-      banner2.style.marginBottom = '16px';
-      const soapCard = document.querySelector('#step-4 .card');
-      if (soapCard) soapCard.insertBefore(banner2, soapCard.firstChild);
+    console.error('fillSOAP API error:', err);
+    const banner2 = document.getElementById('soap-loading-banner');
+    if (banner2) {
+      banner2.className = 'alert alert-info';
+      banner2.innerHTML = `<span>✅</span><span>Form filled from transcript (${localFilled} fields). Review and complete manually.</span>`;
     }
-    banner2.className = 'alert alert-warn';
-    banner2.style.display = 'flex';
-    banner2.innerHTML = `<span>⚠</span><span>AI unavailable (${err.message}). Filled from transcript — please complete manually.</span>`;
   }
 }
 
@@ -1708,6 +1811,14 @@ function setField(id, val) {
   }
 }
 
+function cleanVital(val) {
+  if (!val) return val;
+  const s = String(val).trim();
+  // Extract just the numeric part for vitals
+  const num = s.match(/^([\d.\/]+)/);
+  return num ? num[1] : s.split(' ')[0];
+}
+
 function fillAllFields(d) {
   // Handle case where Claude wraps response in a key
   if (d.soap || d.data || d.result) d = d.soap || d.data || d.result;
@@ -1715,13 +1826,13 @@ function fillAllFields(d) {
   const map = [
     ['f-cc', d.chief_complaint || d.chiefComplaint || d.complaint],
     ['f-hopi', d.hopi || d.history || d.presenting_illness],
-    ['v-bp', d.bp || d.blood_pressure],
-    ['v-pr', d.pr || d.pulse || d.heart_rate],
-    ['v-temp', d.temp || d.temperature],
-    ['v-rr', d.rr || d.respiratory_rate],
-    ['v-spo2', d.spo2 || d.oxygen_saturation || d.spo],
-    ['v-glucose', d.glucose || d.blood_glucose],
-    ['v-gcs', d.gcs],
+    ['v-bp', cleanVital(d.bp || d.blood_pressure)],
+    ['v-pr', cleanVital(d.pr || d.pulse || d.heart_rate)],
+    ['v-temp', cleanVital(d.temp || d.temperature)],
+    ['v-rr', cleanVital(d.rr || d.respiratory_rate)],
+    ['v-spo2', cleanVital(d.spo2 || d.oxygen_saturation || d.spo)],
+    ['v-glucose', cleanVital(d.glucose || d.blood_glucose)],
+    ['v-gcs', cleanVital(d.gcs)],
     ['f-bloods', d.bloods || d.blood_investigations || d.investigations],
     ['f-imaging', d.imaging || d.radiology],
     ['f-procedures', d.procedures],

@@ -6,8 +6,7 @@
 <title>Clinical Document Checker — HTPN</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.emailjs.com/sdk/3.2.0/email.min.js"></script>
-<script>emailjs.init('jRs1TWPZym8iUjNck');</script>
+<script src="https://cdn.emailjs.com/sdk/3.2.0/email.min.js" onload="emailjs.init('jRs1TWPZym8iUjNck')"></script>
 <style>
 :root {
   --navy: #0B1F3A;
@@ -2021,7 +2020,9 @@ async function submitFeedback() {
   };
 
   try {
-    // EmailJS send — user must configure their own service ID and template ID
+    if (typeof emailjs === 'undefined') {
+      throw new Error('EmailJS not loaded. Check internet connection.');
+    }
     await emailjs.send('service_z0rh03y', 'template_lz0rzuy', templateParams);
     statusEl.className = 'alert alert-info';
     statusEl.innerHTML = '<span>✅</span><span>Feedback submitted to Dr Naim & AI Team HTPN (ppnaim@moh.gov.my). Thank you for helping improve Clinical Document Checker!</span>';

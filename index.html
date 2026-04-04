@@ -1585,9 +1585,16 @@ async function fillSOAP() {
     alert('Please enter or paste some clinical text first.');
     return;
   }
-  goStep(4);
 
-  // Show loading banner at top of SOAP form
+  // Show loading on Step 3 first — do NOT switch to Step 4 yet
+  const transcribeStatus = document.getElementById('transcribe-status');
+  if (transcribeStatus) {
+    transcribeStatus.style.display = 'flex';
+    transcribeStatus.className = 'alert alert-info';
+    transcribeStatus.innerHTML = '<span>⏳</span><span>Extracting clinical data with AI — please wait before proceeding...</span>';
+  }
+
+  // Prepare banner for Step 4 (create it even while hidden)
   let soapBanner = document.getElementById('soap-loading-banner');
   if (!soapBanner) {
     soapBanner = document.createElement('div');
@@ -1610,7 +1617,7 @@ Respond with valid JSON only, no explanation.`;
     const resp = await fetch('/api/claude', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] })
     });
 
     if (!resp.ok) throw new Error('API returned ' + resp.status);
@@ -1635,6 +1642,7 @@ Respond with valid JSON only, no explanation.`;
     }
     soapBanner.className = 'alert alert-info';
     soapBanner.innerHTML = '<span>✅</span><span>SOAP form pre-filled by AI. Review and edit all fields before proceeding.</span>';
+    goStep(4); // Navigate AFTER fields are populated
 
   } catch(err) {
     console.error('fillSOAP error:', err);
@@ -1642,6 +1650,7 @@ Respond with valid JSON only, no explanation.`;
     fillDemoSOAP(transcript);
     soapBanner.className = 'alert alert-warn';
     soapBanner.innerHTML = `<span>⚠</span><span>AI extraction unavailable (${err.message}). Form filled from transcript — please review and complete manually.</span>`;
+    goStep(4); // Navigate even on fallback
   }
 }
 

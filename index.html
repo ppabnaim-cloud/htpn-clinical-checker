@@ -6,7 +6,7 @@
 <title>Clinical Document Checker — HTPN</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.emailjs.com/sdk/3.2.0/email.min.js" onload="emailjs.init('jRs1TWPZym8iUjNck')"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js" onload="emailjs.init('jRs1TWPZym8iUjNck')"></script>
 <style>
 :root {
   --navy: #0B1F3A;
@@ -1128,10 +1128,27 @@ You can also type or paste clinical notes directly."></textarea>
       <textarea id="fb-text" rows="5" placeholder="What would make this tool more useful in your clinical workflow? Any bugs, inaccuracies, or features you'd like to see?"></textarea>
     </div>
 
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
-      <input type="checkbox" id="fb-anon" style="width:auto;padding:0;">
-      <label for="fb-anon" style="font-size:13px;color:var(--text-muted);margin:0;">Submit anonymously (your role will not be included)</label>
+    <div class="section-label" style="margin-bottom:8px;">Identity</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+      <button class="mode-tab active" id="id-tab-name" onclick="setIdentityMode('name',this)" style="font-size:12px;padding:6px 14px;">👤 Include My Name</button>
+      <button class="mode-tab" id="id-tab-anon" onclick="setIdentityMode('anon',this)" style="font-size:12px;padding:6px 14px;">🔒 Submit Anonymously</button>
     </div>
+    <div id="id-name-fields">
+      <div class="form-row" style="margin-bottom:12px;">
+        <div class="field">
+          <label>Your Name (optional)</label>
+          <input type="text" id="fb-name" placeholder="Dr. ___________">
+        </div>
+        <div class="field">
+          <label>Your Email (optional — for follow-up)</label>
+          <input type="email" id="fb-email" placeholder="you@moh.gov.my">
+        </div>
+      </div>
+    </div>
+    <div id="id-anon-msg" style="display:none;" class="alert alert-info" style="margin-bottom:12px;">
+      <span>🔒</span><span>Submitting anonymously — your name, email and role will not be included.</span>
+    </div>
+    <input type="hidden" id="fb-anon" value="false">
 
     <button class="btn btn-primary" onclick="submitFeedback()">Submit Feedback →</button>
     <div id="fb-status" style="margin-top:12px;display:none;"></div>
@@ -1965,6 +1982,16 @@ function copyToClipboard() {
   navigator.clipboard.writeText(buildFinalDocument()).then(() => alert('Document copied to clipboard.')).catch(() => alert('Could not copy. Please use Download instead.'));
 }
 
+
+// ── IDENTITY MODE ──
+function setIdentityMode(mode, btn) {
+  document.querySelectorAll('#id-tab-name, #id-tab-anon').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('id-name-fields').style.display = mode === 'name' ? 'block' : 'none';
+  document.getElementById('id-anon-msg').style.display = mode === 'anon' ? 'flex' : 'none';
+  document.getElementById('fb-anon').value = mode === 'anon' ? 'true' : 'false';
+}
+
 // ── FEEDBACK ──
 function buildLikertUI() {
   const container = document.getElementById('likert-questions');
@@ -1997,7 +2024,7 @@ async function submitFeedback() {
   const dept = document.getElementById('fb-dept').value;
   const feature = document.getElementById('fb-best-feature').value;
   const text = document.getElementById('fb-text').value;
-  const anon = document.getElementById('fb-anon').checked;
+  const anon = document.getElementById('fb-anon').value === 'true';
   const likert = getLikertValues();
   const statusEl = document.getElementById('fb-status');
   
@@ -2007,7 +2034,11 @@ async function submitFeedback() {
   statusEl.className = 'alert alert-info';
   statusEl.innerHTML = '<span>⏳</span><span>Submitting feedback...</span>';
   
+  const fbName = document.getElementById('fb-name')?.value || '';
+  const fbEmail = document.getElementById('fb-email')?.value || '';
   const templateParams = {
+    from_name: anon ? 'Anonymous' : (fbName || 'Not provided'),
+    from_email: anon ? 'Anonymous' : (fbEmail || 'Not provided'),
     from_role: anon ? 'Anonymous' : role,
     from_dept: anon ? 'Anonymous' : dept,
     best_feature: feature || 'Not specified',

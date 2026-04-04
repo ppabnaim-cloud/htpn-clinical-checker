@@ -671,21 +671,30 @@ footer {
     <div class="card-sub">Choose your input method: upload audio, images, or enter text manually.</div>
 
     <div class="mode-tab-bar">
-      <button class="mode-tab active" onclick="setMode('audio',this)">🎙 Voice Dictation</button>
+      <button class="mode-tab active" onclick="setMode('audio',this)">🎙 Voice &amp; Audio</button>
       <button class="mode-tab" onclick="setMode('image',this)">🖼 Image Upload</button>
       <button class="mode-tab" onclick="setMode('text',this)">✏️ Manual Text</button>
     </div>
 
-    <!-- AUDIO MODE — Web Speech API -->
+    <!-- AUDIO MODE — Groq Upload + Web Speech -->
     <div id="mode-audio">
-      <div id="browser-warning" class="alert alert-warn" style="display:none;margin-bottom:14px;">
-        <span>⚠</span>
-        <div><strong>Voice Dictation is not supported in Safari or this browser.</strong> Please open this app in <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> to use Voice Dictation. Alternatively, switch to <strong>Image Upload</strong> or <strong>Manual Text</strong> above.</div>
+
+      <!-- SUB TABS -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <button class="mode-tab active" id="sub-live" onclick="setAudioSub('live',this)" style="font-size:12px;padding:6px 14px;">🎙 Live Dictation</button>
+        <button class="mode-tab" id="sub-file" onclick="setAudioSub('file',this)" style="font-size:12px;padding:6px 14px;">📂 Upload Recording</button>
       </div>
-      <div class="alert alert-info" id="speech-info-banner" style="margin-bottom:14px;">
-        <span>ℹ</span>
-        <span>Uses your browser's built-in speech recognition — <strong>free, no API key needed.</strong> Works best in Chrome or Edge. Speak clearly in English or Malay. Click Start, dictate your clinical notes, then click Stop.</span>
-      </div>
+
+      <!-- LIVE DICTATION -->
+      <div id="audio-sub-live">
+        <div id="browser-warning" class="alert alert-warn" style="display:none;margin-bottom:14px;">
+          <span>⚠</span>
+          <div><strong>Voice Dictation is not supported in Safari or this browser.</strong> Please use <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>, or use the Upload Recording tab instead.</div>
+        </div>
+        <div class="alert alert-info" id="speech-info-banner" style="margin-bottom:14px;">
+          <span>ℹ</span>
+          <span>Free browser speech recognition. Works in Chrome/Edge. Speak your clinical notes, text appears live.</span>
+        </div>
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
         <button class="btn btn-primary" id="speech-start-btn" onclick="startSpeech()" style="gap:8px;">
           🎙 Start Dictation
@@ -700,7 +709,29 @@ footer {
       </div>
       <div class="section-label">Live Transcript (editable)</div>
       <textarea id="speech-live" rows="6" placeholder="Your dictation will appear here in real time as you speak..." style="background:#F7F9FC;border:1.5px solid #DDE4ED;border-radius:var(--r);padding:14px;font-family:var(--mono);font-size:13px;line-height:1.8;width:100%;resize:vertical;outline:none;"></textarea>
-      <div id="audio-status" class="alert alert-info" style="display:none;margin-top:12px;"></div>
+        <div id="audio-status" class="alert alert-info" style="display:none;margin-top:12px;"></div>
+      </div>
+
+      <!-- FILE UPLOAD (Groq Whisper) -->
+      <div id="audio-sub-file" style="display:none;">
+        <div class="alert alert-info" style="margin-bottom:14px;">
+          <span>ℹ</span>
+          <span>Upload a pre-recorded audio file. Uses <strong>Groq Whisper</strong> — free, fast, no cost. Supports .mp3, .m4a, .wav, .ogg. Get a free key at <strong>console.groq.com</strong>.</span>
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:5px;display:block;">Groq API Key (free — <a href="https://console.groq.com" target="_blank" style="color:var(--teal);">get one here</a>)</label>
+          <input type="password" id="groq-key" placeholder="gsk_..." style="font-family:var(--mono);font-size:13px;">
+        </div>
+        <div class="upload-zone" id="audio-file-zone" onclick="document.getElementById('audio-file-input').click()" ondragover="dragOver(event,'audio-file-zone')" ondragleave="dragLeave('audio-file-zone')" ondrop="dropFile(event,'audiofile')">
+          <input type="file" id="audio-file-input" accept=".mp3,.m4a,.wav,.ogg,.webm" onchange="handleAudioFile(this)">
+          <div class="upload-icon">🎵</div>
+          <h3>Drop audio file here or tap to upload</h3>
+          <p>.mp3 · .m4a · .wav · .ogg — max 25MB</p>
+        </div>
+        <div id="audio-file-list" class="file-list"></div>
+        <div id="groq-status" class="alert alert-info" style="display:none;margin-top:12px;"></div>
+      </div>
+
     </div>
 
     <!-- IMAGE MODE -->
@@ -1117,6 +1148,70 @@ You can also type or paste clinical notes directly."></textarea>
 
 <script>
 
+
+// ── AUDIO SUB-TABS ──
+function setAudioSub(mode, btn) {
+  document.querySelectorAll('#mode-audio .mode-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('audio-sub-live').style.display = mode === 'live' ? 'block' : 'none';
+  document.getElementById('audio-sub-file').style.display = mode === 'file' ? 'block' : 'none';
+  if (mode === 'live') checkSpeechSupport();
+}
+
+// ── GROQ FILE UPLOAD ──
+let uploadedAudioFile = null;
+
+function handleAudioFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  uploadedAudioFile = file;
+  document.getElementById('audio-file-list').innerHTML = `
+    <div class="file-item">
+      <span>🎵</span>
+      <span class="file-name">${file.name}</span>
+      <span class="file-type">${(file.size/1024/1024).toFixed(1)} MB</span>
+      <button onclick="uploadedAudioFile=null;document.getElementById('audio-file-list').innerHTML=''">×</button>
+    </div>`;
+}
+
+async function transcribeWithGroq(file) {
+  const groqKey = document.getElementById('groq-key').value.trim();
+  const statusEl = document.getElementById('groq-status');
+  if (!groqKey) {
+    statusEl.style.display = 'flex';
+    statusEl.className = 'alert alert-warn';
+    statusEl.innerHTML = '<span>⚠</span><span>Please enter your Groq API key above. Get one free at <a href="https://console.groq.com" target="_blank" style="color:var(--teal)">console.groq.com</a></span>';
+    return null;
+  }
+  statusEl.style.display = 'flex';
+  statusEl.className = 'alert alert-info';
+  statusEl.innerHTML = '<span>⏳</span><span>Transcribing with Groq Whisper...</span>';
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('model', 'whisper-large-v3-turbo');
+    formData.append('language', 'en');
+    formData.append('response_format', 'json');
+    const resp = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + groqKey },
+      body: formData
+    });
+    const data = await resp.json();
+    if (data.text) {
+      statusEl.className = 'alert alert-info';
+      statusEl.innerHTML = '<span>✅</span><span>Transcription complete. Click Process Input to continue.</span>';
+      return data.text;
+    } else {
+      throw new Error(data.error?.message || 'Groq transcription failed');
+    }
+  } catch(err) {
+    statusEl.className = 'alert alert-warn';
+    statusEl.innerHTML = `<span>⚠</span><span>Groq error: ${err.message}</span>`;
+    return null;
+  }
+}
+
 // ── WEB SPEECH API ──
 let recognition = null;
 let speechFinal = '';
@@ -1379,15 +1474,32 @@ async function processInput() {
   const transcriptEl = document.getElementById('transcript-text');
   
   if (activeMode.includes('Voice') || activeMode.includes('Audio')) {
-    // Web Speech API — pull from live transcript box
-    const speechText = document.getElementById('speech-live')?.value.trim();
-    if (speechText) {
-      transcriptEl.value = speechText;
-      statusEl.innerHTML = '<span>✅</span><span>Voice dictation loaded. Review and edit below.</span>';
-      statusEl.className = 'alert alert-info';
-    } else {
-      statusEl.innerHTML = '<span>⚠</span><span>No dictation detected. Please click "Start Dictation", speak your clinical notes, then click "Stop" and try again.</span>';
+    const activeSub = document.getElementById('sub-file')?.classList.contains('active') ? 'file' : 'live';
+    if (activeSub === 'file' && uploadedAudioFile) {
+      // Groq file transcription
+      const text = await transcribeWithGroq(uploadedAudioFile);
+      if (text) {
+        transcriptEl.value = text;
+        statusEl.innerHTML = '<span>✅</span><span>Audio transcribed via Groq. Review and edit below.</span>';
+        statusEl.className = 'alert alert-info';
+      } else {
+        return; // error already shown in groq-status
+      }
+    } else if (activeSub === 'file' && !uploadedAudioFile) {
+      statusEl.innerHTML = '<span>⚠</span><span>Please upload an audio file first.</span>';
       statusEl.className = 'alert alert-warn';
+      return;
+    } else {
+      // Web Speech — pull from live transcript box
+      const speechText = document.getElementById('speech-live')?.value.trim();
+      if (speechText) {
+        transcriptEl.value = speechText;
+        statusEl.innerHTML = '<span>✅</span><span>Voice dictation loaded. Review and edit below.</span>';
+        statusEl.className = 'alert alert-info';
+      } else {
+        statusEl.innerHTML = '<span>⚠</span><span>No dictation detected. Please click Start Dictation, speak, then Stop.</span>';
+        statusEl.className = 'alert alert-warn';
+      }
     }
   } else if (images.length > 0 && activeMode.includes('Image')) {
     if (true) { // proxy handles auth
@@ -1469,11 +1581,6 @@ async function fillSOAP() {
     return;
   }
   goStep(4);
-  if (false) { // proxy handles auth
-    // Fill demo data
-    fillDemoSOAP(transcript);
-    return;
-  }
   // Quick Claude extraction
   try {
     const prompt = `You are a clinical documentation assistant at a hospital. Extract structured clinical information from the following text and return ONLY a JSON object with these exact keys: chief_complaint, hopi, bp, pr, temp, rr, spo2, glucose, gcs, bloods, imaging, procedures, diagnosis, issues, short_plan, long_plan, drugs (array of {name, dose, route, frequency, duration}).
@@ -1580,11 +1687,7 @@ async function runAnalysis() {
   
   animateProgress();
   
-  if (false) { // proxy handles auth
-    await sleep(2200);
-    fillDemoAnalysis(d);
-    return;
-  }
+
 
   const prompt = `You are a senior clinical documentation AI for Hospital Tengku Permaisuri Norashikin (HTPN). You are assisting with clinical documentation quality and ICD-11 coding.
 

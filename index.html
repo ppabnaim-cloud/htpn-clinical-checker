@@ -1632,8 +1632,18 @@ Respond with valid JSON only, no explanation.`;
     if (data.error) throw new Error(data.error);
 
     const raw = data.content?.[0]?.text || '{}';
+    console.log('Claude raw response:', raw);
     const clean = raw.replace(/```json|```/g, '').trim();
-    const d = JSON.parse(clean);
+    console.log('Cleaned JSON:', clean.substring(0, 200));
+    let d;
+    try {
+      d = JSON.parse(clean);
+    } catch(parseErr) {
+      console.error('JSON parse error:', parseErr.message);
+      console.error('Raw was:', raw.substring(0, 500));
+      throw new Error('JSON parse failed: ' + parseErr.message);
+    }
+    console.log('Parsed fields:', Object.keys(d));
 
     // Step 1: navigate to step 4
     goStep(4);

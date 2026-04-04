@@ -1635,6 +1635,10 @@ Respond with valid JSON only, no explanation.`;
     const clean = raw.replace(/```json|```/g, '').trim();
     const d = JSON.parse(clean);
 
+    // Navigate to step 4 FIRST, then fill fields after DOM settles
+    goStep(4);
+    await sleep(100); // wait for DOM to render step 4 panel
+
     setField('f-cc', d.chief_complaint);
     setField('f-hopi', d.hopi);
     setField('v-bp', d.bp); setField('v-pr', d.pr); setField('v-temp', d.temp);
@@ -1646,17 +1650,24 @@ Respond with valid JSON only, no explanation.`;
       document.getElementById('drug-tbody').innerHTML = '';
       d.drugs.forEach((dr, i) => addDrugRowData(i+1, dr.name, dr.dose, dr.route, dr.frequency, dr.duration));
     }
-    soapBanner.className = 'alert alert-info';
-    soapBanner.innerHTML = '<span>✅</span><span>SOAP form pre-filled by AI. Review and edit all fields before proceeding.</span>';
-    goStep(4); // Navigate AFTER fields are populated
+
+    // Update banner after fields are set
+    let banner2 = document.getElementById('soap-loading-banner');
+    if (banner2) {
+      banner2.className = 'alert alert-info';
+      banner2.innerHTML = '<span>✅</span><span>SOAP form pre-filled by AI. Review and edit all fields before proceeding.</span>';
+    }
 
   } catch(err) {
     console.error('fillSOAP error:', err);
-    // Fallback — fill from transcript text directly
+    goStep(4);
+    await sleep(100);
     fillDemoSOAP(transcript);
-    soapBanner.className = 'alert alert-warn';
-    soapBanner.innerHTML = `<span>⚠</span><span>AI extraction unavailable (${err.message}). Form filled from transcript — please review and complete manually.</span>`;
-    goStep(4); // Navigate even on fallback
+    let banner2 = document.getElementById('soap-loading-banner');
+    if (banner2) {
+      banner2.className = 'alert alert-warn';
+      banner2.innerHTML = `<span>⚠</span><span>AI extraction unavailable (${err.message}). Form filled from transcript — please review and complete manually.</span>`;
+    }
   }
 }
 

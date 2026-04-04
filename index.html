@@ -715,12 +715,9 @@ footer {
       <div id="audio-sub-file" style="display:none;">
         <div class="alert alert-info" style="margin-bottom:14px;">
           <span>ℹ</span>
-          <span>Upload a pre-recorded audio file. Uses <strong>Groq Whisper</strong> — free, fast, no cost. Supports .mp3, .m4a, .wav, .ogg. Get a free key at <strong>console.groq.com</strong>.</span>
+          <span>Upload a pre-recorded audio file. Uses <strong>Groq Whisper</strong> — free, fast, no cost. Supports .mp3, .m4a, .wav, .ogg.</span>
         </div>
-        <div class="field" style="margin-bottom:12px;">
-          <label style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:5px;display:block;">Groq API Key (free — <a href="https://console.groq.com" target="_blank" style="color:var(--teal);">get one here</a>)</label>
-          <input type="password" id="groq-key" placeholder="gsk_..." style="font-family:var(--mono);font-size:13px;">
-        </div>
+
         <div class="upload-zone" id="audio-file-zone" onclick="document.getElementById('audio-file-input').click()" ondragover="dragOver(event,'audio-file-zone')" ondragleave="dragLeave('audio-file-zone')" ondrop="dropFile(event,'audiofile')">
           <input type="file" id="audio-file-input" accept=".mp3,.m4a,.wav,.ogg,.webm" onchange="handleAudioFile(this)">
           <div class="upload-icon">🎵</div>
@@ -1191,14 +1188,7 @@ function handleAudioFile(input) {
 }
 
 async function transcribeWithGroq(file) {
-  const groqKey = document.getElementById('groq-key').value.trim();
   const statusEl = document.getElementById('groq-status');
-  if (!groqKey) {
-    statusEl.style.display = 'flex';
-    statusEl.className = 'alert alert-warn';
-    statusEl.innerHTML = '<span>⚠</span><span>Please enter your Groq API key above. Get one free at <a href="https://console.groq.com" target="_blank" style="color:var(--teal)">console.groq.com</a></span>';
-    return null;
-  }
   statusEl.style.display = 'flex';
   statusEl.className = 'alert alert-info';
   statusEl.innerHTML = '<span>⏳</span><span>Transcribing with Groq Whisper...</span>';
@@ -1208,9 +1198,8 @@ async function transcribeWithGroq(file) {
     formData.append('model', 'whisper-large-v3-turbo');
     formData.append('language', 'en');
     formData.append('response_format', 'json');
-    const resp = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    const resp = await fetch('/api/groq', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + groqKey },
       body: formData
     });
     const data = await resp.json();
@@ -1223,7 +1212,7 @@ async function transcribeWithGroq(file) {
     }
   } catch(err) {
     statusEl.className = 'alert alert-warn';
-    statusEl.innerHTML = `<span>⚠</span><span>Groq error: ${err.message}</span>`;
+    statusEl.innerHTML = `<span>⚠</span><span>Transcription error: ${err.message}</span>`;
     return null;
   }
 }

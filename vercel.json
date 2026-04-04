@@ -2,6 +2,7 @@
   "version": 2,
   "rewrites": [
     { "source": "/api/claude", "destination": "/api/claude.js" },
-    { "source": "/api/whisper", "destination": "/api/whisper.js" }
+    { "source": "/api/whisper", "destination": "/api/whisper.js" },
+    { "source": "/api/groq", "destination": "/api/groq.js" }
   ]
 }

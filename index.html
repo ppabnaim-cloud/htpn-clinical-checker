@@ -1635,46 +1635,93 @@ Respond with valid JSON only, no explanation.`;
     const clean = raw.replace(/```json|```/g, '').trim();
     const d = JSON.parse(clean);
 
-    // Navigate to step 4 FIRST, then fill fields after DOM settles
+    // Step 1: navigate to step 4
     goStep(4);
-    await sleep(100); // wait for DOM to render step 4 panel
+    // Step 2: wait 300ms for full DOM render
+    await sleep(300);
+    // Step 3: fill all fields
+    const filledCount = fillAllFields(d);
 
-    setField('f-cc', d.chief_complaint);
-    setField('f-hopi', d.hopi);
-    setField('v-bp', d.bp); setField('v-pr', d.pr); setField('v-temp', d.temp);
-    setField('v-rr', d.rr); setField('v-spo2', d.spo2); setField('v-glucose', d.glucose); setField('v-gcs', d.gcs);
-    setField('f-bloods', d.bloods); setField('f-imaging', d.imaging); setField('f-procedures', d.procedures);
-    setField('f-diagnosis', d.diagnosis); setField('f-issues', d.issues);
-    setField('f-short-plan', d.short_plan); setField('f-long-plan', d.long_plan);
-    if (d.drugs && d.drugs.length) {
-      document.getElementById('drug-tbody').innerHTML = '';
-      d.drugs.forEach((dr, i) => addDrugRowData(i+1, dr.name, dr.dose, dr.route, dr.frequency, dr.duration));
-    }
-
-    // Update banner after fields are set
+    // Step 4: update banner
     let banner2 = document.getElementById('soap-loading-banner');
-    if (banner2) {
+    if (!banner2) {
+      banner2 = document.createElement('div');
+      banner2.id = 'soap-loading-banner';
       banner2.className = 'alert alert-info';
-      banner2.innerHTML = '<span>✅</span><span>SOAP form pre-filled by AI. Review and edit all fields before proceeding.</span>';
+      banner2.style.marginBottom = '16px';
+      const soapCard = document.querySelector('#step-4 .card');
+      if (soapCard) soapCard.insertBefore(banner2, soapCard.firstChild);
     }
+    banner2.className = 'alert alert-info';
+    banner2.style.display = 'flex';
+    banner2.innerHTML = `<span>✅</span><span>SOAP form pre-filled by AI (${filledCount} fields filled). Review and edit all fields before proceeding.</span>`;
 
   } catch(err) {
     console.error('fillSOAP error:', err);
     goStep(4);
-    await sleep(100);
+    await sleep(300);
     fillDemoSOAP(transcript);
     let banner2 = document.getElementById('soap-loading-banner');
-    if (banner2) {
+    if (!banner2) {
+      banner2 = document.createElement('div');
+      banner2.id = 'soap-loading-banner';
       banner2.className = 'alert alert-warn';
-      banner2.innerHTML = `<span>⚠</span><span>AI extraction unavailable (${err.message}). Form filled from transcript — please review and complete manually.</span>`;
+      banner2.style.marginBottom = '16px';
+      const soapCard = document.querySelector('#step-4 .card');
+      if (soapCard) soapCard.insertBefore(banner2, soapCard.firstChild);
     }
+    banner2.className = 'alert alert-warn';
+    banner2.style.display = 'flex';
+    banner2.innerHTML = `<span>⚠</span><span>AI unavailable (${err.message}). Filled from transcript — please complete manually.</span>`;
   }
 }
 
 function setField(id, val) {
-  if (!val) return;
+  if (!val || val === 'null' || val === 'undefined') return;
   const el = document.getElementById(id);
-  if (el) el.value = val;
+  if (el) {
+    el.value = val;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+}
+
+function fillAllFields(d) {
+  // Direct assignment — no setField wrapper
+  const fields = {
+    'f-cc': d.chief_complaint,
+    'f-hopi': d.hopi,
+    'v-bp': d.bp,
+    'v-pr': d.pr,
+    'v-temp': d.temp,
+    'v-rr': d.rr,
+    'v-spo2': d.spo2,
+    'v-glucose': d.glucose,
+    'v-gcs': d.gcs,
+    'f-bloods': d.bloods,
+    'f-imaging': d.imaging,
+    'f-procedures': d.procedures,
+    'f-diagnosis': d.diagnosis,
+    'f-issues': d.issues,
+    'f-short-plan': d.short_plan,
+    'f-long-plan': d.long_plan,
+  };
+  let filled = 0;
+  for (const [id, val] of Object.entries(fields)) {
+    if (val) {
+      const el = document.getElementById(id);
+      if (el) { el.value = String(val); filled++; }
+    }
+  }
+  // Drugs
+  if (d.drugs && d.drugs.length) {
+    const tbody = document.getElementById('drug-tbody');
+    if (tbody) {
+      tbody.innerHTML = '';
+      d.drugs.forEach((dr, i) => addDrugRowData(i+1, dr.name||'', dr.dose||'', dr.route||'', dr.frequency||'', dr.duration||''));
+    }
+  }
+  return filled;
 }
 
 function fillDemoSOAP(transcript) {

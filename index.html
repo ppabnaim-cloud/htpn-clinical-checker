@@ -1472,8 +1472,6 @@ async function processInput() {
   const images = uploadedImages;
   const manualText = document.getElementById('manual-text').value.trim();
   
-  goStep(3);
-  
   const activeMode = document.querySelector('.mode-tab.active')?.textContent || '';
   const statusEl = document.getElementById('transcribe-status');
   const transcriptEl = document.getElementById('transcript-text');
@@ -1481,10 +1479,13 @@ async function processInput() {
   if (activeMode.includes('Voice') || activeMode.includes('Audio')) {
     const activeSub = document.getElementById('sub-file')?.classList.contains('active') ? 'file' : 'live';
     if (activeSub === 'file' && uploadedAudioFile) {
-      // Groq file transcription
+      // Groq file transcription — wait for result BEFORE switching to Step 3
       const text = await transcribeWithGroq(uploadedAudioFile);
       if (text) {
         transcriptEl.value = text;
+        updateTranscriptChars();
+        goStep(3); // Navigate AFTER text is written
+        statusEl.style.display = 'flex';
         statusEl.innerHTML = '<span>✅</span><span>Audio transcribed via Groq. Review and edit below.</span>';
         statusEl.className = 'alert alert-info';
       } else {
@@ -1499,9 +1500,14 @@ async function processInput() {
       const speechText = document.getElementById('speech-live')?.value.trim();
       if (speechText) {
         transcriptEl.value = speechText;
+        updateTranscriptChars();
+        goStep(3);
+        statusEl.style.display = 'flex';
         statusEl.innerHTML = '<span>✅</span><span>Voice dictation loaded. Review and edit below.</span>';
         statusEl.className = 'alert alert-info';
       } else {
+        goStep(3);
+        statusEl.style.display = 'flex';
         statusEl.innerHTML = '<span>⚠</span><span>No dictation detected. Please click Start Dictation, speak, then Stop.</span>';
         statusEl.className = 'alert alert-warn';
       }

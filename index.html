@@ -1581,7 +1581,20 @@ async function fillSOAP() {
     return;
   }
   goStep(4);
-  // Quick Claude extraction
+
+  // Show loading banner at top of SOAP form
+  let soapBanner = document.getElementById('soap-loading-banner');
+  if (!soapBanner) {
+    soapBanner = document.createElement('div');
+    soapBanner.id = 'soap-loading-banner';
+    soapBanner.className = 'alert alert-info';
+    soapBanner.style.marginBottom = '16px';
+    const soapCard = document.querySelector('#step-4 .card');
+    if (soapCard) soapCard.insertBefore(soapBanner, soapCard.firstChild);
+  }
+  soapBanner.style.display = 'flex';
+  soapBanner.innerHTML = '<span>⏳</span><span>Extracting clinical data with AI — please wait...</span>';
+
   try {
     const prompt = `You are a clinical documentation assistant at a hospital. Extract structured clinical information from the following text and return ONLY a JSON object with these exact keys: chief_complaint, hopi, bp, pr, temp, rr, spo2, glucose, gcs, bloods, imaging, procedures, diagnosis, issues, short_plan, long_plan, drugs (array of {name, dose, route, frequency, duration}).
 
@@ -1594,11 +1607,16 @@ Respond with valid JSON only, no explanation.`;
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
     });
+
+    if (!resp.ok) throw new Error('API returned ' + resp.status);
+
     const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
     const raw = data.content?.[0]?.text || '{}';
     const clean = raw.replace(/```json|```/g, '').trim();
     const d = JSON.parse(clean);
-    
+
     setField('f-cc', d.chief_complaint);
     setField('f-hopi', d.hopi);
     setField('v-bp', d.bp); setField('v-pr', d.pr); setField('v-temp', d.temp);
@@ -1610,8 +1628,15 @@ Respond with valid JSON only, no explanation.`;
       document.getElementById('drug-tbody').innerHTML = '';
       d.drugs.forEach((dr, i) => addDrugRowData(i+1, dr.name, dr.dose, dr.route, dr.frequency, dr.duration));
     }
+    soapBanner.className = 'alert alert-info';
+    soapBanner.innerHTML = '<span>✅</span><span>SOAP form pre-filled by AI. Review and edit all fields before proceeding.</span>';
+
   } catch(err) {
+    console.error('fillSOAP error:', err);
+    // Fallback — fill from transcript text directly
     fillDemoSOAP(transcript);
+    soapBanner.className = 'alert alert-warn';
+    soapBanner.innerHTML = `<span>⚠</span><span>AI extraction unavailable (${err.message}). Form filled from transcript — please review and complete manually.</span>`;
   }
 }
 
@@ -1622,14 +1647,27 @@ function setField(id, val) {
 }
 
 function fillDemoSOAP(transcript) {
-  // Extract simple hints from text
   const t = transcript.toLowerCase();
-  document.getElementById('f-cc').value = 'Presenting complaint as per history (extracted from notes)';
-  document.getElementById('f-hopi').value = transcript.substring(0, 400);
-  if (t.includes('bp') || t.includes('blood pressure')) document.getElementById('v-bp').value = '130/80';
-  if (t.includes('temp') || t.includes('fever')) document.getElementById('v-temp').value = '38.2';
-  document.getElementById('v-pr').value = '92'; document.getElementById('v-rr').value = '20';
-  document.getElementById('v-spo2').value = '96'; document.getElementById('v-gcs').value = '15';
+  // Fill chief complaint and full HOPI from transcript
+  document.getElementById('f-cc').value = 'As per clinical history below';
+  document.getElementById('f-hopi').value = transcript.substring(0, 800);
+  // Try to extract vitals from text
+  const bpMatch = transcript.match(/[Bb][Pp][\s:]+(\d{2,3}\/\d{2,3})/);
+  const prMatch = transcript.match(/[Pp][Rr][\s:]+(\d{2,3})|[Pp]ulse[\s:]+(\d{2,3})/);
+  const tempMatch = transcript.match(/[Tt]emp[\s:]+(\d{2}\.?\d?)|(\d{2}\.?\d?)[\s]*[°]?[Cc]/);
+  const spo2Match = transcript.match(/[Ss]p[Oo]2[\s:]+(\d{2,3})|[Ss]at[\s:]+(\d{2,3})/);
+  const rrMatch = transcript.match(/[Rr][Rr][\s:]+(\d{1,2})|[Rr]espiratory [Rr]ate[\s:]+(\d{1,2})/);
+  if (bpMatch) document.getElementById('v-bp').value = bpMatch[1];
+  if (prMatch) document.getElementById('v-pr').value = prMatch[1] || prMatch[2];
+  if (tempMatch) document.getElementById('v-temp').value = tempMatch[1] || tempMatch[2];
+  if (spo2Match) document.getElementById('v-spo2').value = spo2Match[1] || spo2Match[2];
+  if (rrMatch) document.getElementById('v-rr').value = rrMatch[1] || rrMatch[2];
+  document.getElementById('v-gcs').value = '15';
+  // Fill investigations and plan from transcript hints
+  document.getElementById('f-bloods').value = t.includes('fbc') || t.includes('blood') ? 'See transcript for details' : '';
+  document.getElementById('f-diagnosis').value = 'Please enter diagnosis based on clinical assessment';
+  document.getElementById('f-short-plan').value = 'Please complete management plan';
+  document.getElementById('f-long-plan').value = 'Please complete discharge and follow-up plan';
 }
 
 // ── DRUG TABLE ──

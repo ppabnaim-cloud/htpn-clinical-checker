@@ -1539,6 +1539,9 @@ async function processInput() {
         const extracted = data.content?.[0]?.text || '';
         transcriptEl.value = extracted;
         if (images.length > 1) transcriptEl.value += `\n\n[${images.length - 1} more image(s) uploaded — process manually or re-upload one at a time]`;
+        updateTranscriptChars();
+        goStep(3);
+        statusEl.style.display = 'flex';
         statusEl.innerHTML = '<span>✅</span><span>Text extracted from image(s). Review and edit below.</span>';
         statusEl.className = 'alert alert-info';
       } catch(err) {
@@ -1552,13 +1555,17 @@ async function processInput() {
     }
   } else if (manualText) {
     transcriptEl.value = manualText;
+    updateTranscriptChars();
+    goStep(3);
+    statusEl.style.display = 'flex';
     statusEl.innerHTML = '<span>✅</span><span>Manual text loaded. Review and edit below.</span>';
     statusEl.className = 'alert alert-info';
   } else {
+    goStep(3);
+    statusEl.style.display = 'flex';
     statusEl.innerHTML = '<span>ℹ</span><span>No input detected. Please type or paste clinical notes below.</span>';
     statusEl.className = 'alert alert-info';
   }
-  updateTranscriptChars();
 }
 
 function fileToBase64(file) {
@@ -1696,40 +1703,55 @@ function setField(id, val) {
 }
 
 function fillAllFields(d) {
-  // Direct assignment — no setField wrapper
-  const fields = {
-    'f-cc': d.chief_complaint,
-    'f-hopi': d.hopi,
-    'v-bp': d.bp,
-    'v-pr': d.pr,
-    'v-temp': d.temp,
-    'v-rr': d.rr,
-    'v-spo2': d.spo2,
-    'v-glucose': d.glucose,
-    'v-gcs': d.gcs,
-    'f-bloods': d.bloods,
-    'f-imaging': d.imaging,
-    'f-procedures': d.procedures,
-    'f-diagnosis': d.diagnosis,
-    'f-issues': d.issues,
-    'f-short-plan': d.short_plan,
-    'f-long-plan': d.long_plan,
-  };
+  // Handle case where Claude wraps response in a key
+  if (d.soap || d.data || d.result) d = d.soap || d.data || d.result;
+
+  const map = [
+    ['f-cc', d.chief_complaint || d.chiefComplaint || d.complaint],
+    ['f-hopi', d.hopi || d.history || d.presenting_illness],
+    ['v-bp', d.bp || d.blood_pressure],
+    ['v-pr', d.pr || d.pulse || d.heart_rate],
+    ['v-temp', d.temp || d.temperature],
+    ['v-rr', d.rr || d.respiratory_rate],
+    ['v-spo2', d.spo2 || d.oxygen_saturation || d.spo],
+    ['v-glucose', d.glucose || d.blood_glucose],
+    ['v-gcs', d.gcs],
+    ['f-bloods', d.bloods || d.blood_investigations || d.investigations],
+    ['f-imaging', d.imaging || d.radiology],
+    ['f-procedures', d.procedures],
+    ['f-diagnosis', d.diagnosis || d.diagnoses || d.assessment],
+    ['f-issues', d.issues || d.problem_list],
+    ['f-short-plan', d.short_plan || d.shortPlan || d.immediate_plan || d.plan],
+    ['f-long-plan', d.long_plan || d.longPlan || d.discharge_plan],
+  ];
+
   let filled = 0;
-  for (const [id, val] of Object.entries(fields)) {
-    if (val) {
+  for (const [id, val] of map) {
+    if (val && String(val).trim()) {
       const el = document.getElementById(id);
-      if (el) { el.value = String(val); filled++; }
+      if (el) {
+        el.value = String(val).trim();
+        filled++;
+      }
     }
   }
-  // Drugs
-  if (d.drugs && d.drugs.length) {
+
+  const drugs = d.drugs || d.medications || d.drug_list || [];
+  if (Array.isArray(drugs) && drugs.length) {
     const tbody = document.getElementById('drug-tbody');
     if (tbody) {
       tbody.innerHTML = '';
-      d.drugs.forEach((dr, i) => addDrugRowData(i+1, dr.name||'', dr.dose||'', dr.route||'', dr.frequency||'', dr.duration||''));
+      drugs.forEach((dr, i) => {
+        const name = dr.name || dr.drug || dr.medication || '';
+        const dose = dr.dose || dr.dosage || '';
+        const route = dr.route || '';
+        const freq = dr.frequency || dr.freq || '';
+        const dur = dr.duration || '';
+        addDrugRowData(i+1, name, dose, route, freq, dur);
+      });
     }
   }
+  console.log('fillAllFields: filled', filled, 'fields from keys:', Object.keys(d));
   return filled;
 }
 

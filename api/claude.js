@@ -13,9 +13,7 @@ export default async function handler(req, res) {
       body: JSON.stringify(req.body),
     });
     const data = await response.json();
-    if (!response.ok) {
-      return res.status(response.status).json({ error: data.error?.message || 'Claude API error' });
-    }
+    if (!response.ok) return res.status(response.status).json({ error: data.error?.message || 'Claude API error' });
     return res.status(200).json(data);
   } catch (err) {
     return res.status(500).json({ error: 'Proxy error: ' + err.message });

@@ -698,9 +698,35 @@ footer {
           <span>⚠</span>
           <div><strong>Voice Dictation is not supported in Safari or this browser.</strong> Please use <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>, or use the Upload Recording tab instead.</div>
         </div>
-        <div class="alert alert-info" id="speech-info-banner" style="margin-bottom:14px;">
-          <span>ℹ</span>
-          <span>Free browser speech recognition. Works in Chrome/Edge. Speak your clinical notes, text appears live.</span>
+        <div id="speech-info-banner" style="background:#F0F9F6;border:1.5px solid rgba(28,184,160,0.25);border-radius:var(--r);padding:16px 18px;margin-bottom:14px;font-size:13px;">
+          <div style="font-weight:600;color:var(--navy);margin-bottom:10px;font-size:13.5px;">🎙 Live Dictation Guidelines — Please Read Before Starting</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <div style="font-weight:600;color:#0F8C7A;margin-bottom:6px;">✅ DO</div>
+              <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px;color:var(--text-muted);">
+                <li>🔇 Speak in a quiet environment</li>
+                <li>🗣 Speak clearly at normal pace</li>
+                <li>📋 State patient age, gender, complaint</li>
+                <li>💊 State drug name, dose and frequency clearly</li>
+                <li>🔢 Speak vitals explicitly (e.g. "BP one-fifty-eight over ninety-six")</li>
+                <li>✏️ Edit the transcript before proceeding</li>
+              </ul>
+            </div>
+            <div>
+              <div style="font-weight:600;color:var(--rose);margin-bottom:6px;">❌ DON'T</div>
+              <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px;color:var(--text-muted);">
+                <li>🚫 State patient's full name or IC number</li>
+                <li>🚫 Record patient voice without consent</li>
+                <li>🚫 Speak too fast or mumble drug names</li>
+                <li>🚫 Use heavy abbreviations without spelling out</li>
+                <li>🚫 Rely solely on AI output — always verify</li>
+                <li>🚫 Use on iPhone/iPad — not supported by Apple</li>
+              </ul>
+            </div>
+          </div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(28,184,160,0.15);color:var(--text-muted);font-size:12px;">
+            💡 Works on <strong>Chrome or Edge on desktop/laptop and Android</strong> only. Text appears live as you speak — edit before proceeding.
+          </div>
         </div>
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
         <button class="btn btn-primary" id="speech-start-btn" onclick="startSpeech()" style="gap:8px;">
@@ -1258,13 +1284,27 @@ let speechFinal = '';
 
 function checkSpeechSupport() {
   const supported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const ua = navigator.userAgent.toLowerCase();
+  const isIOS = /iphone|ipad|ipod/.test(ua);
   const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-  const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
+  const isFirefox = ua.includes('firefox');
   const warn = document.getElementById('browser-warning');
   const info = document.getElementById('speech-info-banner');
   const startBtn = document.getElementById('speech-start-btn');
-  if (!supported || isSafari || isFirefox) {
-    if (warn) warn.style.display = 'flex';
+  const notSupported = !supported || isSafari || isFirefox || isIOS;
+  if (notSupported) {
+    if (warn) {
+      warn.style.display = 'flex';
+      // Show specific message for iOS
+      const warnDiv = warn.querySelector('div');
+      if (warnDiv) {
+        if (isIOS) {
+          warnDiv.innerHTML = '<strong>Voice Dictation is not available on iPhone or iPad.</strong> Apple restricts this feature on all iOS browsers. Please use the <strong>Upload Recording</strong> tab instead, or switch to a desktop/laptop computer running Chrome or Edge.';
+        } else {
+          warnDiv.innerHTML = '<strong>Voice Dictation is not supported in this browser.</strong> Please use <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> on a desktop/laptop, or use the Upload Recording tab instead.';
+        }
+      }
+    }
     if (info) info.style.display = 'none';
     if (startBtn) startBtn.disabled = true;
   } else {

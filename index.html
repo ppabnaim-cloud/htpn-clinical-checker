@@ -1545,46 +1545,53 @@ async function processInput() {
       }
     }
   } else if (images.length > 0 && activeMode.includes('Image')) {
-    if (true) { // proxy handles auth
-      statusEl.innerHTML = '<span>⏳</span><span>Extracting text from images via Claude Vision...</span>';
-      statusEl.className = 'alert alert-info';
-      try {
-        // Convert first image to base64
-        const base64 = await fileToBase64(images[0]);
-        const mediaType = images[0].type || 'image/jpeg';
-        const payload = {
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-              { type: 'text', text: 'You are a clinical document parser for a hospital. Extract ALL text from this clinical document accurately. Preserve structure, headings, and data. Include dates, drug names, doses, diagnoses, investigation results. Output plain text only.' }
-            ]
-          }]
-        };
-        const resp = await fetch('/api/claude', {
+    statusEl.style.display = 'flex';
+    statusEl.className = 'alert alert-info';
+    statusEl.innerHTML = `<span>⏳</span><span>Extracting text from ${images.length} image(s) — please wait...</span>`;
+    try {
+      statusEl.innerHTML = `<span>⏳</span><span>Processing all ${images.length} image(s) in parallel...</span>`;
+
+      // Convert all images to base64 in parallel
+      const base64Results = await Promise.all(images.map(async (img) => ({
+        base64: await fileToBase64(img),
+        mediaType: img.type || 'image/jpeg'
+      })));
+
+      // Send all API calls simultaneously
+      const extractionPromises = base64Results.map((img, i) =>
+        fetch('/api/claude', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await resp.json();
-        const extracted = data.content?.[0]?.text || '';
-        transcriptEl.value = extracted;
-        if (images.length > 1) transcriptEl.value += `\n\n[${images.length - 1} more image(s) uploaded — process manually or re-upload one at a time]`;
-        updateTranscriptChars();
-        goStep(3);
-        statusEl.style.display = 'flex';
-        statusEl.innerHTML = '<span>✅</span><span>Text extracted from image(s). Review and edit below.</span>';
-        statusEl.className = 'alert alert-info';
-      } catch(err) {
-        statusEl.innerHTML = `<span>⚠</span><span>Extraction error: ${err.message}. Please paste notes manually.</span>`;
-        statusEl.className = 'alert alert-warn';
-      }
-    } else {
-      statusEl.innerHTML = '<span>⚠</span><span>No Claude API key set. Please add a key above or paste the clinical notes manually.</span>';
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1500,
+            messages: [{
+              role: 'user',
+              content: [
+                { type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.base64 } },
+                { type: 'text', text: 'You are a clinical document parser for a hospital. Extract ALL text from this clinical document accurately. Preserve structure, headings, and data. Include dates, drug names, doses, diagnoses, investigation results. Output plain text only.' }
+              ]
+            }]
+          })
+        }).then(r => r.json()).then(d => d.content?.[0]?.text || '').catch(() => '')
+      );
+
+      const results = await Promise.all(extractionPromises);
+      const allText = results
+        .map((text, i) => images.length > 1 ? `--- Page ${i + 1} ---\n${text}` : text)
+        .filter(Boolean)
+        .join('\n\n');
+
+      transcriptEl.value = allText.trim();
+      updateTranscriptChars();
+      goStep(3);
+      statusEl.style.display = 'flex';
+      statusEl.className = 'alert alert-info';
+      statusEl.innerHTML = `<span>✅</span><span>Text extracted from ${images.length} image(s). Review and edit below.</span>`;
+    } catch(err) {
+      statusEl.style.display = 'flex';
       statusEl.className = 'alert alert-warn';
-      transcriptEl.value = `[${images.length} image(s) uploaded]\n\nPlease add a Claude API key above for image extraction, or paste clinical notes manually.`;
+      statusEl.innerHTML = `<span>⚠</span><span>Extraction error: ${err.message}. Please paste notes manually.</span>`;
     }
   } else if (manualText) {
     transcriptEl.value = manualText;

@@ -772,28 +772,30 @@ footer {
             </div>
           </div>
           <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(28,184,160,0.15);font-size:12px;">
-            <div style="display:flex;align-items:flex-start;gap:10px;background:rgba(244,166,35,0.08);border:1px solid rgba(244,166,35,0.25);border-radius:8px;padding:10px 14px;">
-              <span style="font-size:16px;flex-shrink:0;">⚠️</span>
-              <div style="color:var(--text-muted);line-height:1.7;">
-                <strong style="color:var(--amber);">Shared quota — 5 hours/month for all users.</strong>
-                If the limit is reached, please register your own free API key at
-                <a href="https://www.assemblyai.com" target="_blank" style="color:var(--teal);font-weight:600;">assemblyai.com</a>
-                and enter it in the field above.
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;background:rgba(244,166,35,0.08);border:1px solid rgba(244,166,35,0.25);border-radius:8px;padding:10px 14px;">
+              <div style="display:flex;gap:10px;align-items:flex-start;">
+                <span style="font-size:16px;flex-shrink:0;">⚠️</span>
+                <div style="color:var(--text-muted);line-height:1.7;">
+                  <strong style="color:var(--amber);">Shared quota — 5 hours/month for all users.</strong>
+                  If the limit is reached, register free at
+                  <a href="https://www.assemblyai.com" target="_blank" style="color:var(--teal);font-weight:600;">assemblyai.com</a>
+                  and use your own key.
+                </div>
               </div>
+              <button onclick="toggleAAIKeyPrompt()" style="white-space:nowrap;padding:5px 12px;background:rgba(28,184,160,0.15);border:1px solid rgba(28,184,160,0.3);border-radius:6px;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">🔑 Use own key</button>
             </div>
           </div>
         </div>
-      <!-- ASSEMBLYAI KEY SETUP -->
-      <div id="aai-key-prompt" style="display:flex;flex-direction:column;gap:10px;background:rgba(28,184,160,0.06);border:1.5px solid rgba(28,184,160,0.25);border-radius:10px;padding:16px;margin-bottom:14px;">
-        <div style="font-size:13px;font-weight:700;color:var(--teal);">🔑 AssemblyAI API Key Required</div>
+      <!-- ASSEMBLYAI KEY INPUT — hidden by default, shown only when quota reached or user requests -->
+      <div id="aai-key-prompt" style="display:none;flex-direction:column;gap:10px;background:rgba(28,184,160,0.06);border:1.5px solid rgba(28,184,160,0.25);border-radius:10px;padding:16px;margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:700;color:var(--teal);">🔑 Enter Your Own AssemblyAI Key</div>
         <div style="font-size:12px;color:var(--text-muted);line-height:1.6;">
-          This uses <strong>AssemblyAI</strong> for real-time transcription — works on <strong>all browsers including iPhone/iPad</strong>.<br>
-          Get a free key at <a href="https://www.assemblyai.com" target="_blank" style="color:var(--teal);">assemblyai.com</a> (free tier: 5 hours/month). Enter it once — saved in your browser only.
+          Register free at <a href="https://www.assemblyai.com" target="_blank" style="color:var(--teal);font-weight:600;">assemblyai.com</a> → copy your API key → paste below. Saved in your browser only.
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <input id="aai-key-input" type="password" placeholder="Enter AssemblyAI API key..."
+          <input id="aai-key-input" type="password" placeholder="Paste your AssemblyAI API key here..."
             style="flex:1;padding:9px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(28,184,160,0.3);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;min-width:200px;">
-          <button onclick="saveAAIKey()" style="padding:9px 18px;background:var(--teal);border:none;border-radius:8px;color:white;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Save Key</button>
+          <button onclick="saveAAIKey()" style="padding:9px 18px;background:var(--teal);border:none;border-radius:8px;color:white;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Save & Use</button>
           <button onclick="document.getElementById('aai-key-prompt').style.display='none'" style="padding:9px 14px;background:transparent;border:1px solid var(--card-border);border-radius:8px;color:var(--text-muted);font-size:13px;cursor:pointer;">✕</button>
         </div>
       </div>
@@ -846,13 +848,27 @@ footer {
             </div>
           </div>
           <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(28,184,160,0.15);font-size:12px;">
-            <div style="display:flex;align-items:flex-start;gap:10px;background:rgba(244,166,35,0.08);border:1px solid rgba(244,166,35,0.25);border-radius:8px;padding:10px 14px;">
-              <span style="font-size:16px;flex-shrink:0;">⚠️</span>
-              <div style="color:var(--text-muted);line-height:1.7;">
-                <strong style="color:var(--amber);">Shared quota — resets daily. If the limit is reached,</strong>
-                please register your own free API key at
-                <a href="https://console.groq.com" target="_blank" style="color:var(--teal);font-weight:600;">console.groq.com</a>
-                and contact the development team to configure it.
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;background:rgba(244,166,35,0.08);border:1px solid rgba(244,166,35,0.25);border-radius:8px;padding:10px 14px;">
+              <div style="display:flex;gap:10px;align-items:flex-start;">
+                <span style="font-size:16px;flex-shrink:0;">⚠️</span>
+                <div style="color:var(--text-muted);line-height:1.7;">
+                  <strong style="color:var(--amber);">Shared quota — resets daily.</strong>
+                  If the limit is reached, register free at
+                  <a href="https://console.groq.com" target="_blank" style="color:var(--teal);font-weight:600;">console.groq.com</a>
+                  and use your own key.
+                </div>
+              </div>
+              <button onclick="toggleGroqKeyPrompt()" style="white-space:nowrap;padding:5px 12px;background:rgba(28,184,160,0.15);border:1px solid rgba(28,184,160,0.3);border-radius:6px;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">🔑 Use own key</button>
+            </div>
+            <!-- Groq own key input — hidden by default -->
+            <div id="groq-key-prompt" style="display:none;flex-direction:column;gap:10px;background:rgba(28,184,160,0.06);border:1.5px solid rgba(28,184,160,0.25);border-radius:10px;padding:16px;margin-top:10px;">
+              <div style="font-size:13px;font-weight:700;color:var(--teal);">🔑 Enter Your Own Groq Key</div>
+              <div style="font-size:12px;color:var(--text-muted);">Register free at <a href="https://console.groq.com" target="_blank" style="color:var(--teal);font-weight:600;">console.groq.com</a> → copy API key → paste below. Saved in your browser only.</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <input id="groq-key-input" type="password" placeholder="Paste your Groq API key here..."
+                  style="flex:1;padding:9px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(28,184,160,0.3);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;min-width:200px;">
+                <button onclick="saveGroqKey()" style="padding:9px 18px;background:var(--teal);border:none;border-radius:8px;color:white;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Save & Use</button>
+                <button onclick="document.getElementById('groq-key-prompt').style.display='none'" style="padding:9px 14px;background:transparent;border:1px solid var(--card-border);border-radius:8px;color:var(--text-muted);font-size:13px;cursor:pointer;">✕</button>
               </div>
             </div>
           </div>
@@ -1400,20 +1416,51 @@ function checkSpeechSupport() {
     if (warn) warn.style.display = 'none';
     if (info) info.style.display = 'flex';
     if (startBtn) startBtn.disabled = false;
-    // Show API key setup prompt if no key saved
-    const keyPrompt = document.getElementById('aai-key-prompt');
-    if (keyPrompt) keyPrompt.style.display = aaiKeyStored ? 'none' : 'flex';
+    // Key prompt is always hidden on load — user opens it manually via "Use own key" button
+  }
+}
+
+function toggleAAIKeyPrompt() {
+  const p = document.getElementById('aai-key-prompt');
+  p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
+  if (p.style.display === 'flex') {
+    const saved = localStorage.getItem('htpn_aai_key') || '';
+    document.getElementById('aai-key-input').value = saved;
+    document.getElementById('aai-key-input').focus();
+  }
+}
+
+function toggleGroqKeyPrompt() {
+  const p = document.getElementById('groq-key-prompt');
+  p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
+  if (p.style.display === 'flex') {
+    const saved = localStorage.getItem('htpn_groq_key') || '';
+    document.getElementById('groq-key-input').value = saved;
+    document.getElementById('groq-key-input').focus();
+  }
+}
+
+function saveGroqKey() {
+  const key = document.getElementById('groq-key-input').value.trim();
+  if (!key) { alert('Please paste your Groq API key.'); return; }
+  localStorage.setItem('htpn_groq_key', key);
+  document.getElementById('groq-key-prompt').style.display = 'none';
+  const status = document.getElementById('groq-status');
+  if (status) {
+    status.style.display = 'flex';
+    status.className = 'alert alert-info';
+    status.innerHTML = '<span>✅</span><span>Your Groq key saved. Future uploads will use your personal quota.</span>';
   }
 }
 
 function saveAAIKey() {
   const key = document.getElementById('aai-key-input').value.trim();
-  if (!key) { alert('Please enter your AssemblyAI API key.'); return; }
+  if (!key) { alert('Please paste your AssemblyAI API key.'); return; }
   localStorage.setItem('htpn_aai_key', key);
   document.getElementById('aai-key-prompt').style.display = 'none';
   document.getElementById('audio-status').style.display = 'flex';
   document.getElementById('audio-status').className = 'alert alert-info';
-  document.getElementById('audio-status').innerHTML = '<span>✅</span><span>AssemblyAI key saved. Click Start Dictation to begin.</span>';
+  document.getElementById('audio-status').innerHTML = '<span>✅</span><span>Your AssemblyAI key saved. Click Start Dictation to begin.</span>';
 }
 
 async function startSpeech() {
@@ -1603,11 +1650,11 @@ function setAllergy(type, btn) {
 }
 
 function initAssemblyAI() {
-  // Show/hide key prompt based on whether key is already saved
-  const keyStored = localStorage.getItem('htpn_aai_key') || '';
+  // Always hide key prompt on load — only shown when user clicks "Use own key"
   const prompt = document.getElementById('aai-key-prompt');
-  if (prompt) prompt.style.display = keyStored ? 'none' : 'flex';
-  // Pre-fill if stored
+  if (prompt) prompt.style.display = 'none';
+  // Pre-fill input if key was previously saved (for when they toggle it open)
+  const keyStored = localStorage.getItem('htpn_aai_key') || '';
   const input = document.getElementById('aai-key-input');
   if (input && keyStored) input.value = keyStored;
 }

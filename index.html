@@ -595,6 +595,37 @@ footer {
   main { padding: 20px 16px 60px; }
   .quality-grid { grid-template-columns: repeat(2, 1fr); }
 }
+/* ── SPECIALTY SELECTOR ── */
+.spec-btn {
+  padding: 7px 14px;
+  border-radius: 50px;
+  border: 1px solid var(--card-border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--sans);
+  transition: all 0.15s;
+}
+.spec-btn:hover { border-color: var(--teal); color: var(--teal); }
+.spec-btn.active {
+  background: rgba(28,184,160,0.15);
+  border-color: var(--teal);
+  color: var(--teal);
+  font-weight: 700;
+}
+/* ── ALLERGY BUTTONS ── */
+.allergy-btn.active {
+  background: rgba(28,184,160,0.15) !important;
+  border-color: var(--teal) !important;
+  color: var(--teal) !important;
+}
+.allergy-btn.allergy-known.active {
+  background: rgba(232,76,106,0.15) !important;
+  border-color: var(--rose) !important;
+  color: var(--rose) !important;
+}
 </style>
 </head>
 <body>
@@ -624,34 +655,6 @@ footer {
 <!-- STICKY DISCLAIMER BANNER -->
 <div id="sticky-banner">⚠ DEMO / RESEARCH PROTOTYPE — All outputs require clinician review &amp; sign-off &nbsp;|&nbsp; Not for standalone clinical decision-making &nbsp;|&nbsp; HTPN</div>
 
-<!-- ANALYTICS CONFIG PANEL -->
-<div id="analytics-config" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(11,31,58,0.92);z-index:8000;display:none;align-items:center;justify-content:center;padding:20px;">
-  <div style="background:#112847;border:1px solid rgba(28,184,160,0.3);border-radius:16px;padding:32px;max-width:520px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.5);">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-      <div style="font-family:'DM Serif Display',serif;font-size:20px;color:#1CB8A0;">📊 Analytics Dashboard Setup</div>
-      <button onclick="toggleDbConfig()" style="background:none;border:none;color:#8AACC8;font-size:20px;cursor:pointer;">✕</button>
-    </div>
-    <p style="font-size:13px;color:#8AACC8;margin-bottom:16px;line-height:1.6;">Connect to <strong style="color:#1CB8A0;">JSONBin.io</strong> (free) to enable the shared analytics dashboard. No patient data is ever recorded — only aggregate counts.</p>
-    <div style="background:rgba(0,0,0,0.2);border-radius:10px;padding:14px;margin-bottom:16px;font-size:12px;color:#8AACC8;line-height:1.7;">
-      <strong style="color:#E8EFF8;">Setup steps:</strong><br>
-      1. Go to <a href="https://jsonbin.io" target="_blank" style="color:#1CB8A0;">jsonbin.io</a> → Sign up free → copy your <code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;">Master Key</code><br>
-      2. Create a new Bin with content: <code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;">{"analyses":[],"totalAnalyses":0,"totalVisitors":0}</code><br>
-      3. Copy the <code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;">Bin ID</code> from the URL
-    </div>
-    <label style="display:block;font-size:12px;color:#8AACC8;margin-bottom:4px;">JSONBin Master Key</label>
-    <input id="db-key-input" type="password" placeholder="$2b$10$xxxxxxxxxxxxxxxx"
-      style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(28,184,160,0.3);border-radius:8px;color:#E8EFF8;font-size:13px;font-family:monospace;outline:none;margin-bottom:12px;">
-    <label style="display:block;font-size:12px;color:#8AACC8;margin-bottom:4px;">Bin ID</label>
-    <input id="db-bin-input" type="text" placeholder="64abc123def456789"
-      style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(28,184,160,0.3);border-radius:8px;color:#E8EFF8;font-size:13px;font-family:monospace;outline:none;margin-bottom:20px;">
-    <div style="display:flex;gap:12px;flex-wrap:wrap;">
-      <button onclick="saveAnalyticsConfig()" style="flex:1;padding:11px 20px;background:#1CB8A0;border:none;border-radius:8px;color:white;font-size:14px;font-weight:600;cursor:pointer;">Save & Enable Analytics</button>
-      <a href="dashboard.html" target="_blank" style="flex:1;display:block;text-align:center;padding:11px 20px;border:1px solid rgba(28,184,160,0.4);border-radius:8px;color:#1CB8A0;text-decoration:none;font-size:14px;font-weight:600;">Open Dashboard →</a>
-    </div>
-    <div id="analytics-status" style="margin-top:12px;font-size:12px;color:#1CB8A0;display:none;"></div>
-  </div>
-</div>
-
 <!-- HEADER -->
 <header>
   <div class="header-inner">
@@ -664,10 +667,8 @@ footer {
       </div>
     </div>
     <div class="header-stats">
-      <div class="stat-pill"><span class="visitor-dot"></span> Total Visitors: <span class="val" id="visitor-count">—</span></div>
+      <div class="stat-pill"><span class="visitor-dot"></span> Visitors today: <span class="val" id="visitor-count">—</span></div>
       <div class="stat-pill">📋 Analyses: <span class="val" id="analysis-count">0</span></div>
-      <a href="dashboard.html" target="_blank" class="stat-pill" style="text-decoration:none;cursor:pointer;" title="View Analytics Dashboard">📊 Dashboard</a>
-      <div class="stat-pill" onclick="toggleDbConfig()" style="cursor:pointer;" title="Configure Analytics">⚙️ Analytics</div>
       <div class="stat-pill">🇲🇾 HTPN</div>
     </div>
   </div>
@@ -706,6 +707,22 @@ footer {
   <div class="card">
     <div class="card-title">📥 Step 1 — Data Entry</div>
     <div class="card-sub">Choose your input method: upload audio, images, or enter text manually.</div>
+
+    <!-- SPECIALTY SELECTOR -->
+    <div style="margin-bottom:20px;">
+      <label style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:8px;">Clinical Specialty</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;" id="specialty-bar">
+        <button class="spec-btn active" onclick="setSpecialty('General Medicine',this)">🏥 General Medicine</button>
+        <button class="spec-btn" onclick="setSpecialty('Emergency',this)">🚨 Emergency</button>
+        <button class="spec-btn" onclick="setSpecialty('Surgery',this)">🔪 Surgery</button>
+        <button class="spec-btn" onclick="setSpecialty('Paediatrics',this)">👶 Paediatrics</button>
+        <button class="spec-btn" onclick="setSpecialty('O&G',this)">🤰 O&amp;G</button>
+        <button class="spec-btn" onclick="setSpecialty('Orthopaedics',this)">🦴 Orthopaedics</button>
+        <button class="spec-btn" onclick="setSpecialty('Psychiatry',this)">🧠 Psychiatry</button>
+        <button class="spec-btn" onclick="setSpecialty('Respiratory',this)">🫁 Respiratory</button>
+        <button class="spec-btn" onclick="setSpecialty('Cardiology',this)">❤️ Cardiology</button>
+      </div>
+    </div>
 
     <div class="mode-tab-bar">
       <button class="mode-tab active" onclick="setMode('audio',this)">🎙 Voice &amp; Audio</button>
@@ -921,6 +938,23 @@ You can also type or paste clinical notes directly."></textarea>
       <div class="field">
         <label>History of Presenting Illness (HOPI)</label>
         <textarea id="f-hopi" rows="5" placeholder="Detailed history including onset, duration, character, associated symptoms, relevant PMH, medications, allergies, social/family history..."></textarea>
+      </div>
+
+      <!-- DRUG ALLERGY — required field -->
+      <div class="field" style="margin-top:12px;">
+        <label style="display:flex;align-items:center;gap:8px;">
+          Drug Allergy Status
+          <span style="background:rgba(232,76,106,0.15);color:var(--rose);font-size:10px;font-weight:700;padding:2px 8px;border-radius:50px;border:1px solid rgba(232,76,106,0.3);">REQUIRED</span>
+        </label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;" id="allergy-btn-bar">
+          <button class="allergy-btn active" onclick="setAllergy('NKDA',this)" style="padding:7px 16px;border-radius:8px;border:1px solid rgba(28,184,160,0.4);background:rgba(28,184,160,0.15);color:var(--teal);font-size:13px;font-weight:600;cursor:pointer;">✅ NKDA</button>
+          <button class="allergy-btn" onclick="setAllergy('Known allergy',this)" style="padding:7px 16px;border-radius:8px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:600;cursor:pointer;">⚠️ Known Allergy</button>
+          <button class="allergy-btn" onclick="setAllergy('Not documented',this)" style="padding:7px 16px;border-radius:8px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:600;cursor:pointer;">❓ Not Documented</button>
+        </div>
+        <input type="text" id="f-allergy" value="NKDA"
+          placeholder="e.g. NKDA / Penicillin — rash / Sulfa — anaphylaxis"
+          style="border-left:3px solid var(--rose);">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">⚕️ Medico-legal requirement. Must be documented before any antibiotic prescription.</div>
       </div>
     </div>
 
@@ -1420,110 +1454,63 @@ const LIKERT_QUESTIONS = [
 ];
 
 // Visitor counter (simulated with localStorage)
-function toggleDbConfig() {
-  const panel = document.getElementById('analytics-config');
-  const isHidden = panel.style.display === 'none' || panel.style.display === '';
-  panel.style.display = isHidden ? 'flex' : 'none';
-  // Pre-fill saved values
-  if (isHidden) {
-    const savedKey = localStorage.getItem('htpn_db_key') || '';
-    const savedBin = localStorage.getItem('htpn_db_bin') || '';
-    document.getElementById('db-key-input').value = savedKey;
-    document.getElementById('db-bin-input').value = savedBin;
-  }
+// ── SPECIALTY ──
+let selectedSpecialty = 'General Medicine';
+function setSpecialty(name, btn) {
+  selectedSpecialty = name;
+  document.querySelectorAll('.spec-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
 }
 
-function saveAnalyticsConfig() {
-  const key = document.getElementById('db-key-input').value.trim();
-  const bin = document.getElementById('db-bin-input').value.trim();
-  if (!key || !bin) { alert('Please enter both your JSONBin Master Key and Bin ID.'); return; }
-  localStorage.setItem('htpn_db_key', key);
-  localStorage.setItem('htpn_db_bin', bin);
-  const status = document.getElementById('analytics-status');
-  status.style.display = 'block';
-  status.textContent = '✅ Analytics configured! Every analysis will now be logged to your shared dashboard.';
-  setTimeout(() => { toggleDbConfig(); }, 2000);
+// ── ALLERGY ──
+function setAllergy(type, btn) {
+  document.querySelectorAll('.allergy-btn').forEach(b => {
+    b.classList.remove('active','allergy-known');
+    b.style.background = 'transparent';
+    b.style.borderColor = 'rgba(255,255,255,0.1)';
+    b.style.color = 'var(--text-muted)';
+  });
+  btn.classList.add('active');
+  if (type === 'Known allergy') {
+    btn.classList.add('allergy-known');
+  }
+  const input = document.getElementById('f-allergy');
+  if (type === 'NKDA') {
+    input.value = 'NKDA';
+    input.style.borderLeftColor = 'var(--teal)';
+  } else if (type === 'Known allergy') {
+    input.value = '';
+    input.placeholder = 'Specify: e.g. Penicillin — rash, Sulfa — anaphylaxis';
+    input.style.borderLeftColor = 'var(--rose)';
+    input.focus();
+  } else {
+    input.value = 'Not documented';
+    input.style.borderLeftColor = 'var(--amber)';
+  }
 }
 
 function initCounters() {
-  // Cumulative visitor counter — increments once per device ever (not per day)
-  if (!localStorage.getItem('htpn_visited')) {
-    let v = parseInt(localStorage.getItem('htpn_visitors') || '0') + 1;
+  // Simple localStorage visitor counter (no external API dependency)
+  const today = new Date().toDateString();
+  let v = parseInt(localStorage.getItem('htpn_visitors') || '0');
+  if (localStorage.getItem('htpn_vday') !== today) {
+    v++;
     localStorage.setItem('htpn_visitors', v);
-    localStorage.setItem('htpn_visited', '1'); // permanent flag — never resets
+    localStorage.setItem('htpn_vday', today);
   }
-  const v = parseInt(localStorage.getItem('htpn_visitors') || '1');
   const visitorEl = document.getElementById('visitor-count');
-  if (visitorEl) visitorEl.textContent = v.toLocaleString();
+  if (visitorEl) visitorEl.textContent = v;
 
   const a = parseInt(localStorage.getItem('htpn_analyses') || '0');
   const analysisEl = document.getElementById('analysis-count');
-  if (analysisEl) analysisEl.textContent = a.toLocaleString();
+  if (analysisEl) analysisEl.textContent = a;
 }
 
 function incrementAnalysisCount() {
   let a = parseInt(localStorage.getItem('htpn_analyses') || '0');
   a++;
   localStorage.setItem('htpn_analyses', a);
-  const el = document.getElementById('analysis-count');
-  if (el) el.textContent = a;
-  // Log to shared analytics dashboard (silent, non-blocking)
-  logToAnalytics(a);
-}
-
-// ── SHARED ANALYTICS LOGGING ──
-async function logToAnalytics(sessionCount) {
-  const key = localStorage.getItem('htpn_db_key');
-  const bin = localStorage.getItem('htpn_db_bin');
-  if (!key || !bin) return; // Dashboard not configured — skip silently
-
-  try {
-    // 1. Fetch current data
-    const getResp = await fetch('https://api.jsonbin.io/v3/b/'+bin+'/latest', {
-      headers: { 'X-Master-Key': key }
-    });
-    if (!getResp.ok) return;
-    const current = await getResp.json();
-    const data = current.record || { analyses:[], totalAnalyses:0, totalVisitors:0 };
-
-    // 2. Build new entry (NO patient data — aggregate only)
-    const role = document.getElementById('fb-role') ? document.getElementById('fb-role').value : '';
-    const dept = document.getElementById('fb-dept') ? document.getElementById('fb-dept').value : '';
-    const activeMode = document.querySelector('.mode-tab.active') ? document.querySelector('.mode-tab.active').textContent.trim() : 'Unknown';
-    const method = activeMode.includes('Voice') ? 'Voice/Audio' :
-                   activeMode.includes('Image') ? 'Image Upload' :
-                   activeMode.includes('Manual') ? 'Manual Text' : 'Unknown';
-
-    const newEntry = {
-      ts: new Date().toISOString(),
-      role: role || 'Not specified',
-      dept: dept || 'Not specified',
-      method: method,
-      count: sessionCount
-    };
-
-    data.analyses = (data.analyses || []);
-    data.analyses.push(newEntry);
-    if (data.analyses.length > 500) data.analyses = data.analyses.slice(-500); // keep last 500
-    data.totalAnalyses = (data.totalAnalyses || 0) + 1;
-
-    // Track visitor (once per device ever — permanent flag)
-    if (!localStorage.getItem('htpn_visitor_logged')) {
-      data.totalVisitors = (data.totalVisitors || 0) + 1;
-      localStorage.setItem('htpn_visitor_logged', '1');
-    }
-    data.lastUpdated = new Date().toISOString();
-
-    // 3. Save back to JSONBin
-    await fetch('https://api.jsonbin.io/v3/b/'+bin, {
-      method: 'PUT',
-      headers: { 'Content-Type':'application/json', 'X-Master-Key': key },
-      body: JSON.stringify(data)
-    });
-  } catch(e) {
-    // Silent fail — never break the main app
-    console.log('Analytics log skipped:', e.message);
-  }
+  document.getElementById('analysis-count').textContent = a;
 }
 
 // ── DISCLAIMER ──
@@ -1913,7 +1900,7 @@ async function fillSOAP() {
 
   // Then try Claude API to enhance/override with better extraction
   try {
-    const prompt = `You are a clinical documentation assistant at a hospital. Extract structured clinical information from the following text and return ONLY a JSON object with these exact keys: chief_complaint, hopi, bp, pr, temp, rr, spo2, glucose, gcs, bloods, imaging, procedures, diagnosis, issues, short_plan, long_plan, drugs (array of {name, dose, route, frequency, duration}).
+    const prompt = `You are a clinical documentation assistant specialising in ${selectedSpecialty || 'General Medicine'} at a hospital. Extract structured clinical information from the following text and return ONLY a JSON object with these exact keys: chief_complaint, hopi, allergy (drug allergy status — look for NKDA, allergy mentions, or state "Not documented"), bp, pr, temp, rr, spo2, glucose, gcs, bloods, imaging, procedures, diagnosis, issues, short_plan, long_plan, drugs (array of {name, dose, route, frequency, duration}).
 
 Text:
 ${transcript.substring(0, 3000)}
@@ -1985,6 +1972,7 @@ function fillAllFields(d) {
   const map = [
     ['f-cc', d.chief_complaint || d.chiefComplaint || d.complaint],
     ['f-hopi', d.hopi || d.history || d.presenting_illness],
+    ['f-allergy', d.allergy || d.drug_allergy || d.drugAllergy],
     ['v-bp', cleanVital(d.bp || d.blood_pressure)],
     ['v-pr', cleanVital(d.pr || d.pulse || d.heart_rate)],
     ['v-temp', cleanVital(d.temp || d.temperature)],
@@ -2085,8 +2073,10 @@ function getDrugList() {
 // ── COLLECT SOAP DATA ──
 function collectSOAPData() {
   return {
+    specialty: selectedSpecialty || 'General Medicine',
     cc: document.getElementById('f-cc').value,
     hopi: document.getElementById('f-hopi').value,
+    allergy: document.getElementById('f-allergy') ? document.getElementById('f-allergy').value || 'Not documented' : 'Not documented',
     vitals: `BP ${document.getElementById('v-bp').value}, PR ${document.getElementById('v-pr').value}, Temp ${document.getElementById('v-temp').value}°C, RR ${document.getElementById('v-rr').value}, SpO₂ ${document.getElementById('v-spo2').value}%, Glucose ${document.getElementById('v-glucose').value} mmol/L, GCS ${document.getElementById('v-gcs').value}`,
     bloods: document.getElementById('f-bloods').value,
     imaging: document.getElementById('f-imaging').value,
@@ -2112,11 +2102,31 @@ async function runAnalysis() {
   
 
 
-  const prompt = `You are a senior clinical documentation AI for Hospital Tengku Permaisuri Norashikin (HTPN). You are assisting with clinical documentation quality and ICD-11 coding.
+  const specialtyGuidance = {
+    'General Medicine': 'Focus on systemic review, chronic disease management, and polypharmacy. Include relevant comorbidities.',
+    'Emergency': 'Prioritise ABCDE assessment, time-critical diagnoses, and disposition. Use qSOFA for sepsis. Include triage time.',
+    'Surgery': 'Include surgical site, procedure indication, ASA grade, consent status, and post-op care plan. Check VTE prophylaxis.',
+    'Paediatrics': 'Include age, weight-based drug dosing, developmental milestones, immunisation status, and parent/guardian consent.',
+    'O&G': 'Include LMP, gestational age, obstetric history (G_P_), gynaecological history, and safeguarding considerations.',
+    'Orthopaedics': 'Include mechanism of injury, neurovascular status distal to injury, imaging findings, and mobility/weight-bearing status.',
+    'Psychiatry': 'Include mental state examination (MSE), risk assessment, capacity assessment, and MHA status if applicable.',
+    'Respiratory': 'Include smoking history (pack-years), oxygen requirement, spirometry if available, and exacerbation frequency.',
+    'Cardiology': 'Include cardiac risk factors, ECG findings, echo results, and anticoagulation/antiplatelet status.',
+  };
+  const specNote = specialtyGuidance[d.specialty] || specialtyGuidance['General Medicine'];
+  const allergyFlag = (!d.allergy || d.allergy === 'Not documented')
+    ? 'ALLERGY STATUS: NOT DOCUMENTED — medico-legal risk flag'
+    : 'Drug Allergy: ' + d.allergy;
+
+  const prompt = `You are a senior clinical documentation AI specialising in ${d.specialty} at Hospital Tengku Permaisuri Norashikin (HTPN), Malaysia.
+
+SPECIALTY: ${d.specialty}
+SPECIALTY GUIDANCE: ${specNote}
 
 CLINICAL DATA:
 Chief Complaint: ${d.cc}
 HOPI: ${d.hopi}
+${allergyFlag}
 Vitals: ${d.vitals}
 Blood Investigations: ${d.bloods}
 Imaging: ${d.imaging}
@@ -2128,17 +2138,17 @@ Short-term Plan: ${d.shortPlan}
 Long-term Plan: ${d.longPlan}
 ${refContext}
 
-Generate a response as a JSON object with these keys:
-- soap_s: Detailed subjective SOAP section (string, 2-4 sentences)
-- soap_o: Objective section with vitals and investigations (string)
-- soap_a: Assessment section with diagnoses (string)  
-- soap_p: Plan section (string)
-- icd_codes: Array of {code, description, confidence} — top 3-5 ICD-11 codes with confidence 0-100
-- completeness_score: number 1-10
-- legibility_score: number 1-10
-- medico_legal_score: number 1-10 (10=lowest risk)
-- flags: Array of {level: "high"|"mid"|"low", title, detail}
-- recommendations: string with 3-5 actionable recommendations
+Generate a JSON object with these exact keys:
+- soap_s: Subjective SOAP section tailored for ${d.specialty} (3-5 sentences including allergy status)
+- soap_o: Objective section with vitals and investigations
+- soap_a: Assessment with diagnoses, ${d.specialty}-appropriate
+- soap_p: Plan with ${d.specialty}-specific management steps
+- icd_codes: Array of {code, description, confidence, url} — top 3-5 ICD-11 codes. url must be "https://icd.who.int/browse/2024-01/mms/en" for all. Confidence 0-100.
+- completeness_score: 1-10 (deduct points if allergy not documented)
+- legibility_score: 1-10
+- medico_legal_score: 1-10 (deduct heavily if allergy = not documented)
+- flags: Array of {level:"high"|"mid"|"low", title, detail} — always flag undocumented allergy as high
+- recommendations: 3-5 actionable ${d.specialty}-specific recommendations as a numbered string
 
 Respond with valid JSON only.`;
 
@@ -2182,14 +2192,21 @@ function renderAnalysis(r) {
   document.getElementById('out-soap-a').textContent = r.soap_a || '';
   document.getElementById('out-soap-p').textContent = r.soap_p || '';
   
-  // ICD
+  // ICD — with clickable verification links
   const icdEl = document.getElementById('out-icd');
   icdEl.innerHTML = (r.icd_codes || []).map(c => `
     <div class="icd-row">
-      <span class="icd-code">${c.code || ''}</span>
-      <span class="icd-desc">${c.description || ''}</span>
+      <a href="https://icd.who.int/browse/2024-01/mms/en" target="_blank" rel="noopener"
+         title="Verify on WHO ICD-11 Browser"
+         style="font-family:var(--mono);font-weight:700;font-size:14px;color:var(--teal);text-decoration:none;white-space:nowrap;border-bottom:1px dashed var(--teal);padding-bottom:1px;">
+        ${c.code || ''}
+      </a>
+      <span class="icd-desc" style="flex:1;">${c.description || ''}</span>
       <div class="conf-bar"><div class="conf-fill" style="width:${c.confidence||0}%"></div></div>
       <span class="conf-pct">${c.confidence||0}%</span>
+      <a href="https://icd.who.int/browse/2024-01/mms/en" target="_blank" rel="noopener"
+         style="font-size:11px;color:var(--text-muted);text-decoration:none;white-space:nowrap;border:1px solid var(--card-border);padding:2px 8px;border-radius:50px;margin-left:4px;"
+         title="Verify this code">🔗 Verify</a>
     </div>`).join('') || '<p style="color:var(--text-muted);font-size:13px;">No ICD codes generated.</p>';
   
   // Quality
@@ -2248,20 +2265,28 @@ function buildFinalDocument() {
   const status = document.getElementById('sign-status').options[document.getElementById('sign-status').selectedIndex]?.text || '';
   const d = collectSOAPData();
   
+  const allergyVal = d.allergy || 'Not documented';
+  const allergyLine = allergyVal === 'Not documented'
+    ? 'Drug Allergy: NOT DOCUMENTED ⚠ — medico-legal risk'
+    : 'Drug Allergy: ' + allergyVal;
+
   return `HOSPITAL TENGKU PERMAISURI NORASHIKIN (HTPN)
+HEALTHCARE INTELLIGENCE OFFICE
 CLINICAL DOCUMENT CHECKER — AI-ASSISTED DOCUMENTATION
+Specialty: ${d.specialty || 'General Medicine'}
 Generated by Clinical Document Checker · Dr Naim & AI Team HTPN
 ${'─'.repeat(60)}
 
-DISCLAIMER: This document was generated with AI assistance (Claude). 
+DISCLAIMER: This document was generated with AI assistance (Claude).
 It has been reviewed and signed off by the treating clinician.
 For research/educational use. Not a standalone clinical record.
 
 ${'═'.repeat(60)}
-SOAP CLINICAL NOTE
+SOAP CLINICAL NOTE — ${(d.specialty || 'General Medicine').toUpperCase()}
 ${'═'.repeat(60)}
 
 SUBJECTIVE
+${allergyLine}
 ${document.getElementById('out-soap-s')?.textContent || d.cc + '\n' + d.hopi}
 
 OBJECTIVE
@@ -2276,12 +2301,13 @@ ${document.getElementById('out-soap-p')?.textContent || d.shortPlan + '\n' + d.l
 ${'─'.repeat(60)}
 DRUG LIST
 ${'─'.repeat(60)}
+${allergyLine}
 ${d.drugs || 'No medications documented.'}
 
 ${'─'.repeat(60)}
-ICD-11 CODES (AI-suggested — verify before coding)
+ICD-11 CODES (AI-suggested — verify at icd.who.int before coding)
 ${'─'.repeat(60)}
-${(analysisData.icd_codes || []).map(c => `${c.code}  ${c.description}  (${c.confidence}% confidence)`).join('\n') || 'No ICD codes generated.'}
+${(analysisData.icd_codes || []).map(c => `${c.code}  ${c.description}  (${c.confidence}% confidence)  — https://icd.who.int/browse/2024-01/mms/en`).join('\n') || 'No ICD codes generated.'}
 
 ${'─'.repeat(60)}
 DOCUMENTATION QUALITY
@@ -2302,6 +2328,7 @@ Name: ${name}
 Designation: ${designation}
 MMC No.: ${mmc}
 Department: ${dept}
+Specialty Documented: ${d.specialty || 'General Medicine'}
 Date/Time: ${dt}
 Review Status: ${status}
 
@@ -2320,6 +2347,17 @@ function exportDoc(type) {
   if (!name || !mmc || !status) {
     alert('Please complete all sign-off fields (Name, MMC number, and Review Status) before exporting.');
     return;
+  }
+
+  // Warn if allergy not documented (not block — clinician decision)
+  const allergyVal = document.getElementById('f-allergy')?.value || '';
+  if (!allergyVal || allergyVal === 'Not documented') {
+    const proceed = confirm('⚠️ Drug Allergy Status is NOT documented.\n\nThis is a medico-legal requirement before antibiotic prescription.\n\nDo you want to proceed with export anyway?');
+    if (!proceed) {
+      goStep(4);
+      document.getElementById('f-allergy')?.focus();
+      return;
+    }
   }
   
   const content = buildFinalDocument();

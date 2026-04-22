@@ -451,8 +451,18 @@ async function loadData(showSpinner) {
   if (!CONFIG.JSONBIN_KEY || !CONFIG.JSONBIN_BIN) {
     document.getElementById('setup-panel').classList.add('visible');
     document.getElementById('loading-state').style.display = 'none';
+    // Pre-fill if any partial values exist
+    const k = localStorage.getItem('htpn_db_key') || '';
+    const b = localStorage.getItem('htpn_db_bin') || '';
+    if (k) document.getElementById('setup-key').value = k;
+    if (b) document.getElementById('setup-bin').value = b;
     return;
   }
+  // Also pre-fill setup panel in background in case needed
+  const _k = localStorage.getItem('htpn_db_key') || '';
+  const _b = localStorage.getItem('htpn_db_bin') || '';
+  if (_k) document.getElementById('setup-key').value = _k;
+  if (_b) document.getElementById('setup-bin').value = _b;
   if (showSpinner) {
     const btn = document.getElementById('refresh-btn');
     btn.classList.add('spinning');
@@ -465,7 +475,10 @@ async function loadData(showSpinner) {
     document.getElementById('last-updated').textContent = 'Last updated: '+new Date().toLocaleTimeString('en-MY');
   } catch(e) {
     console.error(e);
-    showEmpty('Could not load data. Check your JSONBin credentials.');
+    // Show setup panel so user can re-enter credentials
+    document.getElementById('setup-panel').classList.add('visible');
+    document.getElementById('loading-state').style.display = 'none';
+    showEmpty('Could not connect to JSONBin. Please enter your credentials in the setup panel above.');
   }
 }
 

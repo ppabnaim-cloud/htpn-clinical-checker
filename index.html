@@ -624,6 +624,34 @@ footer {
 <!-- STICKY DISCLAIMER BANNER -->
 <div id="sticky-banner">⚠ DEMO / RESEARCH PROTOTYPE — All outputs require clinician review &amp; sign-off &nbsp;|&nbsp; Not for standalone clinical decision-making &nbsp;|&nbsp; HTPN</div>
 
+<!-- ANALYTICS CONFIG PANEL -->
+<div id="analytics-config" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(11,31,58,0.92);z-index:8000;display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#112847;border:1px solid rgba(28,184,160,0.3);border-radius:16px;padding:32px;max-width:520px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.5);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div style="font-family:'DM Serif Display',serif;font-size:20px;color:#1CB8A0;">📊 Analytics Dashboard Setup</div>
+      <button onclick="toggleDbConfig()" style="background:none;border:none;color:#8AACC8;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+    <p style="font-size:13px;color:#8AACC8;margin-bottom:16px;line-height:1.6;">Connect to <strong style="color:#1CB8A0;">JSONBin.io</strong> (free) to enable the shared analytics dashboard. No patient data is ever recorded — only aggregate counts.</p>
+    <div style="background:rgba(0,0,0,0.2);border-radius:10px;padding:14px;margin-bottom:16px;font-size:12px;color:#8AACC8;line-height:1.7;">
+      <strong style="color:#E8EFF8;">Setup steps:</strong><br>
+      1. Go to <a href="https://jsonbin.io" target="_blank" style="color:#1CB8A0;">jsonbin.io</a> → Sign up free → copy your <code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;">Master Key</code><br>
+      2. Create a new Bin with content: <code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;">{"analyses":[],"totalAnalyses":0,"totalVisitors":0}</code><br>
+      3. Copy the <code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;">Bin ID</code> from the URL
+    </div>
+    <label style="display:block;font-size:12px;color:#8AACC8;margin-bottom:4px;">JSONBin Master Key</label>
+    <input id="db-key-input" type="password" placeholder="$2b$10$xxxxxxxxxxxxxxxx"
+      style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(28,184,160,0.3);border-radius:8px;color:#E8EFF8;font-size:13px;font-family:monospace;outline:none;margin-bottom:12px;">
+    <label style="display:block;font-size:12px;color:#8AACC8;margin-bottom:4px;">Bin ID</label>
+    <input id="db-bin-input" type="text" placeholder="64abc123def456789"
+      style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(28,184,160,0.3);border-radius:8px;color:#E8EFF8;font-size:13px;font-family:monospace;outline:none;margin-bottom:20px;">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <button onclick="saveAnalyticsConfig()" style="flex:1;padding:11px 20px;background:#1CB8A0;border:none;border-radius:8px;color:white;font-size:14px;font-weight:600;cursor:pointer;">Save & Enable Analytics</button>
+      <a href="dashboard.html" target="_blank" style="flex:1;display:block;text-align:center;padding:11px 20px;border:1px solid rgba(28,184,160,0.4);border-radius:8px;color:#1CB8A0;text-decoration:none;font-size:14px;font-weight:600;">Open Dashboard →</a>
+    </div>
+    <div id="analytics-status" style="margin-top:12px;font-size:12px;color:#1CB8A0;display:none;"></div>
+  </div>
+</div>
+
 <!-- HEADER -->
 <header>
   <div class="header-inner">
@@ -636,8 +664,10 @@ footer {
       </div>
     </div>
     <div class="header-stats">
-      <div class="stat-pill"><span class="visitor-dot"></span> Visitors today: <span class="val" id="visitor-count">—</span></div>
+      <div class="stat-pill"><span class="visitor-dot"></span> Total Visitors: <span class="val" id="visitor-count">—</span></div>
       <div class="stat-pill">📋 Analyses: <span class="val" id="analysis-count">0</span></div>
+      <a href="dashboard.html" target="_blank" class="stat-pill" style="text-decoration:none;cursor:pointer;" title="View Analytics Dashboard">📊 Dashboard</a>
+      <div class="stat-pill" onclick="toggleDbConfig()" style="cursor:pointer;" title="Configure Analytics">⚙️ Analytics</div>
       <div class="stat-pill">🇲🇾 HTPN</div>
     </div>
   </div>
@@ -1390,28 +1420,110 @@ const LIKERT_QUESTIONS = [
 ];
 
 // Visitor counter (simulated with localStorage)
-function initCounters() {
-  // Simple localStorage visitor counter (no external API dependency)
-  const today = new Date().toDateString();
-  let v = parseInt(localStorage.getItem('htpn_visitors') || '0');
-  if (localStorage.getItem('htpn_vday') !== today) {
-    v++;
-    localStorage.setItem('htpn_visitors', v);
-    localStorage.setItem('htpn_vday', today);
+function toggleDbConfig() {
+  const panel = document.getElementById('analytics-config');
+  const isHidden = panel.style.display === 'none' || panel.style.display === '';
+  panel.style.display = isHidden ? 'flex' : 'none';
+  // Pre-fill saved values
+  if (isHidden) {
+    const savedKey = localStorage.getItem('htpn_db_key') || '';
+    const savedBin = localStorage.getItem('htpn_db_bin') || '';
+    document.getElementById('db-key-input').value = savedKey;
+    document.getElementById('db-bin-input').value = savedBin;
   }
+}
+
+function saveAnalyticsConfig() {
+  const key = document.getElementById('db-key-input').value.trim();
+  const bin = document.getElementById('db-bin-input').value.trim();
+  if (!key || !bin) { alert('Please enter both your JSONBin Master Key and Bin ID.'); return; }
+  localStorage.setItem('htpn_db_key', key);
+  localStorage.setItem('htpn_db_bin', bin);
+  const status = document.getElementById('analytics-status');
+  status.style.display = 'block';
+  status.textContent = '✅ Analytics configured! Every analysis will now be logged to your shared dashboard.';
+  setTimeout(() => { toggleDbConfig(); }, 2000);
+}
+
+function initCounters() {
+  // Cumulative visitor counter — increments once per device ever (not per day)
+  if (!localStorage.getItem('htpn_visited')) {
+    let v = parseInt(localStorage.getItem('htpn_visitors') || '0') + 1;
+    localStorage.setItem('htpn_visitors', v);
+    localStorage.setItem('htpn_visited', '1'); // permanent flag — never resets
+  }
+  const v = parseInt(localStorage.getItem('htpn_visitors') || '1');
   const visitorEl = document.getElementById('visitor-count');
-  if (visitorEl) visitorEl.textContent = v;
+  if (visitorEl) visitorEl.textContent = v.toLocaleString();
 
   const a = parseInt(localStorage.getItem('htpn_analyses') || '0');
   const analysisEl = document.getElementById('analysis-count');
-  if (analysisEl) analysisEl.textContent = a;
+  if (analysisEl) analysisEl.textContent = a.toLocaleString();
 }
 
 function incrementAnalysisCount() {
   let a = parseInt(localStorage.getItem('htpn_analyses') || '0');
   a++;
   localStorage.setItem('htpn_analyses', a);
-  document.getElementById('analysis-count').textContent = a;
+  const el = document.getElementById('analysis-count');
+  if (el) el.textContent = a;
+  // Log to shared analytics dashboard (silent, non-blocking)
+  logToAnalytics(a);
+}
+
+// ── SHARED ANALYTICS LOGGING ──
+async function logToAnalytics(sessionCount) {
+  const key = localStorage.getItem('htpn_db_key');
+  const bin = localStorage.getItem('htpn_db_bin');
+  if (!key || !bin) return; // Dashboard not configured — skip silently
+
+  try {
+    // 1. Fetch current data
+    const getResp = await fetch('https://api.jsonbin.io/v3/b/'+bin+'/latest', {
+      headers: { 'X-Master-Key': key }
+    });
+    if (!getResp.ok) return;
+    const current = await getResp.json();
+    const data = current.record || { analyses:[], totalAnalyses:0, totalVisitors:0 };
+
+    // 2. Build new entry (NO patient data — aggregate only)
+    const role = document.getElementById('fb-role') ? document.getElementById('fb-role').value : '';
+    const dept = document.getElementById('fb-dept') ? document.getElementById('fb-dept').value : '';
+    const activeMode = document.querySelector('.mode-tab.active') ? document.querySelector('.mode-tab.active').textContent.trim() : 'Unknown';
+    const method = activeMode.includes('Voice') ? 'Voice/Audio' :
+                   activeMode.includes('Image') ? 'Image Upload' :
+                   activeMode.includes('Manual') ? 'Manual Text' : 'Unknown';
+
+    const newEntry = {
+      ts: new Date().toISOString(),
+      role: role || 'Not specified',
+      dept: dept || 'Not specified',
+      method: method,
+      count: sessionCount
+    };
+
+    data.analyses = (data.analyses || []);
+    data.analyses.push(newEntry);
+    if (data.analyses.length > 500) data.analyses = data.analyses.slice(-500); // keep last 500
+    data.totalAnalyses = (data.totalAnalyses || 0) + 1;
+
+    // Track visitor (once per device ever — permanent flag)
+    if (!localStorage.getItem('htpn_visitor_logged')) {
+      data.totalVisitors = (data.totalVisitors || 0) + 1;
+      localStorage.setItem('htpn_visitor_logged', '1');
+    }
+    data.lastUpdated = new Date().toISOString();
+
+    // 3. Save back to JSONBin
+    await fetch('https://api.jsonbin.io/v3/b/'+bin, {
+      method: 'PUT',
+      headers: { 'Content-Type':'application/json', 'X-Master-Key': key },
+      body: JSON.stringify(data)
+    });
+  } catch(e) {
+    // Silent fail — never break the main app
+    console.log('Analytics log skipped:', e.message);
+  }
 }
 
 // ── DISCLAIMER ──

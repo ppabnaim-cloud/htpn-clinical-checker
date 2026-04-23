@@ -800,41 +800,20 @@ body.light-mode #sticky-banner { background: var(--amber); }
                 <li>🚫 Speak too fast or mumble drug names</li>
                 <li>🚫 Use heavy abbreviations without spelling out</li>
                 <li>🚫 Rely solely on AI output — always verify</li>
-                <li>✅ Works on iPhone/iPad, Safari, Chrome, Edge, Firefox</li>
               </ul>
             </div>
           </div>
-          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(28,184,160,0.15);font-size:12px;">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;background:rgba(244,166,35,0.08);border:1px solid rgba(244,166,35,0.25);border-radius:8px;padding:10px 14px;">
-              <div style="display:flex;gap:10px;align-items:flex-start;">
-                <span style="font-size:16px;flex-shrink:0;">⚠️</span>
-                <div style="color:var(--text-muted);line-height:1.7;">
-                  <strong style="color:var(--amber);">Shared quota — 5 hours/month for all users.</strong>
-                  If the limit is reached, register free at
-                  <a href="https://www.assemblyai.com" target="_blank" style="color:var(--teal);font-weight:600;">assemblyai.com</a>
-                  and use your own key.
-                </div>
-              </div>
-              <button onclick="toggleAAIKeyPrompt()" style="white-space:nowrap;padding:5px 12px;background:rgba(28,184,160,0.15);border:1px solid rgba(28,184,160,0.3);border-radius:6px;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">🔑 Quota reached? Use own key</button>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(28,184,160,0.15);display:flex;flex-direction:column;gap:6px;font-size:12px;">
+            <div style="display:flex;align-items:flex-start;gap:8px;background:rgba(28,184,160,0.06);border:1px solid rgba(28,184,160,0.15);border-radius:8px;padding:9px 12px;">
+              <span style="flex-shrink:0;">✅</span>
+              <span style="color:var(--text-muted);line-height:1.6;"><strong style="color:var(--teal);">Chrome / Edge / Android</strong> — works instantly, completely free, no account needed.</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:8px;background:rgba(244,166,35,0.06);border:1px solid rgba(244,166,35,0.2);border-radius:8px;padding:9px 12px;">
+              <span style="flex-shrink:0;">⚠️</span>
+              <span style="color:var(--text-muted);line-height:1.6;"><strong style="color:var(--amber);">iPhone / iPad / Safari / Firefox</strong> — not supported here. Please use the <strong>Upload Recording</strong> tab instead — same quality, works on all devices.</span>
             </div>
           </div>
         </div>
-      <!-- ASSEMBLYAI KEY INPUT — hidden by default, shown only when quota reached or user requests -->
-      <div id="aai-key-prompt" style="display:none;flex-direction:column;gap:10px;background:rgba(28,184,160,0.06);border:1.5px solid rgba(28,184,160,0.25);border-radius:10px;padding:16px;margin-bottom:14px;">
-        <div style="font-size:13px;font-weight:700;color:var(--teal);">🔑 Shared Quota Reached — Enter Your Own AssemblyAI Key</div>
-        <div style="font-size:12px;color:var(--text-muted);line-height:1.6;">
-          The shared monthly quota has been reached. Register free at
-          <a href="https://www.assemblyai.com" target="_blank" style="color:var(--teal);font-weight:600;">assemblyai.com</a>
-          → copy your API key → paste below. Saved in your browser only. Free tier: 5 hours/month per key.
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <input id="aai-key-input" type="password" placeholder="Paste your AssemblyAI API key here..."
-            style="flex:1;padding:9px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(28,184,160,0.3);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;min-width:200px;">
-          <button onclick="saveAAIKey()" style="padding:9px 18px;background:var(--teal);border:none;border-radius:8px;color:white;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Save & Use</button>
-          <button onclick="document.getElementById('aai-key-prompt').style.display='none'" style="padding:9px 14px;background:transparent;border:1px solid var(--card-border);border-radius:8px;color:var(--text-muted);font-size:13px;cursor:pointer;">✕</button>
-        </div>
-      </div>
-
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
         <button class="btn btn-primary" id="speech-start-btn" onclick="startSpeech()" style="gap:8px;">
           🎙 Start Dictation
@@ -846,7 +825,6 @@ body.light-mode #sticky-banner { background: var(--amber); }
           <span style="width:10px;height:10px;background:var(--rose);border-radius:50%;animation:pulse-dot 1s ease-in-out infinite;display:inline-block;"></span>
           Recording — speak clearly...
         </div>
-        <button onclick="localStorage.removeItem('htpn_aai_key');document.getElementById('aai-key-prompt').style.display='flex';" style="padding:6px 12px;background:transparent;border:1px solid var(--card-border);border-radius:6px;color:var(--text-muted);font-size:12px;cursor:pointer;" title="Change API key">🔑 Change Key</button>
       </div>
       <div class="section-label">Live Transcript (editable)</div>
       <textarea id="speech-live" rows="6" placeholder="Your dictation will appear here in real time as you speak..." style="background:#F7F9FC;border:1.5px solid #DDE4ED;border-radius:var(--r);padding:14px;font-family:var(--mono);font-size:13px;line-height:1.8;width:100%;resize:vertical;outline:none;"></textarea>
@@ -856,16 +834,16 @@ body.light-mode #sticky-banner { background: var(--amber); }
       <!-- FILE UPLOAD (Groq Whisper) -->
       <div id="audio-sub-file" style="display:none;">
         <div style="background:#F0F9F6;border:1.5px solid rgba(28,184,160,0.25);border-radius:var(--r);padding:16px 18px;margin-bottom:14px;font-size:13px;">
-          <div style="font-weight:600;color:var(--navy);margin-bottom:10px;font-size:13.5px;">🎙 Recording Guidelines — Please Read Before Uploading</div>
+          <div style="font-weight:600;color:var(--navy);margin-bottom:10px;font-size:13.5px;">📂 Upload Recording Guidelines — Please Read Before Uploading</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
             <div>
               <div style="font-weight:600;color:#0F8C7A;margin-bottom:6px;">✅ DO</div>
               <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px;color:var(--text-muted);">
                 <li>🔇 Record in a quiet environment</li>
                 <li>🗣 Speak clearly and at normal pace</li>
-                <li>📋 Include patient's age, gender, complaint</li>
+                <li>📋 Include patient age, gender, complaint</li>
                 <li>💊 State drug name, dose and frequency clearly</li>
-                <li>🔢 Speak out vitals explicitly (e.g. "BP one-fifty-eight over ninety-six")</li>
+                <li>🔢 Speak vitals explicitly (e.g. "BP one-fifty-eight over ninety-six")</li>
                 <li>📁 Use .mp3, .m4a, .wav or .ogg format</li>
                 <li>⏱ Keep recordings under 10 minutes for best accuracy</li>
               </ul>
@@ -882,28 +860,23 @@ body.light-mode #sticky-banner { background: var(--amber); }
               </ul>
             </div>
           </div>
-          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(28,184,160,0.15);font-size:12px;">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;background:rgba(244,166,35,0.08);border:1px solid rgba(244,166,35,0.25);border-radius:8px;padding:10px 14px;">
-              <div style="display:flex;gap:10px;align-items:flex-start;">
-                <span style="font-size:16px;flex-shrink:0;">⚠️</span>
-                <div style="color:var(--text-muted);line-height:1.7;">
-                  <strong style="color:var(--amber);">Shared quota — resets daily.</strong>
-                  If the limit is reached, register free at
-                  <a href="https://console.groq.com" target="_blank" style="color:var(--teal);font-weight:600;">console.groq.com</a>
-                  and use your own key.
-                </div>
-              </div>
-              <button onclick="toggleGroqKeyPrompt()" style="white-space:nowrap;padding:5px 12px;background:rgba(28,184,160,0.15);border:1px solid rgba(28,184,160,0.3);border-radius:6px;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">🔑 Quota reached? Use own key</button>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(28,184,160,0.15);display:flex;flex-direction:column;gap:6px;font-size:12px;">
+            <div style="display:flex;align-items:flex-start;gap:8px;background:rgba(28,184,160,0.06);border:1px solid rgba(28,184,160,0.15);border-radius:8px;padding:9px 12px;">
+              <span style="flex-shrink:0;">✅</span>
+              <span style="color:var(--text-muted);line-height:1.6;"><strong style="color:var(--teal);">Works on ALL devices</strong> — iPhone, iPad, Safari, Chrome, Edge, Android, Firefox. Powered by <strong>Groq Whisper</strong> — free, fast, supports English and Bahasa Malaysia.</span>
             </div>
-            <!-- Groq own key input — hidden by default -->
-            <div id="groq-key-prompt" style="display:none;flex-direction:column;gap:10px;background:rgba(28,184,160,0.06);border:1.5px solid rgba(28,184,160,0.25);border-radius:10px;padding:16px;margin-top:10px;">
-              <div style="font-size:13px;font-weight:700;color:var(--teal);">🔑 Shared Quota Reached — Enter Your Own Groq Key</div>
-              <div style="font-size:12px;color:var(--text-muted);">The shared daily quota has been reached. Register free at
-              <a href="https://console.groq.com" target="_blank" style="color:var(--teal);font-weight:600;">console.groq.com</a>
-              → copy API key → paste below. Saved in your browser only. Resets every 24 hours.</div>
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;background:rgba(244,166,35,0.06);border:1px solid rgba(244,166,35,0.2);border-radius:8px;padding:9px 12px;">
+              <div style="display:flex;gap:8px;align-items:flex-start;">
+                <span style="flex-shrink:0;">⚠️</span>
+                <span style="color:var(--text-muted);line-height:1.6;"><strong style="color:var(--amber);">Shared quota — resets daily.</strong> If the limit is reached, register free at <a href="https://console.groq.com" target="_blank" style="color:var(--teal);font-weight:600;">console.groq.com</a> and use your own key.</span>
+              </div>
+              <button onclick="toggleGroqKeyPrompt()" style="white-space:nowrap;padding:5px 12px;background:rgba(28,184,160,0.15);border:1px solid rgba(28,184,160,0.3);border-radius:6px;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">🔑 Use own key</button>
+            </div>
+            <div id="groq-key-prompt" style="display:none;flex-direction:column;gap:10px;background:rgba(28,184,160,0.06);border:1.5px solid rgba(28,184,160,0.25);border-radius:10px;padding:14px;">
+              <div style="font-size:13px;font-weight:700;color:var(--teal);">🔑 Enter Your Own Groq Key</div>
+              <div style="font-size:12px;color:var(--text-muted);">Register free at <a href="https://console.groq.com" target="_blank" style="color:var(--teal);font-weight:600;">console.groq.com</a> → copy API key → paste below. Saved in your browser only.</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <input id="groq-key-input" type="password" placeholder="Paste your Groq API key here..."
-                  style="flex:1;padding:9px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(28,184,160,0.3);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;min-width:200px;">
+                <input id="groq-key-input" type="password" placeholder="Paste your Groq API key here..." style="flex:1;padding:9px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(28,184,160,0.3);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;min-width:200px;">
                 <button onclick="saveGroqKey()" style="padding:9px 18px;background:var(--teal);border:none;border-radius:8px;color:white;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Save & Use</button>
                 <button onclick="document.getElementById('groq-key-prompt').style.display='none'" style="padding:9px 14px;background:transparent;border:1px solid var(--card-border);border-radius:8px;color:var(--text-muted);font-size:13px;cursor:pointer;">✕</button>
               </div>
@@ -1501,34 +1474,40 @@ let aaiPartialText = '';
 let aaiFinalText = '';
 
 function checkSpeechSupport() {
-  // AssemblyAI uses MediaRecorder/getUserMedia — works everywhere
-  const supported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const ua = navigator.userAgent.toLowerCase();
+  const isIOS = /iphone|ipad|ipod/.test(ua);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const isFirefox = ua.includes('firefox');
+  const supported = !!SpeechRecognition && !isIOS && !isSafari && !isFirefox;
+
   const warn = document.getElementById('browser-warning');
   const info = document.getElementById('speech-info-banner');
   const startBtn = document.getElementById('speech-start-btn');
-  const aaiKeyStored = localStorage.getItem('htpn_aai_key') || '';
 
   if (!supported) {
-    if (warn) { warn.style.display = 'flex'; warn.querySelector('div').innerHTML = '<strong>Microphone not supported in this browser.</strong> Please use a modern browser (Chrome, Safari, Firefox) or use the Upload Recording tab.'; }
+    if (warn) {
+      warn.style.display = 'flex';
+      const warnDiv = warn.querySelector('div');
+      if (warnDiv) {
+        if (isIOS) {
+          warnDiv.innerHTML = '<strong>Live Dictation is not available on iPhone or iPad.</strong> Apple restricts microphone access for browser speech recognition. Please use the <strong>Upload Recording</strong> tab instead.';
+        } else {
+          warnDiv.innerHTML = '<strong>Live Dictation is not supported in this browser.</strong> Please use <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> on desktop/laptop, or use the <strong>Upload Recording</strong> tab instead.';
+        }
+      }
+    }
     if (info) info.style.display = 'none';
     if (startBtn) startBtn.disabled = true;
   } else {
     if (warn) warn.style.display = 'none';
     if (info) info.style.display = 'flex';
     if (startBtn) startBtn.disabled = false;
-    // Key prompt is always hidden on load — user opens it manually via "Use own key" button
   }
 }
 
 function toggleAAIKeyPrompt() {
-  const p = document.getElementById('aai-key-prompt');
-  p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
-  if (p.style.display === 'flex') {
-    const saved = localStorage.getItem('htpn_aai_key') || '';
-    document.getElementById('aai-key-input').value = saved;
-    document.getElementById('aai-key-input').focus();
-  }
-}
+
 
 function toggleGroqKeyPrompt() {
   const p = document.getElementById('groq-key-prompt');
@@ -1557,97 +1536,59 @@ function saveAAIKey() {
   const key = document.getElementById('aai-key-input').value.trim();
   if (!key) { alert('Please paste your AssemblyAI API key.'); return; }
   localStorage.setItem('htpn_aai_key', key);
-  document.getElementById('aai-key-prompt').style.display = 'none';
   document.getElementById('audio-status').style.display = 'flex';
   document.getElementById('audio-status').className = 'alert alert-info';
   document.getElementById('audio-status').innerHTML = '<span>✅</span><span>Your AssemblyAI key saved. Click Start Dictation to begin.</span>';
 }
 
-// Global recognition object for Web Speech API
+// Web Speech API — free, no key needed
 let recognition = null;
 let speechFinal = '';
 
-async function startSpeech() {
+function startSpeech() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const statusEl = document.getElementById('audio-status');
+
+  if (!SpeechRecognition) {
+    statusEl.style.display = 'flex';
+    statusEl.className = 'alert alert-warn';
+    statusEl.innerHTML = '<span>⚠</span><span>Live dictation is not supported on this browser. Please use <strong>Upload Recording</strong> instead, or switch to Chrome/Edge on desktop or Android.</span>';
+    return;
+  }
+
   statusEl.style.display = 'flex';
   statusEl.className = 'alert alert-info';
+  statusEl.innerHTML = '<span>🎙</span><span>Listening... speak now.</span>';
 
-  // OPTION 1: Web Speech API — free, no key, works on Chrome/Edge desktop & Android
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const ua = navigator.userAgent.toLowerCase();
-  const isIOS = /iphone|ipad|ipod/.test(ua);
-  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-  const isFirefox = ua.includes('firefox');
-  const webSpeechSupported = !!SpeechRecognition && !isIOS && !isSafari && !isFirefox;
+  speechFinal = document.getElementById('speech-live').value;
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-MY';
 
-  if (webSpeechSupported) {
-    // Use free Web Speech API directly — no key needed
-    statusEl.innerHTML = '<span>🎙</span><span>Listening... speak now.</span>';
-    speechFinal = document.getElementById('speech-live').value;
-    recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-MY';
-    recognition.onresult = function(event) {
-      let interim = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) speechFinal += event.results[i][0].transcript + ' ';
-        else interim += event.results[i][0].transcript;
-      }
-      document.getElementById('speech-live').value = speechFinal + interim;
-    };
-    recognition.onerror = function(e) {
-      statusEl.className = 'alert alert-warn';
-      statusEl.innerHTML = '<span>⚠</span><span>Microphone error: ' + e.error + '. Please allow microphone access and try again.</span>';
-      stopSpeech();
-    };
-    recognition.onend = function() {
-      if (document.getElementById('speech-indicator').style.display !== 'none') recognition.start();
-    };
-    recognition.start();
-    document.getElementById('speech-start-btn').style.display = 'none';
-    document.getElementById('speech-stop-btn').style.display = 'inline-flex';
-    document.getElementById('speech-indicator').style.display = 'flex';
-    return;
-  }
-
-  // OPTION 2: AssemblyAI — for iPhone/iPad/Safari/Firefox where Web Speech unavailable
-  statusEl.innerHTML = '<span>⏳</span><span>Connecting via AssemblyAI (shared quota)...</span>';
-
-  // Request mic access
-  try {
-    aaiStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  } catch(e) {
-    statusEl.className = 'alert alert-warn';
-    statusEl.innerHTML = '<span>⚠</span><span>Microphone access denied. Please allow microphone in browser settings and try again.</span>';
-    return;
-  }
-
-  // Try shared proxy first
-  let token = null;
-  try {
-    const tokenResp = await fetch('/api/assemblyai', { method: 'POST' });
-    const tokenData = await tokenResp.json();
-    if (tokenData.error) throw new Error(tokenData.error);
-    token = tokenData.token;
-  } catch(e) {
-    console.warn('Shared AssemblyAI proxy unavailable:', e.message);
-  }
-
-  // Fall back to personal key if shared fails
-  if (!token) {
-    const personalKey = localStorage.getItem('htpn_aai_key') || '';
-    if (personalKey) {
-      token = personalKey;
-      statusEl.innerHTML = '<span>⏳</span><span>Shared quota reached — using your personal key...</span>';
-    } else {
-      if (aaiStream) { aaiStream.getTracks().forEach(t => t.stop()); aaiStream = null; }
-      statusEl.className = 'alert alert-warn';
-      statusEl.innerHTML = '<span>⚠</span><span>Shared quota reached. Enter your own free key at <a href="https://www.assemblyai.com" target="_blank" style="color:var(--teal);">assemblyai.com</a> below.</span>';
-      document.getElementById('aai-key-prompt').style.display = 'flex';
-      return;
+  recognition.onresult = function(event) {
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) speechFinal += event.results[i][0].transcript + ' ';
+      else interim += event.results[i][0].transcript;
     }
-  }
+    document.getElementById('speech-live').value = speechFinal + interim;
+  };
+
+  recognition.onerror = function(e) {
+    statusEl.className = 'alert alert-warn';
+    statusEl.innerHTML = '<span>⚠</span><span>Microphone error: ' + e.error + '. Please allow microphone access and try again.</span>';
+    stopSpeech();
+  };
+
+  recognition.onend = function() {
+    if (document.getElementById('speech-indicator').style.display !== 'none') recognition.start();
+  };
+
+  recognition.start();
+  document.getElementById('speech-start-btn').style.display = 'none';
+  document.getElementById('speech-stop-btn').style.display = 'inline-flex';
+  document.getElementById('speech-indicator').style.display = 'flex';
 
   // Open WebSocket to AssemblyAI real-time endpoint
   const wsUrl = `wss://api.assemblyai.com/v2/realtime/ws?sample_rate=16000&token=${token}`;
@@ -1717,32 +1658,14 @@ function setupAudioCapture() {
 }
 
 function stopSpeech() {
-  // Stop Web Speech API if active
   if (recognition) {
     recognition.stop();
     recognition = null;
     speechFinal = '';
   }
-
-  // Stop AssemblyAI if active
-  if (aaiSocket) {
-    if (aaiSocket.readyState === WebSocket.OPEN) {
-      aaiSocket.send(JSON.stringify({ terminate_session: true }));
-    }
-    aaiSocket.close();
-    aaiSocket = null;
-  }
-  if (aaiProcessor) { aaiProcessor.disconnect(); aaiProcessor = null; }
-  if (aaiContext) { aaiContext.close(); aaiContext = null; }
-  if (aaiStream) { aaiStream.getTracks().forEach(t => t.stop()); aaiStream = null; }
-
-  aaiPartialText = '';
-  aaiFinalText = '';
-
   document.getElementById('speech-start-btn').style.display = 'inline-flex';
   document.getElementById('speech-stop-btn').style.display = 'none';
   document.getElementById('speech-indicator').style.display = 'none';
-
   const text = document.getElementById('speech-live').value.trim();
   if (text) {
     const statusEl = document.getElementById('audio-status');
@@ -1946,15 +1869,7 @@ function setTimeSaved(value, btn) {
   document.getElementById('fb-time-saved').value = value;
 }
 
-function initAssemblyAI() {
-  // Always hide key prompt on load — only shown when user clicks "Use own key"
-  const prompt = document.getElementById('aai-key-prompt');
-  if (prompt) prompt.style.display = 'none';
-  // Pre-fill input if key was previously saved (for when they toggle it open)
-  const keyStored = localStorage.getItem('htpn_aai_key') || '';
-  const input = document.getElementById('aai-key-input');
-  if (input && keyStored) input.value = keyStored;
-}
+function initAssemblyAI() { /* AssemblyAI removed — using Web Speech API */ }
 
 function initCounters() {
   // Simple localStorage visitor counter (no external API dependency)
@@ -2938,6 +2853,8 @@ async function submitFeedback() {
     statusEl.innerHTML = `<span>⚠</span><span>Could not send via EmailJS. Please email feedback directly to <strong>ppnaim@moh.gov.my</strong>. Error: ${e.text || e.message}</span>`;
   }
 }
+
+} // close any unclosed block
 
 // ── UTILITIES ──
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }

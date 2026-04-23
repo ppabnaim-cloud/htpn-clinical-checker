@@ -1563,51 +1563,88 @@ function saveAAIKey() {
   document.getElementById('audio-status').innerHTML = '<span>✅</span><span>Your AssemblyAI key saved. Click Start Dictation to begin.</span>';
 }
 
+// Global recognition object for Web Speech API
+let recognition = null;
+let speechFinal = '';
+
 async function startSpeech() {
   const statusEl = document.getElementById('audio-status');
+  statusEl.style.display = 'flex';
+  statusEl.className = 'alert alert-info';
 
-  // Request mic access first
+  // OPTION 1: Web Speech API — free, no key, works on Chrome/Edge desktop & Android
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const ua = navigator.userAgent.toLowerCase();
+  const isIOS = /iphone|ipad|ipod/.test(ua);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const isFirefox = ua.includes('firefox');
+  const webSpeechSupported = !!SpeechRecognition && !isIOS && !isSafari && !isFirefox;
+
+  if (webSpeechSupported) {
+    // Use free Web Speech API directly — no key needed
+    statusEl.innerHTML = '<span>🎙</span><span>Listening... speak now.</span>';
+    speechFinal = document.getElementById('speech-live').value;
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-MY';
+    recognition.onresult = function(event) {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) speechFinal += event.results[i][0].transcript + ' ';
+        else interim += event.results[i][0].transcript;
+      }
+      document.getElementById('speech-live').value = speechFinal + interim;
+    };
+    recognition.onerror = function(e) {
+      statusEl.className = 'alert alert-warn';
+      statusEl.innerHTML = '<span>⚠</span><span>Microphone error: ' + e.error + '. Please allow microphone access and try again.</span>';
+      stopSpeech();
+    };
+    recognition.onend = function() {
+      if (document.getElementById('speech-indicator').style.display !== 'none') recognition.start();
+    };
+    recognition.start();
+    document.getElementById('speech-start-btn').style.display = 'none';
+    document.getElementById('speech-stop-btn').style.display = 'inline-flex';
+    document.getElementById('speech-indicator').style.display = 'flex';
+    return;
+  }
+
+  // OPTION 2: AssemblyAI — for iPhone/iPad/Safari/Firefox where Web Speech unavailable
+  statusEl.innerHTML = '<span>⏳</span><span>Connecting via AssemblyAI (shared quota)...</span>';
+
+  // Request mic access
   try {
     aaiStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch(e) {
-    statusEl.style.display = 'flex';
     statusEl.className = 'alert alert-warn';
     statusEl.innerHTML = '<span>⚠</span><span>Microphone access denied. Please allow microphone in browser settings and try again.</span>';
     return;
   }
 
-  statusEl.style.display = 'flex';
-  statusEl.className = 'alert alert-info';
-  statusEl.innerHTML = '<span>⏳</span><span>Connecting to AssemblyAI shared quota...</span>';
-
-  // OPTION 1: Try shared proxy first (no key needed)
+  // Try shared proxy first
   let token = null;
-  let usingShared = false;
   try {
     const tokenResp = await fetch('/api/assemblyai', { method: 'POST' });
     const tokenData = await tokenResp.json();
     if (tokenData.error) throw new Error(tokenData.error);
     token = tokenData.token;
-    usingShared = true;
   } catch(e) {
-    console.warn('Shared AssemblyAI quota unavailable:', e.message);
+    console.warn('Shared AssemblyAI proxy unavailable:', e.message);
   }
 
-  // OPTION 2: Fall back to personal key if shared proxy fails/not configured
+  // Fall back to personal key if shared fails
   if (!token) {
     const personalKey = localStorage.getItem('htpn_aai_key') || '';
     if (personalKey) {
       token = personalKey;
-      statusEl.innerHTML = '<span>⏳</span><span>Connecting with your personal AssemblyAI key...</span>';
+      statusEl.innerHTML = '<span>⏳</span><span>Shared quota reached — using your personal key...</span>';
     } else {
-      // Shared proxy not working and no personal key — show key input
       if (aaiStream) { aaiStream.getTracks().forEach(t => t.stop()); aaiStream = null; }
       statusEl.className = 'alert alert-warn';
-      statusEl.innerHTML = '<span>⚠</span><span>Live dictation requires an AssemblyAI API key. Get a free key at <a href="https://www.assemblyai.com" target="_blank" style="color:var(--teal);">assemblyai.com</a> and enter it below.</span>';
+      statusEl.innerHTML = '<span>⚠</span><span>Shared quota reached. Enter your own free key at <a href="https://www.assemblyai.com" target="_blank" style="color:var(--teal);">assemblyai.com</a> below.</span>';
       document.getElementById('aai-key-prompt').style.display = 'flex';
-      // Update prompt title to reflect setup (not quota reached)
-      const promptTitle = document.querySelector('#aai-key-prompt div:first-child');
-      if (promptTitle) promptTitle.textContent = '🔑 Enter Your AssemblyAI API Key';
       return;
     }
   }
@@ -1680,7 +1717,14 @@ function setupAudioCapture() {
 }
 
 function stopSpeech() {
-  // Close WebSocket
+  // Stop Web Speech API if active
+  if (recognition) {
+    recognition.stop();
+    recognition = null;
+    speechFinal = '';
+  }
+
+  // Stop AssemblyAI if active
   if (aaiSocket) {
     if (aaiSocket.readyState === WebSocket.OPEN) {
       aaiSocket.send(JSON.stringify({ terminate_session: true }));
@@ -1688,10 +1732,8 @@ function stopSpeech() {
     aaiSocket.close();
     aaiSocket = null;
   }
-  // Stop audio processor
   if (aaiProcessor) { aaiProcessor.disconnect(); aaiProcessor = null; }
   if (aaiContext) { aaiContext.close(); aaiContext = null; }
-  // Stop microphone
   if (aaiStream) { aaiStream.getTracks().forEach(t => t.stop()); aaiStream = null; }
 
   aaiPartialText = '';
@@ -1703,9 +1745,10 @@ function stopSpeech() {
 
   const text = document.getElementById('speech-live').value.trim();
   if (text) {
-    document.getElementById('audio-status').style.display = 'flex';
-    document.getElementById('audio-status').className = 'alert alert-info';
-    document.getElementById('audio-status').innerHTML = '<span>✅</span><span>Dictation complete. Review and click Process Input to continue.</span>';
+    const statusEl = document.getElementById('audio-status');
+    statusEl.style.display = 'flex';
+    statusEl.className = 'alert alert-info';
+    statusEl.innerHTML = '<span>✅</span><span>Dictation complete. Review and click Process Input to continue.</span>';
   }
 }
 

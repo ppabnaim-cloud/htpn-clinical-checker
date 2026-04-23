@@ -655,9 +655,7 @@ body.light-mode #sticky-banner { background: var(--amber); }
   color: var(--rose) !important;
 }
 </style>
-  <!-- PDF & QR libraries — loaded early with error handling -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onerror="console.warn('jsPDF unavailable')"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" onerror="console.warn('QRCode unavailable')"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" onerror="window._qrFailed=true"></script>
 </head>
 <body>
 
@@ -1247,7 +1245,6 @@ You can also type or paste clinical notes directly."></textarea>
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
       <button class="btn btn-amber" onclick="exportDoc('txt')">⬇ Download .TXT</button>
       <button class="btn btn-primary" onclick="exportDoc('doc')">⬇ Download .DOC</button>
-      <button class="btn btn-primary" onclick="exportPDF()" style="background:var(--rose);">⬇ Download .PDF</button>
       <button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.2);" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
     </div>
     <p style="font-size:12px;margin-top:14px;opacity:0.5;">Note: For EMR upload, copy the text and paste into your hospital EMR system. No data is transmitted to external servers without your API key.</p>
@@ -1829,117 +1826,6 @@ function showQR() {
     });
     qrGenerated = true;
   }
-}
-
-// ══════════════════════════════════════════
-// PDF EXPORT
-// ══════════════════════════════════════════
-function exportPDF() {
-  if (!window.jspdf) {
-    alert('PDF library is still loading. Please wait a moment and try again, or use Download .TXT instead.');
-    return;
-  }
-  const name = document.getElementById('sign-name').value;
-  const mmc = document.getElementById('sign-mmc').value;
-  const status = document.getElementById('sign-status').value;
-  if (!name || !mmc || !status) {
-    alert('Please complete all sign-off fields before exporting.');
-    return;
-  }
-
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const d = collectSOAPData();
-  const designation = document.getElementById('sign-designation').value || '';
-  const dept = document.getElementById('sign-dept').value || '';
-  const dt = document.getElementById('sign-datetime').value || new Date().toLocaleString();
-  const statusText = document.getElementById('sign-status').options[document.getElementById('sign-status').selectedIndex]?.text || '';
-
-  const margin = 18;
-  const pageW = 210;
-  const contentW = pageW - margin * 2;
-  let y = margin;
-
-  // ── Header band ──
-  pdf.setFillColor(11, 31, 58);
-  pdf.rect(0, 0, pageW, 28, 'F');
-  pdf.setFillColor(28, 184, 160);
-  pdf.rect(0, 28, pageW, 2, 'F');
-
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(13);
-  pdf.text('HOSPITAL TENGKU PERMAISURI NORASHIKIN (HTPN)', margin, 11);
-  pdf.setFontSize(9);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text('Healthcare Intelligence Office  ·  Clinical Document Checker  ·  AI-Assisted Documentation', margin, 18);
-  pdf.setFontSize(8);
-  pdf.setTextColor(28, 184, 160);
-  pdf.text('By Dr Naim & AI Team HTPN  ·  DEMO / RESEARCH PROTOTYPE', margin, 24);
-
-  y = 38;
-
-  // ── Specialty tag ──
-  pdf.setFillColor(28, 184, 160, 0.15);
-  pdf.setDrawColor(28, 184, 160);
-  pdf.roundedRect(margin, y, contentW, 9, 2, 2, 'FD');
-  pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(11, 31, 58);
-  pdf.text('Specialty: ' + (d.specialty || 'General Medicine')  + '   |   Date: ' + new Date().toLocaleDateString('en-MY', {day:'numeric',month:'long',year:'numeric'}), margin+4, y+6);
-  y += 14;
-
-  function addSection(title, content) {
-    if (y > 255) { pdf.addPage(); y = margin; }
-    pdf.setFillColor(240, 244, 248);
-    pdf.rect(margin, y, contentW, 7, 'F');
-    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor(11, 31, 58);
-    pdf.text(title, margin + 3, y + 5);
-    y += 10;
-    if (content) {
-      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor(50, 60, 80);
-      const lines = pdf.splitTextToSize(content, contentW - 4);
-      lines.forEach(line => {
-        if (y > 270) { pdf.addPage(); y = margin; }
-        pdf.text(line, margin + 3, y);
-        y += 5;
-      });
-      y += 3;
-    }
-  }
-
-  // SOAP sections
-  addSection('S - Subjective', 'Chief Complaint: ' + (d.cc || 'Not documented') + '\nDrug Allergy: ' + (d.allergy || 'Not documented') + '\n' + (d.hopi || 'Not documented'));
-  addSection('O - Objective (Vitals)', d.vitals || 'Not documented');
-  if (d.bloods) addSection('O - Blood Investigations', d.bloods);
-  if (d.imaging) addSection('O - Imaging', d.imaging);
-  addSection('A - Assessment', (d.diagnosis || 'Not documented') + (d.issues ? '\nIssues: ' + d.issues : ''));
-  addSection('P - Plan', 'Short-term: ' + (d.shortPlan||'Not documented') + '\nLong-term: ' + (d.longPlan||'Not documented'));
-    if (d.drugs) addSection('Drug List', d.drugs);
-
-  // ICD-11
-  const icdLines = (analysisData.icd_codes || []).map(function(ic) { return ic.code + '  ' + ic.description + '  (' + ic.confidence + '%)'; }).join('\n');
-  if (icdLines) addSection('ICD-11 Codes (AI-suggested — verify before coding)', icdLines);
-
-  // Quality scores
-  if (analysisData.completeness_score) {
-    addSection('Documentation Quality', 
-      'Completeness: ' + analysisData.completeness_score + '/10  |  Legibility: ' + analysisData.legibility_score + '/10  |  Medico-legal: ' + analysisData.medico_legal_score + '/10'
-    );
-  }
-
-  // Sign-off footer
-  if (y > 240) { pdf.addPage(); y = margin; }
-  y += 4;
-  pdf.setFillColor(11, 31, 58);
-  pdf.rect(margin, y, contentW, 28, 'F');
-  pdf.setTextColor(28, 184, 160); pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9);
-  pdf.text('CLINICIAN SIGN-OFF — HITL VERIFICATION COMPLETED', margin+4, y+7);
-  pdf.setTextColor(255, 255, 255); pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8);
-  pdf.text('Name: ' + name + '   |   MMC: ' + mmc + '   |   Designation: ' + designation, margin+4, y+14);
-  pdf.text('Department: ' + (dept||'Not specified') + '   |   Date/Time: ' + dt, margin+4, y+19);
-  pdf.text('Review Status: ' + statusText + '   |   Clinical responsibility remains with the treating clinician.', margin+4, y+24);
-
-  const fname = 'HTPN_ClinDoc_' + new Date().toISOString().slice(0,10) + '_' + name.replace(/\s/g,'_') + '.pdf';
-  pdf.save(fname);
 }
 
 // ══════════════════════════════════════════

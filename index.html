@@ -615,6 +615,34 @@ footer {
   color: var(--teal);
   font-weight: 700;
 }
+/* ── LIGHT MODE ── */
+body.light-mode {
+  --navy: #F0F4F8;
+  --navy-mid: #E2EAF4;
+  --navy-light: #D0DCF0;
+  --text: #0B1F3A;
+  --text-muted: #4A6A8A;
+  --card: rgba(0,0,0,0.04);
+  --card-border: rgba(11,31,58,0.12);
+  background: #F0F4F8;
+  color: #0B1F3A;
+}
+body.light-mode header { background: #0B1F3A; }
+body.light-mode .step-tab { color: #4A6A8A; }
+body.light-mode .step-tab.active { color: #0B1F3A; }
+body.light-mode .card { background: #FFFFFF; border-color: rgba(11,31,58,0.1); color: #0B1F3A; }
+body.light-mode .card-title { color: #0B1F3A; }
+body.light-mode .card-sub { color: #5A7290; }
+body.light-mode .analysis-section { border-color: rgba(11,31,58,0.1); }
+body.light-mode input, body.light-mode textarea, body.light-mode select {
+  background: #FFFFFF; border-color: rgba(11,31,58,0.15); color: #0B1F3A;
+}
+body.light-mode .field label { color: #4A6A8A; }
+body.light-mode .vitals-grid .vital-chip { background: #F7F9FC; border-color: rgba(11,31,58,0.12); }
+body.light-mode .vital-val { color: #0B1F3A; }
+body.light-mode footer { background: #0B1F3A; }
+body.light-mode #sticky-banner { background: var(--amber); }
+
 /* ── ALLERGY BUTTONS ── */
 .allergy-btn.active {
   background: rgba(28,184,160,0.15) !important;
@@ -667,8 +695,12 @@ footer {
       </div>
     </div>
     <div class="header-stats">
-      <div class="stat-pill"><span class="visitor-dot"></span> Visitors today: <span class="val" id="visitor-count">—</span></div>
+      <div class="stat-pill"><span class="visitor-dot"></span> Total Visitors: <span class="val" id="visitor-count">—</span></div>
       <div class="stat-pill">📋 Analyses: <span class="val" id="analysis-count">0</span></div>
+      <a href="dashboard.html" target="_blank" class="stat-pill" style="text-decoration:none;cursor:pointer;" title="View Analytics Dashboard">📊 Dashboard</a>
+      <div class="stat-pill" onclick="toggleDbConfig()" style="cursor:pointer;" title="Configure Analytics">⚙️ Analytics</div>
+      <div class="stat-pill" onclick="toggleDarkMode()" id="dark-mode-btn" style="cursor:pointer;" title="Toggle Dark/Light Mode">🌙 Dark</div>
+      <div class="stat-pill" onclick="showQR()" style="cursor:pointer;" title="Share app via QR code">📷 QR</div>
       <div class="stat-pill">🇲🇾 HTPN</div>
     </div>
   </div>
@@ -1212,6 +1244,7 @@ You can also type or paste clinical notes directly."></textarea>
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
       <button class="btn btn-amber" onclick="exportDoc('txt')">⬇ Download .TXT</button>
       <button class="btn btn-primary" onclick="exportDoc('doc')">⬇ Download .DOC</button>
+      <button class="btn btn-primary" onclick="exportPDF()" style="background:var(--rose);">⬇ Download .PDF</button>
       <button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.2);" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
     </div>
     <p style="font-size:12px;margin-top:14px;opacity:0.5;">Note: For EMR upload, copy the text and paste into your hospital EMR system. No data is transmitted to external servers without your API key.</p>
@@ -1294,6 +1327,18 @@ You can also type or paste clinical notes directly."></textarea>
     </div>
 
     <div class="field" style="margin-bottom:16px;">
+      <label>⏱ Approximately how many minutes did this tool save you today?</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;" id="time-saved-bar">
+        <button class="time-btn" onclick="setTimeSaved('Less than 5 min',this)" style="padding:8px 16px;border-radius:8px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);">&lt; 5 min</button>
+        <button class="time-btn" onclick="setTimeSaved('5-10 min',this)" style="padding:8px 16px;border-radius:8px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);">5–10 min</button>
+        <button class="time-btn" onclick="setTimeSaved('10-20 min',this)" style="padding:8px 16px;border-radius:8px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);">10–20 min</button>
+        <button class="time-btn" onclick="setTimeSaved('More than 20 min',this)" style="padding:8px 16px;border-radius:8px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);">&gt; 20 min</button>
+        <button class="time-btn" onclick="setTimeSaved('No time saved',this)" style="padding:8px 16px;border-radius:8px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);">No time saved</button>
+      </div>
+      <input type="hidden" id="fb-time-saved" value="">
+    </div>
+
+    <div class="field" style="margin-bottom:16px;">
       <label>Suggested Improvement / Free Text</label>
       <textarea id="fb-text" rows="5" placeholder="What would make this tool more useful in your clinical workflow? Any bugs, inaccuracies, or features you'd like to see?"></textarea>
     </div>
@@ -1322,6 +1367,17 @@ You can also type or paste clinical notes directly."></textarea>
 
     <button class="btn btn-primary" onclick="submitFeedback()">Submit Feedback →</button>
     <div id="fb-status" style="margin-top:12px;display:none;"></div>
+  </div>
+</div>
+
+<!-- QR CODE MODAL -->
+<div id="qr-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(11,31,58,0.85);z-index:9000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#112847;border:1px solid rgba(28,184,160,0.3);border-radius:16px;padding:32px;max-width:360px;width:100%;text-align:center;box-shadow:0 24px 80px rgba(0,0,0,0.5);">
+    <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--teal);margin-bottom:6px;">📷 Share App</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Scan to open Clinical Document Checker on any device</div>
+    <div id="qr-code" style="display:inline-block;background:white;padding:12px;border-radius:10px;margin-bottom:20px;"></div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px;word-break:break-all;font-family:monospace;">htpn-clinical-checker.vercel.app</div>
+    <button onclick="document.getElementById('qr-modal').style.display='none'" style="padding:10px 28px;background:var(--teal);border:none;border-radius:8px;color:white;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--sans);">Close</button>
   </div>
 </div>
 
@@ -1647,6 +1703,262 @@ function setAllergy(type, btn) {
     input.value = 'Not documented';
     input.style.borderLeftColor = 'var(--amber)';
   }
+}
+
+// ══════════════════════════════════════════
+// SESSION AUTO-SAVE & RESTORE
+// ══════════════════════════════════════════
+const SESSION_KEY = 'htpn_session';
+
+function autoSaveSession() {
+  try {
+    const session = {
+      transcript: document.getElementById('transcript-text')?.value || '',
+      cc: document.getElementById('f-cc')?.value || '',
+      hopi: document.getElementById('f-hopi')?.value || '',
+      allergy: document.getElementById('f-allergy')?.value || '',
+      bp: document.getElementById('v-bp')?.value || '',
+      pr: document.getElementById('v-pr')?.value || '',
+      temp: document.getElementById('v-temp')?.value || '',
+      rr: document.getElementById('v-rr')?.value || '',
+      spo2: document.getElementById('v-spo2')?.value || '',
+      glucose: document.getElementById('v-glucose')?.value || '',
+      gcs: document.getElementById('v-gcs')?.value || '',
+      bloods: document.getElementById('f-bloods')?.value || '',
+      imaging: document.getElementById('f-imaging')?.value || '',
+      procedures: document.getElementById('f-procedures')?.value || '',
+      diagnosis: document.getElementById('f-diagnosis')?.value || '',
+      issues: document.getElementById('f-issues')?.value || '',
+      shortPlan: document.getElementById('f-short-plan')?.value || '',
+      longPlan: document.getElementById('f-long-plan')?.value || '',
+      specialty: selectedSpecialty || 'General Medicine',
+      savedAt: new Date().toISOString(),
+    };
+    // Only save if there is meaningful data
+    if (session.transcript || session.cc || session.diagnosis) {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    }
+  } catch(e) { /* silent fail */ }
+}
+
+function restoreSession() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (!s.transcript && !s.cc && !s.diagnosis) return;
+
+    // Restore fields
+    if (s.transcript) { const el = document.getElementById('transcript-text'); if(el) el.value = s.transcript; }
+    if (s.cc) { const el = document.getElementById('f-cc'); if(el) el.value = s.cc; }
+    if (s.hopi) { const el = document.getElementById('f-hopi'); if(el) el.value = s.hopi; }
+    if (s.allergy) { const el = document.getElementById('f-allergy'); if(el) el.value = s.allergy; }
+    ['bp','pr','temp','rr','spo2','glucose','gcs'].forEach(v => {
+      if (s[v]) { const el = document.getElementById('v-'+v); if(el) el.value = s[v]; }
+    });
+    ['bloods','imaging','procedures','diagnosis','issues'].forEach(f => {
+      if (s[f]) { const el = document.getElementById('f-'+f); if(el) el.value = s[f]; }
+    });
+    if (s.shortPlan) { const el = document.getElementById('f-short-plan'); if(el) el.value = s.shortPlan; }
+    if (s.longPlan) { const el = document.getElementById('f-long-plan'); if(el) el.value = s.longPlan; }
+    if (s.specialty) {
+      selectedSpecialty = s.specialty;
+      document.querySelectorAll('.spec-btn').forEach(b => {
+        b.classList.toggle('active', b.textContent.includes(s.specialty));
+      });
+    }
+
+    // Show recovery banner
+    const banner = document.createElement('div');
+    banner.className = 'alert alert-info';
+    banner.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:7000;max-width:500px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.3);';
+    const savedTime = new Date(s.savedAt).toLocaleTimeString('en-MY', {hour:'2-digit',minute:'2-digit'});
+    banner.innerHTML = `<span>♻️</span><span><strong>Session recovered</strong> from ${savedTime} — review all fields before proceeding. <button onclick="sessionStorage.removeItem('${SESSION_KEY}');this.parentElement.parentElement.remove();" style="margin-left:10px;padding:2px 10px;border-radius:6px;border:1px solid rgba(28,184,160,0.4);background:transparent;color:var(--teal);cursor:pointer;font-size:12px;">Clear</button></span>`;
+    document.body.appendChild(banner);
+    setTimeout(() => banner.remove(), 8000);
+  } catch(e) { /* silent fail */ }
+}
+
+// Start auto-save every 30 seconds
+function startAutoSave() {
+  setInterval(autoSaveSession, 30000);
+}
+
+// ══════════════════════════════════════════
+// DARK MODE
+// ══════════════════════════════════════════
+function toggleDarkMode() {
+  const isDark = document.body.classList.toggle('light-mode');
+  const btn = document.getElementById('dark-mode-btn');
+  if (btn) btn.textContent = isDark ? '🌙 Dark' : '☀️ Light';
+  localStorage.setItem('htpn_theme', isDark ? 'light' : 'dark');
+}
+
+function initTheme() {
+  const theme = localStorage.getItem('htpn_theme') || 'dark';
+  if (theme === 'light') {
+    document.body.classList.add('light-mode');
+    const btn = document.getElementById('dark-mode-btn');
+    if (btn) btn.textContent = '☀️ Light';
+  }
+}
+
+// ══════════════════════════════════════════
+// QR CODE
+// ══════════════════════════════════════════
+let qrGenerated = false;
+function showQR() {
+  const modal = document.getElementById('qr-modal');
+  modal.style.display = 'flex';
+  if (!qrGenerated) {
+    const container = document.getElementById('qr-code');
+    container.innerHTML = '';
+    new QRCode(container, {
+      text: window.location.origin + '/index.html',
+      width: 200, height: 200,
+      colorDark: '#0B1F3A',
+      colorLight: '#FFFFFF',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+    qrGenerated = true;
+  }
+}
+
+// ══════════════════════════════════════════
+// PDF EXPORT
+// ══════════════════════════════════════════
+function exportPDF() {
+  const name = document.getElementById('sign-name').value;
+  const mmc = document.getElementById('sign-mmc').value;
+  const status = document.getElementById('sign-status').value;
+  if (!name || !mmc || !status) {
+    alert('Please complete all sign-off fields before exporting.');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const d = collectSOAPData();
+  const designation = document.getElementById('sign-designation').value || '';
+  const dept = document.getElementById('sign-dept').value || '';
+  const dt = document.getElementById('sign-datetime').value || new Date().toLocaleString();
+  const statusText = document.getElementById('sign-status').options[document.getElementById('sign-status').selectedIndex]?.text || '';
+
+  const margin = 18;
+  const pageW = 210;
+  const contentW = pageW - margin * 2;
+  let y = margin;
+
+  // ── Header band ──
+  pdf.setFillColor(11, 31, 58);
+  pdf.rect(0, 0, pageW, 28, 'F');
+  pdf.setFillColor(28, 184, 160);
+  pdf.rect(0, 28, pageW, 2, 'F');
+
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(13);
+  pdf.text('HOSPITAL TENGKU PERMAISURI NORASHIKIN (HTPN)', margin, 11);
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('Healthcare Intelligence Office  ·  Clinical Document Checker  ·  AI-Assisted Documentation', margin, 18);
+  pdf.setFontSize(8);
+  pdf.setTextColor(28, 184, 160);
+  pdf.text('By Dr Naim & AI Team HTPN  ·  DEMO / RESEARCH PROTOTYPE', margin, 24);
+
+  y = 38;
+
+  // ── Specialty tag ──
+  pdf.setFillColor(28, 184, 160, 0.15);
+  pdf.setDrawColor(28, 184, 160);
+  pdf.roundedRect(margin, y, contentW, 9, 2, 2, 'FD');
+  pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(11, 31, 58);
+  pdf.text('Specialty: ' + (d.specialty || 'General Medicine')  + '   |   Date: ' + new Date().toLocaleDateString('en-MY', {day:'numeric',month:'long',year:'numeric'}), margin+4, y+6);
+  y += 14;
+
+  function addSection(title, content) {
+    if (y > 255) { pdf.addPage(); y = margin; }
+    pdf.setFillColor(240, 244, 248);
+    pdf.rect(margin, y, contentW, 7, 'F');
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor(11, 31, 58);
+    pdf.text(title, margin + 3, y + 5);
+    y += 10;
+    if (content) {
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor(50, 60, 80);
+      const lines = pdf.splitTextToSize(content, contentW - 4);
+      lines.forEach(line => {
+        if (y > 270) { pdf.addPage(); y = margin; }
+        pdf.text(line, margin + 3, y);
+        y += 5;
+      });
+      y += 3;
+    }
+  }
+
+  // SOAP sections
+  addSection('S — Subjective',
+    'Chief Complaint: ' + (d.cc || '—') + '
+' +
+    'Drug Allergy: ' + (d.allergy || 'Not documented') + '
+' +
+    (d.hopi || '—')
+  );
+  addSection('O — Objective (Vitals)', d.vitals || '—');
+  if (d.bloods) addSection('O — Blood Investigations', d.bloods);
+  if (d.imaging) addSection('O — Imaging', d.imaging);
+  addSection('A — Assessment', (d.diagnosis || '—') + (d.issues ? '
+
+Issues: ' + d.issues : ''));
+  addSection('P — Plan', 'Short-term: ' + (d.shortPlan||'—') + '
+
+Long-term: ' + (d.longPlan||'—'));
+  if (d.drugs) addSection('Drug List', d.drugs);
+
+  // ICD-11
+  const icdLines = (analysisData.icd_codes || []).map(c => c.code + '  ' + c.description + '  (' + c.confidence + '%)').join('
+');
+  if (icdLines) addSection('ICD-11 Codes (AI-suggested — verify before coding)', icdLines);
+
+  // Quality scores
+  if (analysisData.completeness_score) {
+    addSection('Documentation Quality', 
+      'Completeness: ' + analysisData.completeness_score + '/10   ' +
+      'Legibility: ' + analysisData.legibility_score + '/10   ' +
+      'Medico-legal: ' + analysisData.medico_legal_score + '/10'
+    );
+  }
+
+  // Sign-off footer
+  if (y > 240) { pdf.addPage(); y = margin; }
+  y += 4;
+  pdf.setFillColor(11, 31, 58);
+  pdf.rect(margin, y, contentW, 28, 'F');
+  pdf.setTextColor(28, 184, 160); pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9);
+  pdf.text('CLINICIAN SIGN-OFF — HITL VERIFICATION COMPLETED', margin+4, y+7);
+  pdf.setTextColor(255, 255, 255); pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8);
+  pdf.text('Name: ' + name + '   |   MMC: ' + mmc + '   |   Designation: ' + designation, margin+4, y+14);
+  pdf.text('Department: ' + (dept||'—') + '   |   Date/Time: ' + dt, margin+4, y+19);
+  pdf.text('Review Status: ' + statusText + '   |   Clinical responsibility remains with the treating clinician.', margin+4, y+24);
+
+  const fname = 'HTPN_ClinDoc_' + new Date().toISOString().slice(0,10) + '_' + name.replace(/\s/g,'_') + '.pdf';
+  pdf.save(fname);
+}
+
+// ══════════════════════════════════════════
+// TIME SAVED SELECTOR
+// ══════════════════════════════════════════
+function setTimeSaved(value, btn) {
+  document.querySelectorAll('.time-btn').forEach(b => {
+    b.style.background = 'transparent';
+    b.style.borderColor = 'rgba(255,255,255,0.1)';
+    b.style.color = 'var(--text-muted)';
+    b.style.fontWeight = '500';
+  });
+  btn.style.background = 'rgba(28,184,160,0.15)';
+  btn.style.borderColor = 'var(--teal)';
+  btn.style.color = 'var(--teal)';
+  btn.style.fontWeight = '700';
+  document.getElementById('fb-time-saved').value = value;
 }
 
 function initAssemblyAI() {
@@ -2619,6 +2931,7 @@ async function submitFeedback() {
     from_role: anon ? 'Anonymous' : role,
     from_dept: anon ? 'Anonymous' : dept,
     best_feature: feature || 'Not specified',
+    time_saved: document.getElementById('fb-time-saved')?.value || 'Not answered',
     q1: likert.q1 || '-', q2: likert.q2 || '-', q3: likert.q3 || '-',
     q4: likert.q4 || '-', q5: likert.q5 || '-', q6: likert.q6 || '-',
     free_text: text || '(none)',
@@ -2648,8 +2961,15 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 // ── INIT ──
 initCounters();
 initAssemblyAI();
+initTheme();
+startAutoSave();
+restoreSession();
 buildLikertUI();
 checkSpeechSupport();
 </script>
+<!-- jsPDF for PDF export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- QRCode.js for QR share -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </body>
 </html>

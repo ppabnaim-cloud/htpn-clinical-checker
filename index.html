@@ -1593,18 +1593,21 @@ async function startSpeech() {
     console.warn('Shared AssemblyAI quota unavailable:', e.message);
   }
 
-  // OPTION 2: Fall back to personal key if shared fails
+  // OPTION 2: Fall back to personal key if shared proxy fails/not configured
   if (!token) {
     const personalKey = localStorage.getItem('htpn_aai_key') || '';
     if (personalKey) {
       token = personalKey;
-      statusEl.innerHTML = '<span>⏳</span><span>Shared quota reached — connecting with your personal key...</span>';
+      statusEl.innerHTML = '<span>⏳</span><span>Connecting with your personal AssemblyAI key...</span>';
     } else {
-      // No personal key saved — prompt user to enter one
+      // Shared proxy not working and no personal key — show key input
       if (aaiStream) { aaiStream.getTracks().forEach(t => t.stop()); aaiStream = null; }
       statusEl.className = 'alert alert-warn';
-      statusEl.innerHTML = '<span>⚠</span><span>Shared quota reached for this month. Please use your own free API key to continue.</span>';
+      statusEl.innerHTML = '<span>⚠</span><span>Live dictation requires an AssemblyAI API key. Get a free key at <a href="https://www.assemblyai.com" target="_blank" style="color:var(--teal);">assemblyai.com</a> and enter it below.</span>';
       document.getElementById('aai-key-prompt').style.display = 'flex';
+      // Update prompt title to reflect setup (not quota reached)
+      const promptTitle = document.querySelector('#aai-key-prompt div:first-child');
+      if (promptTitle) promptTitle.textContent = '🔑 Enter Your AssemblyAI API Key';
       return;
     }
   }

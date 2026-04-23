@@ -655,6 +655,9 @@ body.light-mode #sticky-banner { background: var(--amber); }
   color: var(--rose) !important;
 }
 </style>
+  <!-- PDF & QR libraries — loaded early with error handling -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onerror="console.warn('jsPDF unavailable')"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" onerror="console.warn('QRCode unavailable')"></script>
 </head>
 <body>
 
@@ -1808,6 +1811,10 @@ function initTheme() {
 // ══════════════════════════════════════════
 let qrGenerated = false;
 function showQR() {
+  if (typeof QRCode === 'undefined') {
+    alert('QR library is still loading. Please try again in a moment.');
+    return;
+  }
   const modal = document.getElementById('qr-modal');
   modal.style.display = 'flex';
   if (!qrGenerated) {
@@ -1828,6 +1835,10 @@ function showQR() {
 // PDF EXPORT
 // ══════════════════════════════════════════
 function exportPDF() {
+  if (!window.jspdf) {
+    alert('PDF library is still loading. Please wait a moment and try again, or use Download .TXT instead.');
+    return;
+  }
   const name = document.getElementById('sign-name').value;
   const mmc = document.getElementById('sign-mmc').value;
   const status = document.getElementById('sign-status').value;
@@ -1896,35 +1907,22 @@ function exportPDF() {
   }
 
   // SOAP sections
-  addSection('S — Subjective',
-    'Chief Complaint: ' + (d.cc || '—') + '
-' +
-    'Drug Allergy: ' + (d.allergy || 'Not documented') + '
-' +
-    (d.hopi || '—')
-  );
-  addSection('O — Objective (Vitals)', d.vitals || '—');
-  if (d.bloods) addSection('O — Blood Investigations', d.bloods);
-  if (d.imaging) addSection('O — Imaging', d.imaging);
-  addSection('A — Assessment', (d.diagnosis || '—') + (d.issues ? '
-
-Issues: ' + d.issues : ''));
-  addSection('P — Plan', 'Short-term: ' + (d.shortPlan||'—') + '
-
-Long-term: ' + (d.longPlan||'—'));
-  if (d.drugs) addSection('Drug List', d.drugs);
+  addSection('S - Subjective', 'Chief Complaint: ' + (d.cc || 'Not documented') + '\nDrug Allergy: ' + (d.allergy || 'Not documented') + '\n' + (d.hopi || 'Not documented'));
+  addSection('O - Objective (Vitals)', d.vitals || 'Not documented');
+  if (d.bloods) addSection('O - Blood Investigations', d.bloods);
+  if (d.imaging) addSection('O - Imaging', d.imaging);
+  addSection('A - Assessment', (d.diagnosis || 'Not documented') + (d.issues ? '\nIssues: ' + d.issues : ''));
+  addSection('P - Plan', 'Short-term: ' + (d.shortPlan||'Not documented') + '\nLong-term: ' + (d.longPlan||'Not documented'));
+    if (d.drugs) addSection('Drug List', d.drugs);
 
   // ICD-11
-  const icdLines = (analysisData.icd_codes || []).map(c => c.code + '  ' + c.description + '  (' + c.confidence + '%)').join('
-');
+  const icdLines = (analysisData.icd_codes || []).map(function(ic) { return ic.code + '  ' + ic.description + '  (' + ic.confidence + '%)'; }).join('\n');
   if (icdLines) addSection('ICD-11 Codes (AI-suggested — verify before coding)', icdLines);
 
   // Quality scores
   if (analysisData.completeness_score) {
     addSection('Documentation Quality', 
-      'Completeness: ' + analysisData.completeness_score + '/10   ' +
-      'Legibility: ' + analysisData.legibility_score + '/10   ' +
-      'Medico-legal: ' + analysisData.medico_legal_score + '/10'
+      'Completeness: ' + analysisData.completeness_score + '/10  |  Legibility: ' + analysisData.legibility_score + '/10  |  Medico-legal: ' + analysisData.medico_legal_score + '/10'
     );
   }
 
@@ -1937,7 +1935,7 @@ Long-term: ' + (d.longPlan||'—'));
   pdf.text('CLINICIAN SIGN-OFF — HITL VERIFICATION COMPLETED', margin+4, y+7);
   pdf.setTextColor(255, 255, 255); pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8);
   pdf.text('Name: ' + name + '   |   MMC: ' + mmc + '   |   Designation: ' + designation, margin+4, y+14);
-  pdf.text('Department: ' + (dept||'—') + '   |   Date/Time: ' + dt, margin+4, y+19);
+  pdf.text('Department: ' + (dept||'Not specified') + '   |   Date/Time: ' + dt, margin+4, y+19);
   pdf.text('Review Status: ' + statusText + '   |   Clinical responsibility remains with the treating clinician.', margin+4, y+24);
 
   const fname = 'HTPN_ClinDoc_' + new Date().toISOString().slice(0,10) + '_' + name.replace(/\s/g,'_') + '.pdf';
@@ -2794,9 +2792,9 @@ ${(analysisData.icd_codes || []).map(c => `${c.code}  ${c.description}  (${c.con
 ${'─'.repeat(60)}
 DOCUMENTATION QUALITY
 ${'─'.repeat(60)}
-Completeness: ${analysisData.completeness_score || '—'}/10
-Legibility: ${analysisData.legibility_score || '—'}/10
-Medico-legal Score: ${analysisData.medico_legal_score || '—'}/10
+Completeness: ${analysisData.completeness_score || 'N/A'}/10
+Legibility: ${analysisData.legibility_score || 'N/A'}/10
+Medico-legal Score: ${analysisData.medico_legal_score || 'N/A'}/10
 
 ${'─'.repeat(60)}
 RISK FLAGS
@@ -2967,9 +2965,5 @@ restoreSession();
 buildLikertUI();
 checkSpeechSupport();
 </script>
-<!-- jsPDF for PDF export -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<!-- QRCode.js for QR share -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </body>
 </html>

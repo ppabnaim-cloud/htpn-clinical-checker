@@ -815,15 +815,17 @@ body.light-mode #sticky-banner { background: var(--amber); }
                   and use your own key.
                 </div>
               </div>
-              <button onclick="toggleAAIKeyPrompt()" style="white-space:nowrap;padding:5px 12px;background:rgba(28,184,160,0.15);border:1px solid rgba(28,184,160,0.3);border-radius:6px;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">🔑 Use own key</button>
+              <button onclick="toggleAAIKeyPrompt()" style="white-space:nowrap;padding:5px 12px;background:rgba(28,184,160,0.15);border:1px solid rgba(28,184,160,0.3);border-radius:6px;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">🔑 Quota reached? Use own key</button>
             </div>
           </div>
         </div>
       <!-- ASSEMBLYAI KEY INPUT — hidden by default, shown only when quota reached or user requests -->
       <div id="aai-key-prompt" style="display:none;flex-direction:column;gap:10px;background:rgba(28,184,160,0.06);border:1.5px solid rgba(28,184,160,0.25);border-radius:10px;padding:16px;margin-bottom:14px;">
-        <div style="font-size:13px;font-weight:700;color:var(--teal);">🔑 Enter Your Own AssemblyAI Key</div>
+        <div style="font-size:13px;font-weight:700;color:var(--teal);">🔑 Shared Quota Reached — Enter Your Own AssemblyAI Key</div>
         <div style="font-size:12px;color:var(--text-muted);line-height:1.6;">
-          Register free at <a href="https://www.assemblyai.com" target="_blank" style="color:var(--teal);font-weight:600;">assemblyai.com</a> → copy your API key → paste below. Saved in your browser only.
+          The shared monthly quota has been reached. Register free at
+          <a href="https://www.assemblyai.com" target="_blank" style="color:var(--teal);font-weight:600;">assemblyai.com</a>
+          → copy your API key → paste below. Saved in your browser only. Free tier: 5 hours/month per key.
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <input id="aai-key-input" type="password" placeholder="Paste your AssemblyAI API key here..."
@@ -891,12 +893,14 @@ body.light-mode #sticky-banner { background: var(--amber); }
                   and use your own key.
                 </div>
               </div>
-              <button onclick="toggleGroqKeyPrompt()" style="white-space:nowrap;padding:5px 12px;background:rgba(28,184,160,0.15);border:1px solid rgba(28,184,160,0.3);border-radius:6px;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">🔑 Use own key</button>
+              <button onclick="toggleGroqKeyPrompt()" style="white-space:nowrap;padding:5px 12px;background:rgba(28,184,160,0.15);border:1px solid rgba(28,184,160,0.3);border-radius:6px;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">🔑 Quota reached? Use own key</button>
             </div>
             <!-- Groq own key input — hidden by default -->
             <div id="groq-key-prompt" style="display:none;flex-direction:column;gap:10px;background:rgba(28,184,160,0.06);border:1.5px solid rgba(28,184,160,0.25);border-radius:10px;padding:16px;margin-top:10px;">
-              <div style="font-size:13px;font-weight:700;color:var(--teal);">🔑 Enter Your Own Groq Key</div>
-              <div style="font-size:12px;color:var(--text-muted);">Register free at <a href="https://console.groq.com" target="_blank" style="color:var(--teal);font-weight:600;">console.groq.com</a> → copy API key → paste below. Saved in your browser only.</div>
+              <div style="font-size:13px;font-weight:700;color:var(--teal);">🔑 Shared Quota Reached — Enter Your Own Groq Key</div>
+              <div style="font-size:12px;color:var(--text-muted);">The shared daily quota has been reached. Register free at
+              <a href="https://console.groq.com" target="_blank" style="color:var(--teal);font-weight:600;">console.groq.com</a>
+              → copy API key → paste below. Saved in your browser only. Resets every 24 hours.</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <input id="groq-key-input" type="password" placeholder="Paste your Groq API key here..."
                   style="flex:1;padding:9px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(28,184,160,0.3);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;min-width:200px;">
@@ -1420,28 +1424,68 @@ async function transcribeWithGroq(file) {
   const statusEl = document.getElementById('groq-status');
   statusEl.style.display = 'flex';
   statusEl.className = 'alert alert-info';
-  statusEl.innerHTML = '<span>⏳</span><span>Transcribing with Groq Whisper...</span>';
+
+  const buildFormData = () => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('model', 'whisper-large-v3-turbo');
+    fd.append('language', 'en');
+    fd.append('response_format', 'json');
+    return fd;
+  };
+
+  // OPTION 1: Try shared proxy first (no key needed from user)
+  statusEl.innerHTML = '<span>⏳</span><span>Transcribing with shared Groq Whisper quota...</span>';
   try {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('model', 'whisper-large-v3-turbo');
-    formData.append('language', 'en');
-    formData.append('response_format', 'json');
-    const resp = await fetch('/api/groq', {
-      method: 'POST',
-      body: formData
-    });
+    const resp = await fetch('/api/groq', { method: 'POST', body: buildFormData() });
     const data = await resp.json();
     if (data.text) {
-      statusEl.className = 'alert alert-info';
       statusEl.innerHTML = '<span>✅</span><span>Transcription complete. Click Process Input to continue.</span>';
       return data.text;
-    } else {
-      throw new Error(data.error?.message || 'Groq transcription failed');
     }
+    // Quota exceeded error from Groq
+    const errMsg = data.error?.message || '';
+    if (resp.status === 429 || errMsg.toLowerCase().includes('rate') || errMsg.toLowerCase().includes('quota')) {
+      throw new Error('QUOTA_EXCEEDED');
+    }
+    throw new Error(errMsg || 'Groq transcription failed');
   } catch(err) {
+    if (err.message !== 'QUOTA_EXCEEDED' && !err.message.includes('rate') && !err.message.includes('quota')) {
+      // Real error — not quota related
+      statusEl.className = 'alert alert-warn';
+      statusEl.innerHTML = '<span>⚠</span><span>Transcription error: ' + err.message + '</span>';
+      return null;
+    }
+
+    // OPTION 2: Shared quota reached — try personal key
+    const personalKey = localStorage.getItem('htpn_groq_key') || '';
+    if (personalKey) {
+      statusEl.innerHTML = '<span>⏳</span><span>Shared quota reached — using your personal Groq key...</span>';
+      try {
+        // Direct call to Groq API with personal key
+        const fd2 = buildFormData();
+        const resp2 = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + personalKey },
+          body: fd2
+        });
+        const data2 = await resp2.json();
+        if (data2.text) {
+          statusEl.innerHTML = '<span>✅</span><span>Transcription complete (personal key used). Review below.</span>';
+          return data2.text;
+        }
+        throw new Error(data2.error?.message || 'Personal key transcription failed');
+      } catch(err2) {
+        statusEl.className = 'alert alert-warn';
+        statusEl.innerHTML = '<span>⚠</span><span>Personal key error: ' + err2.message + '</span>';
+        return null;
+      }
+    }
+
+    // No personal key — show prompt
     statusEl.className = 'alert alert-warn';
-    statusEl.innerHTML = `<span>⚠</span><span>Transcription error: ${err.message}</span>`;
+    statusEl.innerHTML = '<span>⚠</span><span>Shared daily quota reached. Use your own free Groq key to continue.</span>';
+    document.getElementById('groq-key-prompt').style.display = 'flex';
     return null;
   }
 }
@@ -1520,38 +1564,49 @@ function saveAAIKey() {
 }
 
 async function startSpeech() {
-  const apiKey = localStorage.getItem('htpn_aai_key') || '';
-  if (!apiKey) {
-    document.getElementById('aai-key-prompt').style.display = 'flex';
-    alert('Please enter your AssemblyAI API key first.');
-    return;
-  }
+  const statusEl = document.getElementById('audio-status');
 
+  // Request mic access first
   try {
-    // Request mic access
     aaiStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch(e) {
-    document.getElementById('audio-status').style.display = 'flex';
-    document.getElementById('audio-status').className = 'alert alert-warn';
-    document.getElementById('audio-status').innerHTML = '<span>⚠</span><span>Microphone access denied. Please allow microphone in browser settings and try again.</span>';
+    statusEl.style.display = 'flex';
+    statusEl.className = 'alert alert-warn';
+    statusEl.innerHTML = '<span>⚠</span><span>Microphone access denied. Please allow microphone in browser settings and try again.</span>';
     return;
   }
 
-  // Get temporary session token from our Vercel proxy
-  let token;
-  try {
-    document.getElementById('audio-status').style.display = 'flex';
-    document.getElementById('audio-status').className = 'alert alert-info';
-    document.getElementById('audio-status').innerHTML = '<span>⏳</span><span>Connecting to AssemblyAI...</span>';
+  statusEl.style.display = 'flex';
+  statusEl.className = 'alert alert-info';
+  statusEl.innerHTML = '<span>⏳</span><span>Connecting to AssemblyAI shared quota...</span>';
 
+  // OPTION 1: Try shared proxy first (no key needed)
+  let token = null;
+  let usingShared = false;
+  try {
     const tokenResp = await fetch('/api/assemblyai', { method: 'POST' });
     const tokenData = await tokenResp.json();
     if (tokenData.error) throw new Error(tokenData.error);
     token = tokenData.token;
+    usingShared = true;
   } catch(e) {
-    // Fallback: use key directly (only if proxy not set up)
-    console.warn('Proxy unavailable, using key directly:', e.message);
-    token = apiKey;
+    console.warn('Shared AssemblyAI quota unavailable:', e.message);
+  }
+
+  // OPTION 2: Fall back to personal key if shared fails
+  if (!token) {
+    const personalKey = localStorage.getItem('htpn_aai_key') || '';
+    if (personalKey) {
+      token = personalKey;
+      statusEl.innerHTML = '<span>⏳</span><span>Shared quota reached — connecting with your personal key...</span>';
+    } else {
+      // No personal key saved — prompt user to enter one
+      if (aaiStream) { aaiStream.getTracks().forEach(t => t.stop()); aaiStream = null; }
+      statusEl.className = 'alert alert-warn';
+      statusEl.innerHTML = '<span>⚠</span><span>Shared quota reached for this month. Please use your own free API key to continue.</span>';
+      document.getElementById('aai-key-prompt').style.display = 'flex';
+      return;
+    }
   }
 
   // Open WebSocket to AssemblyAI real-time endpoint

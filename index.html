@@ -1506,8 +1506,7 @@ function checkSpeechSupport() {
   }
 }
 
-function toggleAAIKeyPrompt() {
-
+function toggleAAIKeyPrompt() { /* removed — AssemblyAI no longer used */ }
 
 function toggleGroqKeyPrompt() {
   const p = document.getElementById('groq-key-prompt');
@@ -2791,8 +2790,6 @@ async function submitFeedback() {
     statusEl.innerHTML = `<span>⚠</span><span>Could not send via EmailJS. Please email feedback directly to <strong>ppnaim@moh.gov.my</strong>. Error: ${e.text || e.message}</span>`;
   }
 }
-
-} // close any unclosed block
 
 // ── UTILITIES ──
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }

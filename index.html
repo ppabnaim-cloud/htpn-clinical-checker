@@ -1576,86 +1576,24 @@ function startSpeech() {
   };
 
   recognition.onerror = function(e) {
-    statusEl.className = 'alert alert-warn';
-    statusEl.innerHTML = '<span>⚠</span><span>Microphone error: ' + e.error + '. Please allow microphone access and try again.</span>';
+    const statusEl2 = document.getElementById('audio-status');
+    statusEl2.className = 'alert alert-warn';
+    statusEl2.innerHTML = '<span>⚠</span><span>Microphone error: ' + e.error + '. Please allow microphone access and try again.</span>';
     stopSpeech();
   };
 
   recognition.onend = function() {
-    if (document.getElementById('speech-indicator').style.display !== 'none') recognition.start();
+    if (document.getElementById('speech-indicator').style.display !== 'none') {
+      try { recognition.start(); } catch(e) { /* already stopped */ }
+    }
   };
 
   recognition.start();
   document.getElementById('speech-start-btn').style.display = 'none';
   document.getElementById('speech-stop-btn').style.display = 'inline-flex';
   document.getElementById('speech-indicator').style.display = 'flex';
-
-  // Open WebSocket to AssemblyAI real-time endpoint
-  const wsUrl = `wss://api.assemblyai.com/v2/realtime/ws?sample_rate=16000&token=${token}`;
-  aaiSocket = new WebSocket(wsUrl);
-
-  aaiSocket.onopen = () => {
-    document.getElementById('audio-status').innerHTML = '<span>🎙</span><span>Connected — speak now. Your words will appear in real time.</span>';
-    setupAudioCapture();
-  };
-
-  aaiSocket.onmessage = (msg) => {
-    const data = JSON.parse(msg.data);
-    if (data.message_type === 'PartialTranscript') {
-      aaiPartialText = data.text || '';
-      document.getElementById('speech-live').value = aaiFinalText + (aaiPartialText ? ' ' + aaiPartialText : '');
-    } else if (data.message_type === 'FinalTranscript') {
-      if (data.text) {
-        aaiFinalText = (aaiFinalText + ' ' + data.text).trim();
-        aaiPartialText = '';
-        document.getElementById('speech-live').value = aaiFinalText;
-      }
-    } else if (data.error) {
-      console.error('AssemblyAI error:', data.error);
-      document.getElementById('audio-status').className = 'alert alert-warn';
-      document.getElementById('audio-status').innerHTML = '<span>⚠</span><span>AssemblyAI error: ' + data.error + '</span>';
-      stopSpeech();
-    }
-  };
-
-  aaiSocket.onerror = (e) => {
-    document.getElementById('audio-status').className = 'alert alert-warn';
-    document.getElementById('audio-status').innerHTML = '<span>⚠</span><span>Connection error. Check your API key and internet connection.</span>';
-    stopSpeech();
-  };
-
-  aaiSocket.onclose = () => {
-    if (document.getElementById('speech-indicator').style.display !== 'none') {
-      stopSpeech();
-    }
-  };
-
-  // UI state
-  document.getElementById('speech-start-btn').style.display = 'none';
-  document.getElementById('speech-stop-btn').style.display = 'inline-flex';
-  document.getElementById('speech-indicator').style.display = 'flex';
 }
 
-function setupAudioCapture() {
-  // Use AudioContext + ScriptProcessor to capture 16kHz PCM for AssemblyAI
-  aaiContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-  const source = aaiContext.createMediaStreamSource(aaiStream);
-  aaiProcessor = aaiContext.createScriptProcessor(4096, 1, 1);
-
-  aaiProcessor.onaudioprocess = (e) => {
-    if (!aaiSocket || aaiSocket.readyState !== WebSocket.OPEN) return;
-    const inputData = e.inputBuffer.getChannelData(0);
-    // Convert float32 to int16 PCM
-    const pcm16 = new Int16Array(inputData.length);
-    for (let i = 0; i < inputData.length; i++) {
-      pcm16[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
-    }
-    aaiSocket.send(pcm16.buffer);
-  };
-
-  source.connect(aaiProcessor);
-  aaiProcessor.connect(aaiContext.destination);
-}
 
 function stopSpeech() {
   if (recognition) {

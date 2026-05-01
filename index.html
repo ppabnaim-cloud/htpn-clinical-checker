@@ -1809,27 +1809,92 @@ function setTimeSaved(value, btn) {
 function initAssemblyAI() { /* AssemblyAI removed — using Web Speech API */ }
 
 function initCounters() {
-  // Simple localStorage visitor counter (no external API dependency)
-  const today = new Date().toDateString();
-  let v = parseInt(localStorage.getItem('htpn_visitors') || '0');
-  if (localStorage.getItem('htpn_vday') !== today) {
-    v++;
-    localStorage.setItem('htpn_visitors', v);
-    localStorage.setItem('htpn_vday', today);
+  // Reset visitor_logged when app updates so returning users get recounted on JSONBin
+  const APP_VER = 'v2.1';
+  if (localStorage.getItem('htpn_app_ver') !== APP_VER) {
+    localStorage.removeItem('htpn_visitor_logged');
+    localStorage.setItem('htpn_app_ver', APP_VER);
   }
+
+  // Local display counter (cumulative, per device)
+  if (!localStorage.getItem('htpn_visited')) {
+    let v = parseInt(localStorage.getItem('htpn_visitors') || '0') + 1;
+    localStorage.setItem('htpn_visitors', v);
+    localStorage.setItem('htpn_visited', '1');
+  }
+  const v = parseInt(localStorage.getItem('htpn_visitors') || '1');
   const visitorEl = document.getElementById('visitor-count');
-  if (visitorEl) visitorEl.textContent = v;
+  if (visitorEl) visitorEl.textContent = v.toLocaleString();
 
   const a = parseInt(localStorage.getItem('htpn_analyses') || '0');
   const analysisEl = document.getElementById('analysis-count');
-  if (analysisEl) analysisEl.textContent = a;
+  if (analysisEl) analysisEl.textContent = a.toLocaleString();
 }
 
 function incrementAnalysisCount() {
   let a = parseInt(localStorage.getItem('htpn_analyses') || '0');
   a++;
   localStorage.setItem('htpn_analyses', a);
-  document.getElementById('analysis-count').textContent = a;
+  const el = document.getElementById('analysis-count');
+  if (el) el.textContent = a.toLocaleString();
+  logToJSONBin('analysis', a);
+}
+
+async function logToJSONBin(type, sessionCount) {
+  const key = localStorage.getItem('htpn_db_key');
+  const bin = localStorage.getItem('htpn_db_bin');
+  if (!key || !bin) return;
+  try {
+    const getResp = await fetch('https://api.jsonbin.io/v3/b/' + bin + '/latest', {
+      headers: { 'X-Master-Key': key }
+    });
+    if (!getResp.ok) return;
+    const current = await getResp.json();
+    const data = current.record || { analyses: [], totalAnalyses: 0, totalVisitors: 0 };
+
+    if (type === 'visitor') {
+      if (!localStorage.getItem('htpn_visitor_logged')) {
+        data.totalVisitors = (data.totalVisitors || 0) + 1;
+        localStorage.setItem('htpn_visitor_logged', '1');
+        data.lastUpdated = new Date().toISOString();
+        await fetch('https://api.jsonbin.io/v3/b/' + bin, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'X-Master-Key': key },
+          body: JSON.stringify(data)
+        });
+      }
+      return;
+    }
+
+    if (type === 'analysis') {
+      const activeTab = document.querySelector('.mode-tab.active');
+      const method = activeTab ? (
+        activeTab.textContent.includes('Voice') ? 'Voice/Audio' :
+        activeTab.textContent.includes('Image') ? 'Image Upload' : 'Manual Text'
+      ) : 'Unknown';
+      const entry = {
+        ts: new Date().toISOString(),
+        role: document.getElementById('fb-role') ? document.getElementById('fb-role').value : 'Not specified',
+        dept: document.getElementById('fb-dept') ? document.getElementById('fb-dept').value : 'Not specified',
+        method: method,
+        count: sessionCount
+      };
+      data.analyses = data.analyses || [];
+      data.analyses.push(entry);
+      if (data.analyses.length > 500) data.analyses = data.analyses.slice(-500);
+      data.totalAnalyses = (data.totalAnalyses || 0) + 1;
+      data.lastUpdated = new Date().toISOString();
+      await fetch('https://api.jsonbin.io/v3/b/' + bin, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': key },
+        body: JSON.stringify(data)
+      });
+    }
+  } catch(e) { console.log('Analytics skipped:', e.message); }
+}
+
+function logVisitorOnLoad() {
+  setTimeout(function() { logToJSONBin('visitor', 0); }, 3000);
 }
 
 // ── DISCLAIMER ──
@@ -2801,6 +2866,7 @@ initAssemblyAI();
 initTheme();
 startAutoSave();
 restoreSession();
+logVisitorOnLoad();
 buildLikertUI();
 checkSpeechSupport();
 </script>

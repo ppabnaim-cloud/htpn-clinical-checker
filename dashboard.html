@@ -243,7 +243,7 @@
     margin-bottom: 32px;
     display: none;
   }
-  .setup-panel.visible { display: block; }
+  .setup-panel.visible { display: block !important; }
   .setup-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--teal); margin-bottom: 8px; }
   .setup-steps { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
   .setup-step {
@@ -360,7 +360,7 @@
   </div>
 
   <!-- SETUP PANEL (shown when no API key) -->
-  <div class="setup-panel" id="setup-panel">
+  <div class="setup-panel visible" id="setup-panel">
     <div class="setup-title">⚙️ First-time Setup — 3 minutes</div>
     <p style="font-size:14px;color:var(--text-mid);">This dashboard uses <strong style="color:var(--teal);">JSONBin.io</strong> as a free shared database to store aggregate usage data. No patient information is ever recorded.</p>
     <div class="setup-steps">
@@ -432,6 +432,7 @@ function saveConfig() {
   CONFIG.JSONBIN_KEY = key;
   CONFIG.JSONBIN_BIN = bin;
   document.getElementById('setup-panel').classList.remove('visible');
+  document.getElementById('setup-panel').style.display = 'none';
   loadData(true);
 }
 
@@ -485,8 +486,16 @@ async function loadData(showSpinner) {
 // ── RENDER DASHBOARD ──
 function renderDashboard(data) {
   const analyses = data.analyses || [];
-  const total = data.totalAnalyses || analyses.length;
-  const totalVisitors = data.totalVisitors || 0;
+
+  // ── BASELINE OFFSETS (pre-analytics usage before JSONBin was configured) ──
+  // Update these numbers manually as you get better estimates
+  const BASELINE_ANALYSES = data.baselineAnalyses || 0;
+  const BASELINE_VISITORS = data.baselineVisitors || 0;
+
+  const liveAnalyses = data.totalAnalyses || analyses.length;
+  const liveVisitors = data.totalVisitors || 0;
+  const total = liveAnalyses + BASELINE_ANALYSES;
+  const totalVisitors = liveVisitors + BASELINE_VISITORS;
 
   // Compute stats
   const today = new Date().toDateString();
@@ -497,89 +506,80 @@ function renderDashboard(data) {
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-7);
     return d >= cutoff;
   });
-
-  // Unique departments
-  const deptCounts = {};
-  analyses.forEach(a => {
-    if (a.dept && a.dept !== 'Anonymous') {
-      deptCounts[a.dept] = (deptCounts[a.dept]||0)+1;
-    }
-  });
-
-  // Role breakdown
-  const roleCounts = {};
-  analyses.forEach(a => {
-    if (a.role && a.role !== 'Anonymous') {
-      roleCounts[a.role] = (roleCounts[a.role]||0)+1;
-    }
-  });
+  const avgPerDay = last7.length > 0 ? (last7.length/7).toFixed(1) : 0;
 
   // Input method breakdown
   const methodCounts = { 'Voice/Audio':0, 'Image Upload':0, 'Manual Text':0, 'Unknown':0 };
-  analyses.forEach(a => {
-    const m = a.method || 'Unknown';
-    methodCounts[m] = (methodCounts[m]||0)+1;
-  });
+  analyses.forEach(a => { const m = a.method||'Unknown'; methodCounts[m]=(methodCounts[m]||0)+1; });
 
   // Daily counts (last 14 days)
   const dailyMap = {};
-  for(let i=13;i>=0;i--) {
-    const d = new Date(); d.setDate(d.getDate()-i);
-    dailyMap[d.toDateString()] = 0;
-  }
-  analyses.forEach(a => {
-    const k = new Date(a.ts).toDateString();
-    if (dailyMap[k] !== undefined) dailyMap[k]++;
-  });
-  const dailyLabels = Object.keys(dailyMap).map(k => {
-    const d = new Date(k);
-    return d.toLocaleDateString('en-MY',{day:'numeric',month:'short'});
-  });
+  for(let i=13;i>=0;i--) { const d=new Date(); d.setDate(d.getDate()-i); dailyMap[d.toDateString()]=0; }
+  analyses.forEach(a => { const k=new Date(a.ts).toDateString(); if(dailyMap[k]!==undefined) dailyMap[k]++; });
+  const dailyLabels = Object.keys(dailyMap).map(k => new Date(k).toLocaleDateString('en-MY',{day:'numeric',month:'short'}));
   const dailyValues = Object.values(dailyMap);
 
-  // Avg per day (last 7)
-  const avgPerDay = last7.length > 0 ? (last7.length/7).toFixed(1) : 0;
+  // Dept + role
+  const deptCounts = {}, roleCounts = {};
+  analyses.forEach(a => {
+    if(a.dept && a.dept!=='Not specified') deptCounts[a.dept]=(deptCounts[a.dept]||0)+1;
+    if(a.role && a.role!=='Not specified') roleCounts[a.role]=(roleCounts[a.role]||0)+1;
+  });
 
   // Render
   const mc = document.getElementById('main-content');
   mc.innerHTML = `
-    <!-- KPI GRID -->
-    <div class="kpi-grid">
+    <!-- HERO BIG NUMBERS -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-bottom:32px;">
+      <div style="background:linear-gradient(135deg,rgba(28,184,160,0.15),rgba(28,184,160,0.05));border:1px solid rgba(28,184,160,0.3);border-radius:20px;padding:36px 32px;text-align:center;position:relative;overflow:hidden;">
+        <div style="font-size:13px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Total Visits</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:72px;color:var(--text);line-height:1;margin-bottom:8px;">${totalVisitors.toLocaleString()}</div>
+        <div style="font-size:13px;color:var(--text-mid);">Unique devices · since launch</div>
+        <div style="position:absolute;bottom:-20px;right:-20px;font-size:80px;opacity:0.05;">👥</div>
+      </div>
+      <div style="background:linear-gradient(135deg,rgba(244,166,35,0.15),rgba(244,166,35,0.05));border:1px solid rgba(244,166,35,0.3);border-radius:20px;padding:36px 32px;text-align:center;position:relative;overflow:hidden;">
+        <div style="font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Total AI Analyses</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:72px;color:var(--text);line-height:1;margin-bottom:8px;">${total.toLocaleString()}</div>
+        <div style="font-size:13px;color:var(--text-mid);">All users · all time</div>
+        <div style="position:absolute;bottom:-20px;right:-20px;font-size:80px;opacity:0.05;">🔬</div>
+      </div>
+      <div style="background:linear-gradient(135deg,rgba(232,76,106,0.15),rgba(232,76,106,0.05));border:1px solid rgba(232,76,106,0.3);border-radius:20px;padding:36px 32px;text-align:center;position:relative;overflow:hidden;">
+        <div style="font-size:13px;font-weight:700;color:var(--rose);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Analyses Today</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:72px;color:var(--text);line-height:1;margin-bottom:8px;">${todayAnalyses.toLocaleString()}</div>
+        <div style="font-size:13px;color:var(--text-mid);">${new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long'})}</div>
+        <div style="position:absolute;bottom:-20px;right:-20px;font-size:80px;opacity:0.05;">📅</div>
+      </div>
+    </div>
+
+    <!-- SECONDARY STATS ROW -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:32px;">
       <div class="kpi-card" style="--accent:var(--teal)">
-        <span class="kpi-icon">🔬</span>
-        <div class="kpi-value">${total.toLocaleString()}</div>
-        <div class="kpi-label">Total AI Analyses</div>
-        <div class="kpi-sub">All time · all users</div>
-        <div class="kpi-trend">↑ ${todayAnalyses} today</div>
-      </div>
-      <div class="kpi-card" style="--accent:var(--amber)">
-        <span class="kpi-icon">📅</span>
-        <div class="kpi-value">${todayAnalyses}</div>
-        <div class="kpi-label">Analyses Today</div>
-        <div class="kpi-sub">${new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long'})}</div>
-      </div>
-      <div class="kpi-card" style="--accent:var(--rose)">
         <span class="kpi-icon">📈</span>
-        <div class="kpi-value">${avgPerDay}<span>/day</span></div>
+        <div class="kpi-value">${avgPerDay}<span style="font-size:20px;color:var(--text-mid)">/day</span></div>
         <div class="kpi-label">7-Day Average</div>
         <div class="kpi-sub">${last7.length} analyses in last 7 days</div>
+      </div>
+      <div class="kpi-card" style="--accent:#7C3AED">
+        <span class="kpi-icon">📅</span>
+        <div class="kpi-value">${uniqueDays}</div>
+        <div class="kpi-label">Active Days</div>
+        <div class="kpi-sub">Days with at least 1 analysis</div>
       </div>
       <div class="kpi-card" style="--accent:var(--green)">
         <span class="kpi-icon">🏥</span>
         <div class="kpi-value">${Object.keys(deptCounts).length}</div>
-        <div class="kpi-label">Departments Using</div>
-        <div class="kpi-sub">Unique departments engaged</div>
-      </div>
-      <div class="kpi-card" style="--accent:#7C3AED">
-        <span class="kpi-icon">👥</span>
-        <div class="kpi-value">${totalVisitors.toLocaleString()}</div>
-        <div class="kpi-label">Total Visitors</div>
-        <div class="kpi-sub">Unique devices · all time</div>
-        <div class="kpi-trend">📅 ${uniqueDays} active day${uniqueDays!==1?'s':''}</div>
+        <div class="kpi-label">Departments</div>
+        <div class="kpi-sub">Named submissions only</div>
       </div>
     </div>
 
-    <!-- DAILY TREND + METHODS -->
+    <!-- BASELINE NOTE -->
+    <div style="background:rgba(244,166,35,0.06);border:1px solid rgba(244,166,35,0.2);border-radius:12px;padding:14px 20px;margin-bottom:28px;font-size:12px;color:var(--text-mid);display:flex;align-items:center;gap:10px;">
+      <span>ℹ️</span>
+      <span>Analytics logging started <strong style="color:var(--amber);">April 2025</strong>. Numbers reflect recorded usage since then. To update the baseline for pre-analytics usage, edit the JSONBin record and add <code style="background:rgba(255,255,255,0.08);padding:1px 6px;border-radius:4px;">baselineAnalyses</code> and <code style="background:rgba(255,255,255,0.08);padding:1px 6px;border-radius:4px;">baselineVisitors</code> fields.</span>
+    </div>
+
+    <!-- CHARTS -->
     <div class="charts-grid">
       <div class="chart-card">
         <div class="chart-title">Daily Analysis Trend</div>
@@ -593,11 +593,10 @@ function renderDashboard(data) {
       </div>
     </div>
 
-    <!-- DEPT + ROLE -->
     <div class="charts-grid-2">
       <div class="chart-card">
         <div class="chart-title">Department Breakdown</div>
-        <div class="chart-sub">Analyses by department (named submissions only)</div>
+        <div class="chart-sub">Named submissions only</div>
         <div class="chart-wrap"><canvas id="deptChart" height="200"></canvas></div>
       </div>
       <div class="chart-card">
@@ -613,159 +612,70 @@ function renderDashboard(data) {
       <div class="chart-sub">Last 20 analyses (no patient data recorded)</div>
       <div style="overflow-x:auto;">
         <table class="recent-table">
-          <thead>
-            <tr>
-              <th>Date &amp; Time</th>
-              <th>Role</th>
-              <th>Department</th>
-              <th>Input Method</th>
-              <th>Session Analyses</th>
-            </tr>
-          </thead>
-          <tbody id="recent-tbody">
-          </tbody>
+          <thead><tr>
+            <th>Date &amp; Time</th><th>Role</th><th>Department</th><th>Input Method</th><th>Session Analyses</th>
+          </tr></thead>
+          <tbody id="recent-tbody"></tbody>
         </table>
       </div>
     </div>
   `;
 
-  // Populate recent table
+  // Recent table
   const tbody = document.getElementById('recent-tbody');
   const recent = [...analyses].reverse().slice(0,20);
-  if (recent.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-dim);">No analyses recorded yet</td></tr>`;
-  } else {
-    tbody.innerHTML = recent.map(a => {
-      const dt = new Date(a.ts);
-      const timeStr = dt.toLocaleDateString('en-MY',{day:'numeric',month:'short'}) + ' ' + dt.toLocaleTimeString('en-MY',{hour:'2-digit',minute:'2-digit'});
-      const roleBadge = a.role && a.role!=='Anonymous' ? `<span class="badge badge-teal">${a.role}</span>` : `<span class="badge badge-amber">Anonymous</span>`;
-      const deptStr = a.dept && a.dept!=='Anonymous' ? a.dept : '—';
-      const methodBadge = a.method ? `<span class="badge badge-rose">${a.method}</span>` : '—';
-      return `<tr>
-        <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text);">${timeStr}</td>
-        <td>${roleBadge}</td>
-        <td style="color:var(--text);">${deptStr}</td>
-        <td>${methodBadge}</td>
-        <td style="text-align:center;font-weight:600;color:var(--teal);">${a.count||1}</td>
-      </tr>`;
-    }).join('');
-  }
+  tbody.innerHTML = recent.length === 0
+    ? '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-dim);">No analyses recorded yet</td></tr>'
+    : recent.map(a => {
+        const dt = new Date(a.ts);
+        const timeStr = dt.toLocaleDateString('en-MY',{day:'numeric',month:'short'}) + ' ' + dt.toLocaleTimeString('en-MY',{hour:'2-digit',minute:'2-digit'});
+        const roleBadge = a.role && a.role!=='Not specified' ? '<span class="badge badge-teal">'+a.role+'</span>' : '<span class="badge badge-amber">Not specified</span>';
+        const deptStr = a.dept && a.dept!=='Not specified' ? a.dept : '—';
+        const methodBadge = a.method ? '<span class="badge badge-rose">'+a.method+'</span>' : '—';
+        return '<tr><td style="font-family:monospace;font-size:12px;color:var(--text);">'+timeStr+'</td><td>'+roleBadge+'</td><td style="color:var(--text);">'+deptStr+'</td><td>'+methodBadge+'</td><td style="text-align:center;font-weight:600;color:var(--teal);">'+(a.count||1)+'</td></tr>';
+      }).join('');
 
-  // ── CHARTS ──
+  // Charts
   Chart.defaults.color = '#8AACC8';
   Chart.defaults.font.family = 'DM Sans';
-
-  // Destroy old charts if re-rendering
   Object.values(charts).forEach(c => c.destroy());
   charts = {};
 
-  // Daily trend
   charts.daily = new Chart(document.getElementById('dailyChart'), {
-    type: 'bar',
-    data: {
-      labels: dailyLabels,
-      datasets: [{
-        label: 'Analyses',
-        data: dailyValues,
-        backgroundColor: dailyValues.map((v,i) => i===dailyValues.length-1 ? 'rgba(28,184,160,0.9)' : 'rgba(28,184,160,0.3)'),
-        borderColor: 'rgba(28,184,160,0.8)',
-        borderWidth: 0,
-        borderRadius: 6,
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend:{ display:false } },
-      scales: {
-        x: { grid:{ color:'rgba(255,255,255,0.05)' }, ticks:{ font:{size:11} } },
-        y: { grid:{ color:'rgba(255,255,255,0.05)' }, ticks:{ stepSize:1 }, min:0 }
-      }
-    }
+    type:'bar', data:{labels:dailyLabels,datasets:[{label:'Analyses',data:dailyValues,
+      backgroundColor:dailyValues.map((v,i)=>i===dailyValues.length-1?'rgba(28,184,160,0.9)':'rgba(28,184,160,0.3)'),
+      borderRadius:6,borderWidth:0}]},
+    options:{responsive:true,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{font:{size:11}}},
+              y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{stepSize:1},min:0}}}
   });
 
-  // Method doughnut
-  const methodLabels = Object.keys(methodCounts).filter(k=>methodCounts[k]>0);
-  const methodData = methodLabels.map(k=>methodCounts[k]);
+  const mLabels=Object.keys(methodCounts).filter(k=>methodCounts[k]>0);
+  const mData=mLabels.map(k=>methodCounts[k]);
   charts.method = new Chart(document.getElementById('methodChart'), {
-    type: 'doughnut',
-    data: {
-      labels: methodLabels,
-      datasets: [{
-        data: methodData,
-        backgroundColor: ['rgba(28,184,160,0.8)','rgba(244,166,35,0.8)','rgba(232,76,106,0.8)','rgba(124,58,237,0.8)'],
-        borderColor: 'rgba(11,31,58,1)',
-        borderWidth: 3,
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend:{ position:'bottom', labels:{ font:{size:12}, padding:16 } }
-      },
-      cutout: '65%'
-    }
+    type:'doughnut', data:{labels:mLabels,datasets:[{data:mData,
+      backgroundColor:['rgba(28,184,160,0.8)','rgba(244,166,35,0.8)','rgba(232,76,106,0.8)','rgba(124,58,237,0.8)'],
+      borderColor:'rgba(11,31,58,1)',borderWidth:3}]},
+    options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:12},padding:16}}},cutout:'65%'}
   });
 
-  // Dept bar
-  const deptLabels = Object.keys(deptCounts).sort((a,b)=>deptCounts[b]-deptCounts[a]).slice(0,8);
-  const deptData = deptLabels.map(k=>deptCounts[k]);
+  const dLabels=Object.keys(deptCounts).sort((a,b)=>deptCounts[b]-deptCounts[a]).slice(0,8);
   charts.dept = new Chart(document.getElementById('deptChart'), {
-    type: 'bar',
-    data: {
-      labels: deptLabels,
-      datasets: [{
-        label: 'Analyses',
-        data: deptData,
-        backgroundColor: 'rgba(244,166,35,0.7)',
-        borderRadius: 6,
-        borderWidth: 0,
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      plugins: { legend:{display:false} },
-      scales: {
-        x: { grid:{color:'rgba(255,255,255,0.05)'}, ticks:{stepSize:1} },
-        y: { grid:{display:false}, ticks:{font:{size:12}} }
-      }
-    }
+    type:'bar', data:{labels:dLabels.length?dLabels:['No data'],datasets:[{label:'Analyses',
+      data:dLabels.length?dLabels.map(k=>deptCounts[k]):[0],backgroundColor:'rgba(244,166,35,0.7)',borderRadius:6,borderWidth:0}]},
+    options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{stepSize:1}},y:{grid:{display:false}}}}
   });
 
-  // Role bar
-  const roleLabels = Object.keys(roleCounts).sort((a,b)=>roleCounts[b]-roleCounts[a]);
-  const roleData = roleLabels.map(k=>roleCounts[k]);
+  const rLabels=Object.keys(roleCounts).sort((a,b)=>roleCounts[b]-roleCounts[a]);
   charts.role = new Chart(document.getElementById('roleChart'), {
-    type: 'bar',
-    data: {
-      labels: roleLabels,
-      datasets: [{
-        label: 'Analyses',
-        data: roleData,
-        backgroundColor: 'rgba(232,76,106,0.7)',
-        borderRadius: 6,
-        borderWidth: 0,
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      plugins: { legend:{display:false} },
-      scales: {
-        x: { grid:{color:'rgba(255,255,255,0.05)'}, ticks:{stepSize:1} },
-        y: { grid:{display:false}, ticks:{font:{size:12}} }
-      }
-    }
+    type:'bar', data:{labels:rLabels.length?rLabels:['No data'],datasets:[{label:'Analyses',
+      data:rLabels.length?rLabels.map(k=>roleCounts[k]):[0],backgroundColor:'rgba(232,76,106,0.7)',borderRadius:6,borderWidth:0}]},
+    options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{stepSize:1}},y:{grid:{display:false}}}}
   });
-}
 
-function showEmpty(msg) {
-  document.getElementById('main-content').innerHTML = `
-    <div class="empty-state">
-      <div class="empty-icon">📊</div>
-      <div class="empty-title">${msg}</div>
-      <div class="empty-body">Once the app is configured and analyses are run, data will appear here.</div>
-    </div>`;
+
 }
 
 // ── AUTO-REFRESH ──
@@ -776,7 +686,24 @@ function startAutoRefresh() {
 
 // ── INIT ──
 window.addEventListener('load', function() {
-  loadData(true);
+  // Always pre-fill setup inputs from localStorage
+  const savedKey = localStorage.getItem('htpn_db_key') || '';
+  const savedBin = localStorage.getItem('htpn_db_bin') || '';
+  document.getElementById('setup-key').value = savedKey;
+  document.getElementById('setup-bin').value = savedBin;
+  
+  if (savedKey && savedBin) {
+    // Have credentials — try to load, hide setup panel
+    CONFIG.JSONBIN_KEY = savedKey;
+    CONFIG.JSONBIN_BIN = savedBin;
+    document.getElementById('setup-panel').classList.remove('visible');
+    document.getElementById('setup-panel').style.display = 'none';
+    loadData(true);
+  } else {
+    // No credentials — keep setup panel visible, hide loading spinner
+    document.getElementById('setup-panel').classList.add('visible');
+    document.getElementById('loading-state').style.display = 'none';
+  }
   startAutoRefresh();
 });
 </script>

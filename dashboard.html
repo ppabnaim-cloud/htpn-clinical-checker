@@ -360,7 +360,7 @@
   </div>
 
   <!-- SETUP PANEL (shown when no API key) -->
-  <div class="setup-panel visible" id="setup-panel">
+  <div class="setup-panel" id="setup-panel">
     <div class="setup-title">⚙️ First-time Setup — 3 minutes</div>
     <p style="font-size:14px;color:var(--text-mid);">This dashboard uses <strong style="color:var(--teal);">JSONBin.io</strong> as a free shared database to store aggregate usage data. No patient information is ever recorded.</p>
     <div class="setup-steps">
@@ -449,37 +449,41 @@ async function fetchData() {
 
 // ── LOAD & RENDER ──
 async function loadData(showSpinner) {
+  const loadingEl = document.getElementById('loading-state');
+  const setupEl = document.getElementById('setup-panel');
+
   if (!CONFIG.JSONBIN_KEY || !CONFIG.JSONBIN_BIN) {
-    document.getElementById('setup-panel').classList.add('visible');
-    document.getElementById('loading-state').style.display = 'none';
-    // Pre-fill if any partial values exist
+    if (loadingEl) loadingEl.style.display = 'none';
+    setupEl.classList.add('visible');
     const k = localStorage.getItem('htpn_db_key') || '';
     const b = localStorage.getItem('htpn_db_bin') || '';
     if (k) document.getElementById('setup-key').value = k;
     if (b) document.getElementById('setup-bin').value = b;
     return;
   }
-  // Also pre-fill setup panel in background in case needed
-  const _k = localStorage.getItem('htpn_db_key') || '';
-  const _b = localStorage.getItem('htpn_db_bin') || '';
-  if (_k) document.getElementById('setup-key').value = _k;
-  if (_b) document.getElementById('setup-bin').value = _b;
+
+  // Hide setup panel, show loading
+  setupEl.classList.remove('visible');
+  setupEl.style.display = 'none';
+  if (loadingEl) loadingEl.style.display = 'flex';
+
   if (showSpinner) {
     const btn = document.getElementById('refresh-btn');
-    btn.classList.add('spinning');
-    setTimeout(()=>btn.classList.remove('spinning'), 1000);
+    if (btn) { btn.classList.add('spinning'); setTimeout(()=>btn.classList.remove('spinning'), 1000); }
   }
+
   try {
     const data = await fetchData();
+    if (loadingEl) loadingEl.style.display = 'none';
     if (!data) { showEmpty('No data available yet.'); return; }
     renderDashboard(data);
-    document.getElementById('last-updated').textContent = 'Last updated: '+new Date().toLocaleTimeString('en-MY');
+    document.getElementById('last-updated').textContent = 'Last updated: ' + new Date().toLocaleTimeString('en-MY');
   } catch(e) {
     console.error(e);
-    // Show setup panel so user can re-enter credentials
-    document.getElementById('setup-panel').classList.add('visible');
-    document.getElementById('loading-state').style.display = 'none';
-    showEmpty('Could not connect to JSONBin. Please enter your credentials in the setup panel above.');
+    if (loadingEl) loadingEl.style.display = 'none';
+    setupEl.classList.add('visible');
+    setupEl.style.display = 'block';
+    showEmpty('Could not connect to JSONBin. Please check your credentials above.');
   }
 }
 
@@ -523,5 +527,31 @@ function renderDashboard(data) {
     </div>
   `;
 }
+function showEmpty(msg) {
+  document.getElementById('main-content').innerHTML = '<div style="text-align:center;padding:80px 40px;color:var(--text-mid);"><div style="font-size:48px;margin-bottom:16px;">📊</div><div style="font-size:18px;margin-bottom:8px;">'+msg+'</div></div>';
+}
 
+function startAutoRefresh() {
+  setInterval(function(){ loadData(false); }, 60000);
+}
 
+window.addEventListener('load', function() {
+  const savedKey = localStorage.getItem('htpn_db_key') || '';
+  const savedBin = localStorage.getItem('htpn_db_bin') || '';
+
+  if (savedKey) document.getElementById('setup-key').value = savedKey;
+  if (savedBin) document.getElementById('setup-bin').value = savedBin;
+
+  if (savedKey && savedBin) {
+    CONFIG.JSONBIN_KEY = savedKey;
+    CONFIG.JSONBIN_BIN = savedBin;
+    loadData(true);
+  } else {
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('setup-panel').classList.add('visible');
+  }
+  startAutoRefresh();
+});
+</script>
+</body>
+</html>

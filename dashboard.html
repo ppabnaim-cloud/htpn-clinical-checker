@@ -499,14 +499,24 @@ function renderDashboard(data) {
 
   const mc = document.getElementById('main-content');
   mc.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;max-width:900px;margin:60px auto;">
+    <!-- NOTICE BANNER -->
+    <div style="background:rgba(244,166,35,0.08);border:1px solid rgba(244,166,35,0.2);border-radius:12px;padding:12px 20px;margin-bottom:40px;font-size:13px;color:var(--text-mid);text-align:center;line-height:1.6;">
+      ⚠️ Analytics tracking started <strong style="color:var(--amber);">1 May 2026, 5:00 PM</strong>.
+      Numbers below only reflect usage recorded from that point onwards.
+      Earlier usage is not captured.
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;max-width:900px;margin:0 auto 40px;">
 
       <!-- TOTAL VISITS -->
       <div style="background:linear-gradient(135deg,rgba(28,184,160,0.12),rgba(28,184,160,0.04));border:1px solid rgba(28,184,160,0.3);border-radius:24px;padding:52px 40px;text-align:center;position:relative;overflow:hidden;">
         <div style="font-size:56px;margin-bottom:16px;">👥</div>
         <div style="font-family:'DM Serif Display',serif;font-size:96px;color:var(--text);line-height:1;margin-bottom:16px;">${totalVisitors.toLocaleString()}</div>
-        <div style="font-size:18px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:1.5px;">Total Visits</div>
-        <div style="font-size:13px;color:var(--text-mid);margin-top:8px;">Unique devices · since launch</div>
+        <div style="font-size:18px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:1.5px;">Unique Devices Visited</div>
+        <div style="font-size:13px;color:var(--text-mid);margin-top:10px;line-height:1.6;">
+          1 visit = 1 unique device (phone/laptop)<br>
+          Counted once per device, never repeats
+        </div>
         <div style="position:absolute;bottom:-30px;right:-30px;font-size:140px;opacity:0.04;pointer-events:none;">👥</div>
       </div>
 
@@ -514,16 +524,22 @@ function renderDashboard(data) {
       <div style="background:linear-gradient(135deg,rgba(244,166,35,0.12),rgba(244,166,35,0.04));border:1px solid rgba(244,166,35,0.3);border-radius:24px;padding:52px 40px;text-align:center;position:relative;overflow:hidden;">
         <div style="font-size:56px;margin-bottom:16px;">🔬</div>
         <div style="font-family:'DM Serif Display',serif;font-size:96px;color:var(--text);line-height:1;margin-bottom:16px;">${total.toLocaleString()}</div>
-        <div style="font-size:18px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;">Total AI Analyses</div>
-        <div style="font-size:13px;color:var(--text-mid);margin-top:8px;">All users · all time · ↑ ${todayAnalyses} today</div>
+        <div style="font-size:18px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;">Total AI Analyses Run</div>
+        <div style="font-size:13px;color:var(--text-mid);margin-top:10px;line-height:1.6;">
+          1 analysis = 1 click of "Run AI Analysis"<br>
+          1 device can run multiple analyses · ↑ ${todayAnalyses} today
+        </div>
         <div style="position:absolute;bottom:-30px;right:-30px;font-size:140px;opacity:0.04;pointer-events:none;">🔬</div>
       </div>
 
     </div>
 
-    <!-- subtle since-when note -->
-    <div style="text-align:center;margin-top:8px;font-size:12px;color:var(--text-dim);">
-      Analytics recorded since April 2025 · Healthcare Intelligence Office HTPN
+    <!-- Logic explanation -->
+    <div style="max-width:900px;margin:0 auto;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:16px 24px;font-size:12px;color:var(--text-mid);line-height:1.8;">
+      💡 <strong style="color:var(--text);">How to read these numbers:</strong>
+      Visits ≥ Analyses is expected (everyone who analyses must first visit).
+      Analyses > Visits is also possible (one device running AI Analysis multiple times per session).
+      Both numbers only reflect usage since <strong>1 May 2026, 5:00 PM</strong>.
     </div>
   `;
 }

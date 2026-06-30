@@ -2185,7 +2185,7 @@ function smartLocalExtract(text) {
 
   // Vitals extraction
   const vitals = {
-    'v-bp': [/[Bb][Pp][:\s]+(\d{2,3}\/\d{2,3})/, /blood pressure[:\s]+(\d{2,3}\/\d{2,3})/i],
+    'v-bp': [/[Bb][Pp][:\s]+(\d{2,3}\/\d{2,3})/, /blood pressure[:\s]+(\d{2,3}\/\d{2,3})/i, /blood pressure[:\s]+(\d{2,3})\s+over\s+(\d{2,3})/i, /[Bb][Pp][:\s]+(\d{2,3})\s+over\s+(\d{2,3})/],
     'v-pr': [/[Pp][Rr][:\s]+(\d{2,3})\s*(?:bpm)?/, /(?:pulse|heart rate)[:\s]+(\d{2,3})/i],
     'v-temp': [/[Tt]emp(?:erature)?[:\s]+(\d{2}\.?\d?)\s*°?[Cc]?/, /(\d{2}\.?\d?)\s*°C/],
     'v-rr': [/[Rr][Rr][:\s]+(\d{1,2})/, /respiratory rate[:\s]+(\d{1,2})/i],
@@ -2197,7 +2197,7 @@ function smartLocalExtract(text) {
   for (const [id, patterns] of Object.entries(vitals)) {
     for (const p of patterns) {
       const m = t.match(p);
-      if (m) { const el = document.getElementById(id); if (el && !el.value) { el.value = m[1]; filled++; } break; }
+      if (m) { const el = document.getElementById(id); if (el && !el.value) { el.value = m[2] ? m[1] + '/' + m[2] : m[1]; filled++; } break; }
     }
   }
 
@@ -2409,12 +2409,12 @@ function fillDemoSOAP(transcript) {
   document.getElementById('f-cc').value = 'As per clinical history below';
   document.getElementById('f-hopi').value = transcript.substring(0, 800);
   // Try to extract vitals from text
-  const bpMatch = transcript.match(/[Bb][Pp][\s:]+(\d{2,3}\/\d{2,3})/);
+  const bpMatch = transcript.match(/[Bb][Pp][\s:]+(\d{2,3}\/\d{2,3})/) || transcript.match(/blood pressure[\s:]+(\d{2,3})\s+over\s+(\d{2,3})/i) || transcript.match(/[Bb][Pp][\s:]+(\d{2,3})\s+over\s+(\d{2,3})/);
   const prMatch = transcript.match(/[Pp][Rr][\s:]+(\d{2,3})|[Pp]ulse[\s:]+(\d{2,3})/);
   const tempMatch = transcript.match(/[Tt]emp[\s:]+(\d{2}\.?\d?)|(\d{2}\.?\d?)[\s]*[°]?[Cc]/);
   const spo2Match = transcript.match(/[Ss]p[Oo]2[\s:]+(\d{2,3})|[Ss]at[\s:]+(\d{2,3})/);
   const rrMatch = transcript.match(/[Rr][Rr][\s:]+(\d{1,2})|[Rr]espiratory [Rr]ate[\s:]+(\d{1,2})/);
-  if (bpMatch) document.getElementById('v-bp').value = bpMatch[1];
+  if (bpMatch) document.getElementById('v-bp').value = bpMatch[2] ? bpMatch[1] + '/' + bpMatch[2] : bpMatch[1];
   if (prMatch) document.getElementById('v-pr').value = prMatch[1] || prMatch[2];
   if (tempMatch) document.getElementById('v-temp').value = tempMatch[1] || tempMatch[2];
   if (spo2Match) document.getElementById('v-spo2').value = spo2Match[1] || spo2Match[2];
@@ -2540,7 +2540,7 @@ Respond with valid JSON only.`;
     const resp = await fetch('/api/claude', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 3000, messages: [{ role: 'user', content: prompt }] })
     });
     const data = await resp.json();
     const raw = data.content?.[0]?.text || '{}';
@@ -2548,9 +2548,10 @@ Respond with valid JSON only.`;
     const result = JSON.parse(clean);
     renderAnalysis(result);
   } catch(err) {
+    console.error('runAnalysis error:', err);
     fillDemoAnalysis(d);
   }
-  
+
   incrementAnalysisCount();
 }
 

@@ -1144,6 +1144,41 @@ function buildLikert(){ document.getElementById('likert-q').innerHTML=LIKERT.map
 function selLk(b){ document.querySelectorAll(`[data-q="${b.dataset.q}"]`).forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); }
 function setTime(v,btn){ document.querySelectorAll('#time-bar .chip').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); window._timeSaved=v; }
 function setId(m,btn){ document.querySelectorAll('#id-name,#id-anon').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); document.getElementById('id-fields').style.display=m==='name'?'block':'none'; document.getElementById('id-anon-msg').style.display=m==='anon'?'flex':'none'; window._anon=(m==='anon'); }
+function ensureEmailJS(){
+  return new Promise((res)=>{
+    if(typeof emailjs!=='undefined'){ res(true); return; }
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
+    s.onload=()=>{ try{ emailjs.init('jRs1TWPZym8iUjNck'); }catch(e){} res(typeof emailjs!=='undefined'); };
+    s.onerror=()=>res(false);
+    document.head.appendChild(s);
+    setTimeout(()=>res(typeof emailjs!=='undefined'),4000); // don't hang forever
+  });
+}
+function feedbackBody(p,lk){
+  return `HTPN Clinical Document Checker — Feedback
+${'-'.repeat(40)}
+Name: ${p.from_name}
+Email: ${p.from_email}
+Role: ${p.from_role}
+Department: ${p.from_dept}
+Most useful feature: ${p.best_feature}
+Time saved: ${p.time_saved}
+
+Ratings (1-5):
+- SOAP accuracy: ${lk.q1}
+- CPG/RAG grounding: ${lk.q2}
+- Thematic structuring: ${lk.q3}
+- ICD-11 relevance: ${lk.q4}
+- Workflow feasibility: ${lk.q5}
+- Would recommend: ${lk.q6}
+
+Comments:
+${p.free_text}
+
+Analyses run (this device): ${p.analysis_count}
+Submitted: ${p.timestamp}`;
+}
 async function submitFeedback(){
   const role=document.getElementById('fb-role').value;
   if(!role&&!window._anon){ alert('Select your role (or choose Anonymous).'); return; }
@@ -1159,12 +1194,24 @@ async function submitFeedback(){
     free_text:document.getElementById('fb-text').value||'(none)',
     analysis_count:localStorage.getItem('htpn_analyses')||'0', timestamp:new Date().toISOString(), to_email:FEEDBACK_EMAIL
   };
-  try{
-    if(typeof emailjs==='undefined') throw new Error('EmailJS not loaded');
-    await emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,params);
-    st.className='alert a-info'; st.innerHTML='<span>✅</span><span>Feedback sent to the HTPN AI Team ('+FEEDBACK_EMAIL+'). Thank you.</span>';
-    document.getElementById('fb-text').value='';
-  }catch(e){ st.className='alert a-warn'; st.innerHTML='<span>⚠</span><span>Could not send automatically. Please email <strong>'+FEEDBACK_EMAIL+'</strong>. ('+(e.text||e.message)+')</span>'; }
+  const ok=await ensureEmailJS();
+  if(ok){
+    try{
+      await emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,params);
+      st.className='alert a-info'; st.innerHTML='<span>✅</span><span>Feedback sent to the HTPN AI Team ('+FEEDBACK_EMAIL+'). Thank you.</span>';
+      document.getElementById('fb-text').value='';
+      return;
+    }catch(e){ /* fall through to mailto */ }
+  }
+  // Fallback: never lose the feedback — prefilled email draft + copy
+  const body=feedbackBody(params,lk);
+  const mailto='mailto:'+FEEDBACK_EMAIL+'?subject='+encodeURIComponent('Clinical Document Checker — Feedback')+'&body='+encodeURIComponent(body);
+  st.className='alert a-warn';
+  st.innerHTML='<span>📧</span><span>Auto-send is blocked here (it works on the live site). Your feedback is ready — '
+    +'<a href="'+mailto+'" style="color:var(--teal-dim);font-weight:700">open it in your email app</a> '
+    +'or <button onclick="navigator.clipboard.writeText(window._fbBody).then(()=>alert(\'Feedback copied.\'))" style="background:none;border:none;color:var(--teal-dim);font-weight:700;cursor:pointer;text-decoration:underline;padding:0">copy it</button> '
+    +'and send to <strong>'+FEEDBACK_EMAIL+'</strong>.</span>';
+  window._fbBody=body;
 }
 
 // ════════════ MISC ════════════

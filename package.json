@@ -1,6 +1,10 @@
 {
-  "name": "htpn-clinical-checker",
-  "version": "1.0.0",
-  "type": "module",
+  "name": "cliniq-assistant",
+  "version": "2.0.0",
+  "description": "ClinIQ – CPG-RAG Clinical AI Assistant for Malaysian Healthcare",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'Static build ready'"
+  },
   "dependencies": {}
 }

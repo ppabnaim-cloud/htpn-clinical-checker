@@ -3,2872 +3,710 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Clinical Document Checker — HTPN</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js" onload="emailjs.init('jRs1TWPZym8iUjNck')"></script>
+<title>ClinIQ – CPG-RAG Clinical AI Assistant</title>
 <style>
-:root {
-  --navy: #0B1F3A;
-  --navy-mid: #152E52;
-  --navy-light: #1E3F6B;
-  --teal: #1CB8A0;
-  --teal-dim: #0F8C7A;
-  --amber: #F4A623;
-  --rose: #E84C6A;
-  --slate: #94A3B8;
-  --cloud: #F0F4F8;
-  --white: #FFFFFF;
-  --text: #1A2B3C;
-  --text-muted: #5A7290;
-  --border: rgba(28,184,160,0.18);
-  --card: rgba(255,255,255,0.96);
-  --serif: 'DM Serif Display', serif;
-  --sans: 'DM Sans', sans-serif;
-  --mono: 'DM Mono', monospace;
-  --r: 12px;
-  --r-sm: 8px;
-  --shadow: 0 4px 24px rgba(11,31,58,0.10);
-  --shadow-lg: 0 8px 40px rgba(11,31,58,0.16);
-}
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
-body {
-  font-family: var(--sans);
-  background: var(--navy);
-  color: var(--text);
-  min-height: 100vh;
-  font-size: 15px;
-  line-height: 1.6;
-}
+  :root {
+    --primary: #0f4c81;
+    --primary-light: #1a6ab5;
+    --accent: #00a86b;
+    --accent-light: #00c57e;
+    --warning: #f59e0b;
+    --danger: #dc2626;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --border: #d1dbe8;
+    --text: #1a2840;
+    --muted: #64748b;
+    --sidebar-w: 280px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
 
-/* ── DISCLAIMER BANNER ── */
-#disclaimer-overlay {
-  position: fixed; inset: 0; z-index: 9999;
-  background: rgba(11,31,58,0.96);
-  display: flex; align-items: center; justify-content: center;
-  padding: 24px;
-}
-#disclaimer-overlay.hidden { display: none !important; pointer-events: none !important; }
-.disclaimer-box {
-  background: var(--white);
-  border-radius: 16px;
-  max-width: 680px; width: 100%;
-  padding: 36px 40px;
-  position: relative;
-  border-top: 5px solid var(--amber);
-  box-shadow: var(--shadow-lg);
-}
-.disclaimer-box h2 { font-family: var(--serif); font-size: 22px; color: var(--navy); margin-bottom: 6px; }
-.disclaimer-tag {
-  display: inline-block;
-  background: var(--amber);
-  color: var(--navy);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 3px 10px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-}
-.disclaimer-box p { font-size: 13.5px; color: var(--text-muted); line-height: 1.7; margin-bottom: 10px; }
-.disclaimer-box p strong { color: var(--navy); }
-.disclaimer-btn {
-  margin-top: 20px;
-  background: var(--navy);
-  color: white;
-  border: none;
-  padding: 13px 28px;
-  border-radius: var(--r-sm);
-  font-family: var(--sans);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
-  width: 100%;
-}
-.disclaimer-btn:hover { background: var(--navy-light); }
+  #sidebar {
+    width: var(--sidebar-w); min-height: 100vh; background: var(--primary);
+    display: flex; flex-direction: column; position: fixed; left: 0; top: 0; bottom: 0; z-index: 100;
+  }
+  .sidebar-logo { padding: 24px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-logo h1 { color: #fff; font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px; }
+  .sidebar-logo p { color: rgba(255,255,255,0.6); font-size: 0.72rem; margin-top: 2px; }
+  .sidebar-logo .badge { display: inline-block; background: var(--accent); color: #fff; font-size: 0.6rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-top: 6px; letter-spacing: 0.5px; }
+  .sidebar-nav { padding: 16px 12px; flex: 1; }
+  .nav-section { color: rgba(255,255,255,0.4); font-size: 0.65rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 12px 8px 6px; }
+  .nav-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; background: none; border: none; color: rgba(255,255,255,0.75); cursor: pointer; border-radius: 8px; font-size: 0.875rem; text-align: left; margin-bottom: 2px; transition: all 0.15s; }
+  .nav-btn:hover, .nav-btn.active { background: rgba(255,255,255,0.12); color: #fff; }
+  .nav-btn .icon { font-size: 1.1rem; width: 22px; text-align: center; }
+  .sidebar-footer { padding: 16px; border-top: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-footer p { color: rgba(255,255,255,0.4); font-size: 0.68rem; }
 
-/* ── STICKY BANNER ── */
-#sticky-banner {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 900;
-  background: var(--amber);
-  color: var(--navy);
-  font-size: 12px;
-  font-weight: 500;
-  text-align: center;
-  padding: 6px 16px;
-  letter-spacing: 0.02em;
-}
+  #main { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; }
+  #topbar { position: sticky; top: 0; z-index: 50; background: var(--card); border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  #topbar h2 { font-size: 1.1rem; font-weight: 600; }
+  #session-info { display: flex; align-items: center; gap: 12px; }
+  .session-chip { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; background: #e8f4fd; color: var(--primary); }
+  #content { padding: 28px; max-width: 1100px; }
 
-/* ── HEADER ── */
-header {
-  background: var(--navy);
-  padding: 20px 0 0;
-  position: relative;
-  margin-top: 30px;
-}
-.header-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 24px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.logo-block { display: flex; align-items: center; gap: 16px; }
-.logo-badge {
-  width: 48px; height: 48px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--teal), var(--teal-dim));
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--serif);
-  font-size: 20px;
-  color: white;
-  flex-shrink: 0;
-}
-.logo-text h1 { font-family: var(--serif); font-size: 22px; color: white; line-height: 1.2; }
-.logo-text span { font-size: 12px; color: var(--slate); letter-spacing: 0.03em; }
-.header-stats {
-  display: flex; gap: 16px; flex-wrap: wrap;
-}
-.stat-pill {
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 20px;
-  padding: 6px 14px;
-  font-size: 12px;
-  color: var(--slate);
-  display: flex; align-items: center; gap: 6px;
-}
-.stat-pill span.val { color: var(--teal); font-weight: 600; font-family: var(--mono); }
+  .panel { display: none; }
+  .panel.active { display: block; }
 
-/* ── STEP NAV ── */
-.step-nav {
-  background: var(--navy-mid);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-.step-nav-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 24px;
-  display: flex;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.step-nav-inner::-webkit-scrollbar { display: none; }
-.step-btn {
-  flex-shrink: 0;
-  background: none;
-  border: none;
-  border-bottom: 3px solid transparent;
-  color: var(--slate);
-  font-family: var(--sans);
-  font-size: 13px;
-  font-weight: 500;
-  padding: 14px 18px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-.step-btn .step-num {
-  width: 22px; height: 22px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.08);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 11px;
-  font-family: var(--mono);
-  flex-shrink: 0;
-}
-.step-btn.active {
-  color: var(--teal);
-  border-bottom-color: var(--teal);
-}
-.step-btn.active .step-num { background: var(--teal); color: white; }
-.step-btn.done { color: rgba(255,255,255,0.5); }
-.step-btn.done .step-num { background: rgba(28,184,160,0.3); color: var(--teal); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+  .card-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .card-title .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
 
-/* ── MAIN ── */
-main {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 32px 24px 80px;
-}
-.step-panel { display: none; }
-.step-panel.active { display: block; }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 6px; }
+  .stat-label { font-size: 0.72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 2rem; font-weight: 700; color: var(--primary); line-height: 1; }
+  .stat-sub { font-size: 0.72rem; color: var(--muted); }
 
-/* ── CARDS ── */
-.card {
-  background: var(--card);
-  border-radius: var(--r);
-  box-shadow: var(--shadow);
-  padding: 28px 32px;
-  margin-bottom: 20px;
-}
-.card-title {
-  font-family: var(--serif);
-  font-size: 20px;
-  color: var(--navy);
-  margin-bottom: 6px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.card-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
-.section-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-}
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label { font-size: 0.78rem; font-weight: 600; color: var(--text); }
+  .form-group input, .form-group select, .form-group textarea { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.875rem; font-family: inherit; background: #f8fafc; color: var(--text); transition: border-color 0.15s; }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--primary); background: #fff; }
+  .form-group textarea { resize: vertical; min-height: 100px; }
 
-/* ── FORM ELEMENTS ── */
-input[type=text], input[type=email], input[type=date], textarea, select {
-  width: 100%;
-  padding: 10px 14px;
-  border: 1.5px solid #DDE4ED;
-  border-radius: var(--r-sm);
-  font-family: var(--sans);
-  font-size: 14px;
-  color: var(--text);
-  background: var(--white);
-  transition: border 0.2s, box-shadow 0.2s;
-  outline: none;
-}
-input:focus, textarea:focus, select:focus {
-  border-color: var(--teal);
-  box-shadow: 0 0 0 3px rgba(28,184,160,0.12);
-}
-textarea { resize: vertical; min-height: 80px; }
+  .vitals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .vital-box { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+  .vital-box label { font-size: 0.68rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
+  .vital-box input { border: none; background: transparent; font-size: 1.1rem; font-weight: 600; color: var(--primary); width: 100%; padding: 2px 0; }
+  .vital-box input:focus { outline: none; }
+  .vital-box span { font-size: 0.65rem; color: var(--muted); }
 
-.form-row { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
-.form-row.three { grid-template-columns: 1fr 1fr 1fr; }
-.form-row.vitals { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
-@media (max-width: 640px) {
-  .form-row, .form-row.three { grid-template-columns: 1fr; }
-}
-.field { display: flex; flex-direction: column; gap: 5px; }
-.field label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+  .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; background: #f8fafc; }
+  .upload-zone:hover, .upload-zone.drag-over { border-color: var(--primary); background: #edf2fb; }
+  .upload-zone .upload-icon { font-size: 2.5rem; margin-bottom: 12px; }
+  .upload-zone h3 { font-size: 1rem; color: var(--text); margin-bottom: 6px; }
+  .upload-zone p { font-size: 0.8rem; color: var(--muted); }
+  #audio-player { width: 100%; margin-top: 16px; display: none; }
+  #file-input { display: none; }
 
-/* ── UPLOAD ZONE ── */
-.upload-zone {
-  border: 2px dashed var(--border);
-  border-radius: var(--r);
-  padding: 40px 24px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  background: rgba(28,184,160,0.03);
-}
-.upload-zone:hover, .upload-zone.dragover {
-  border-color: var(--teal);
-  background: rgba(28,184,160,0.07);
-}
-.upload-zone input { display: none; }
-.upload-icon { font-size: 36px; margin-bottom: 10px; }
-.upload-zone h3 { font-size: 16px; font-family: var(--serif); color: var(--navy); margin-bottom: 4px; }
-.upload-zone p { font-size: 13px; color: var(--text-muted); }
+  #transcript-box { width: 100%; min-height: 140px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 0.875rem; font-family: inherit; resize: vertical; background: #f8fafc; color: var(--text); line-height: 1.6; }
+  #transcript-box:focus { outline: none; border-color: var(--primary); background: #fff; }
 
-.upload-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-@media (max-width: 700px) { .upload-grid { grid-template-columns: 1fr; } }
+  .cpg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .cpg-chip { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 2px solid var(--border); border-radius: 10px; cursor: pointer; background: #f8fafc; font-size: 0.82rem; font-weight: 600; color: var(--muted); transition: all 0.15s; user-select: none; }
+  .cpg-chip:hover { border-color: var(--primary); color: var(--primary); background: #edf2fb; }
+  .cpg-chip.selected { border-color: var(--primary); background: var(--primary); color: #fff; }
+  .cpg-chip .cpg-icon { font-size: 1.1rem; }
 
-.mode-tab-bar { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-.mode-tab {
-  padding: 8px 18px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  border: 1.5px solid #DDE4ED;
-  background: white;
-  color: var(--text-muted);
-  transition: all 0.2s;
-}
-.mode-tab.active {
-  background: var(--navy);
-  color: white;
-  border-color: var(--navy);
-}
+  .btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit; display: inline-flex; align-items: center; gap: 8px; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-light); }
+  .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+  .btn-success { background: var(--accent); color: #fff; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
 
-/* ── BUTTONS ── */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 11px 22px;
-  border-radius: var(--r-sm);
-  font-family: var(--sans);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  text-decoration: none;
-}
-.btn-primary { background: var(--teal); color: white; }
-.btn-primary:hover { background: var(--teal-dim); }
-.btn-navy { background: var(--navy); color: white; }
-.btn-navy:hover { background: var(--navy-light); }
-.btn-outline { background: transparent; color: var(--navy); border: 1.5px solid #DDE4ED; }
-.btn-outline:hover { border-color: var(--teal); color: var(--teal); }
-.btn-danger { background: var(--rose); color: white; }
-.btn-amber { background: var(--amber); color: var(--navy); }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .progress-wrap { background: #e2e8f0; border-radius: 99px; height: 6px; margin: 12px 0; overflow: hidden; }
+  .progress-bar { height: 100%; background: var(--primary); border-radius: 99px; transition: width 0.4s; width: 0%; }
 
-/* ── TRANSCRIPT AREA ── */
-.transcript-box {
-  background: #F7F9FC;
-  border: 1.5px solid #DDE4ED;
-  border-radius: var(--r);
-  padding: 16px;
-  font-family: var(--mono);
-  font-size: 13px;
-  line-height: 1.8;
-  color: var(--text);
-  min-height: 120px;
-  white-space: pre-wrap;
-  resize: vertical;
-  width: 100%;
-  outline: none;
-}
-.transcript-box:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(28,184,160,0.12); }
+  .soap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .soap-section { display: flex; flex-direction: column; gap: 6px; }
+  .soap-section label { font-size: 0.78rem; font-weight: 700; color: var(--primary); }
+  .soap-section textarea { padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.84rem; font-family: inherit; resize: vertical; min-height: 120px; background: #f8fafc; color: var(--text); line-height: 1.6; }
+  .soap-section textarea:focus { outline: none; border-color: var(--primary); background: #fff; }
 
-/* ── VITALS GRID ── */
-.vital-chip {
-  background: var(--cloud);
-  border: 1.5px solid #DDE4ED;
-  border-radius: var(--r-sm);
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.vital-chip label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
-.vital-chip input {
-  border: none;
-  background: none;
-  padding: 0;
-  font-size: 18px;
-  font-family: var(--mono);
-  font-weight: 500;
-  color: var(--navy);
-  width: 100%;
-}
-.vital-chip input:focus { box-shadow: none; }
-.vital-chip span { font-size: 11px; color: var(--slate); }
+  #analysis-out { background: linear-gradient(135deg, #0f4c81 0%, #1a6ab5 100%); border-radius: 12px; padding: 24px; color: #fff; display: none; }
+  .analysis-block { margin-bottom: 20px; }
+  .analysis-block:last-child { margin-bottom: 0; }
+  .analysis-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: rgba(255,255,255,0.6); margin-bottom: 6px; }
+  .analysis-val { font-size: 0.92rem; line-height: 1.7; }
+  .analysis-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .analysis-chip { background: rgba(255,255,255,0.15); border-radius: 20px; padding: 4px 12px; font-size: 0.78rem; }
+  .analysis-chip.red { background: rgba(220,38,38,0.35); }
+  .analysis-chip.yellow { background: rgba(245,158,11,0.35); }
+  .analysis-chip.green { background: rgba(0,168,107,0.3); }
+  .cpg-ref-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(0,168,107,0.25); border: 1px solid rgba(0,200,130,0.4); border-radius: 6px; padding: 6px 12px; font-size: 0.75rem; color: #a7f3d0; margin-top: 10px; flex-wrap: wrap; }
 
-/* ── ANALYSIS OUTPUT ── */
-.analysis-section { margin-bottom: 24px; }
-.analysis-section h3 {
-  font-family: var(--serif);
-  font-size: 17px;
-  color: var(--navy);
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #DDE4ED;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.soap-block {
-  background: #F7F9FC;
-  border-left: 3px solid var(--teal);
-  border-radius: 0 var(--r-sm) var(--r-sm) 0;
-  padding: 14px 16px;
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--text);
-  margin-bottom: 10px;
-  white-space: pre-wrap;
-}
-.icd-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border: 1px solid #DDE4ED;
-  border-radius: var(--r-sm);
-  margin-bottom: 6px;
-  font-size: 13px;
-}
-.icd-code { font-family: var(--mono); font-weight: 600; color: var(--navy); min-width: 80px; }
-.icd-desc { flex: 1; color: var(--text); }
-.conf-bar { height: 6px; background: #DDE4ED; border-radius: 3px; flex: 1; overflow: hidden; }
-.conf-fill { height: 100%; border-radius: 3px; background: var(--teal); transition: width 0.8s; }
-.conf-pct { font-family: var(--mono); font-size: 12px; color: var(--text-muted); min-width: 36px; text-align: right; }
+  .loading-overlay { position: fixed; inset: 0; background: rgba(15,76,129,0.55); z-index: 999; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+  .loading-overlay.show { display: flex; }
+  .spinner { width: 48px; height: 48px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-msg { color: #fff; font-size: 0.9rem; font-weight: 600; }
 
-/* ── QUALITY METRICS ── */
-.quality-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-@media (max-width: 600px) { .quality-grid { grid-template-columns: 1fr 1fr; } }
-.quality-tile {
-  background: var(--cloud);
-  border-radius: var(--r-sm);
-  padding: 14px;
-  text-align: center;
-}
-.quality-tile .q-val {
-  font-size: 28px;
-  font-family: var(--mono);
-  font-weight: 500;
-  line-height: 1.2;
-}
-.quality-tile .q-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-.score-high { color: var(--teal); }
-.score-mid { color: var(--amber); }
-.score-low { color: var(--rose); }
+  .alert { padding: 12px 16px; border-radius: 8px; font-size: 0.84rem; margin-bottom: 14px; display: none; }
+  .alert.show { display: flex; align-items: flex-start; gap: 10px; }
+  .alert-info { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+  .alert-success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+  .alert-warn { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
 
-.flag-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 14px;
-  border-radius: var(--r-sm);
-  margin-bottom: 6px;
-  font-size: 13px;
-}
-.flag-high { background: rgba(232,76,106,0.08); border-left: 3px solid var(--rose); }
-.flag-mid { background: rgba(244,166,35,0.08); border-left: 3px solid var(--amber); }
-.flag-low { background: rgba(28,184,160,0.08); border-left: 3px solid var(--teal); }
-.flag-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
-.flag-text strong { display: block; font-weight: 600; color: var(--navy); }
-.flag-text span { color: var(--text-muted); }
+  .tag { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .tag-rag { background: #d1fae5; color: #065f46; }
+  .tag-ai { background: #dbeafe; color: #1e40af; }
 
-/* ── SIGN-OFF ── */
-.signoff-box {
-  background: var(--navy);
-  border-radius: var(--r);
-  padding: 28px 32px;
-  color: white;
-}
-.signoff-box h3 { font-family: var(--serif); font-size: 19px; margin-bottom: 6px; }
-.signoff-box p { font-size: 13px; color: var(--slate); margin-bottom: 20px; }
-.signoff-box .form-row input, .signoff-box .form-row select { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.15); color: white; }
-.signoff-box .form-row input::placeholder { color: rgba(255,255,255,0.3); }
-.signoff-box label { color: rgba(255,255,255,0.6) !important; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  th { text-align: left; padding: 10px 14px; background: #f1f5f9; color: var(--muted); font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1px solid var(--border); }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafc; }
 
-/* ── FEEDBACK ── */
-.likert-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.likert-btn {
-  width: 42px; height: 42px;
-  border-radius: var(--r-sm);
-  border: 1.5px solid #DDE4ED;
-  background: white;
-  font-family: var(--mono);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.likert-btn:hover { border-color: var(--teal); color: var(--teal); }
-.likert-btn.selected { background: var(--teal); border-color: var(--teal); color: white; }
+  #cpg-viewer-content { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 20px; font-size: 0.84rem; line-height: 1.8; white-space: pre-wrap; font-family: 'Cascadia Code', 'Consolas', monospace; color: var(--text); max-height: 500px; overflow-y: auto; display: none; }
 
-/* ── PDF REF BADGE ── */
-.ref-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(244,166,35,0.1);
-  border: 1px solid rgba(244,166,35,0.3);
-  color: #B37F10;
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 500;
-}
+  @media (max-width: 768px) {
+    :root { --sidebar-w: 0px; }
+    #sidebar { transform: translateX(-280px); width: 280px; transition: transform 0.3s; }
+    #sidebar.open { transform: translateX(0); }
+    #main { margin-left: 0; }
+    .form-row, .form-row-3, .soap-grid { grid-template-columns: 1fr; }
+    #content { padding: 16px; }
+  }
 
-/* ── LOADING SPINNER ── */
-.spinner {
-  display: inline-block;
-  width: 18px; height: 18px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── PROGRESS BAR ── */
-.progress-track { background: #DDE4ED; border-radius: 4px; height: 4px; margin: 8px 0 20px; }
-.progress-fill { height: 100%; border-radius: 4px; background: var(--teal); transition: width 0.4s; }
-
-/* ── UPLOADED FILES LIST ── */
-.file-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
-.file-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: var(--cloud);
-  border-radius: var(--r-sm);
-  font-size: 13px;
-}
-.file-item .file-name { flex: 1; font-family: var(--mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.file-item .file-type { font-size: 11px; color: var(--text-muted); }
-.file-item button { background: none; border: none; color: var(--rose); cursor: pointer; font-size: 16px; padding: 0 2px; }
-
-/* ── ALERT BOX ── */
-.alert {
-  padding: 12px 16px;
-  border-radius: var(--r-sm);
-  font-size: 13.5px;
-  margin-bottom: 14px;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-.alert-info { background: rgba(28,184,160,0.08); color: var(--teal-dim); border: 1px solid rgba(28,184,160,0.2); }
-.alert-warn { background: rgba(244,166,35,0.08); color: #9B6A10; border: 1px solid rgba(244,166,35,0.25); }
-.alert-err  { background: rgba(232,76,106,0.08); color: #B03353; border: 1px solid rgba(232,76,106,0.2); }
-
-/* ── MOBILE NAV BUTTONS ── */
-.nav-buttons { display: flex; gap: 10px; margin-top: 24px; justify-content: flex-end; flex-wrap: wrap; }
-
-/* ── FOOTER ── */
-footer {
-  text-align: center;
-  padding: 24px;
-  font-size: 12px;
-  color: rgba(255,255,255,0.3);
-  border-top: 1px solid rgba(255,255,255,0.06);
-  font-family: var(--mono);
-}
-
-/* ── API KEY ── */
-.api-key-bar {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: var(--r);
-  padding: 14px 20px;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.api-key-bar label { font-size: 12px; color: var(--slate); white-space: nowrap; }
-.api-key-bar input {
-  flex: 1; min-width: 200px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: white;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-family: var(--mono);
-  font-size: 13px;
-}
-.api-key-bar input::placeholder { color: rgba(255,255,255,0.25); }
-
-/* ── DRUG TABLE ── */
-.drug-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.drug-table th {
-  background: var(--navy);
-  color: white;
-  padding: 8px 12px;
-  text-align: left;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.drug-table td { padding: 8px 12px; border-bottom: 1px solid #DDE4ED; }
-.drug-table tr:hover td { background: var(--cloud); }
-.drug-table td input { border: none; background: none; padding: 0; font-size: 13px; width: 100%; }
-
-/* ── VISITOR COUNTER ── */
-.visitor-dot { width: 7px; height: 7px; background: var(--teal); border-radius: 50%; display: inline-block; animation: pulse-dot 1.8s ease-in-out infinite; }
-@keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.7)} }
-
-/* ── RESPONSIVE ADJUSTMENTS ── */
-@media (max-width: 768px) {
-  .card { padding: 20px; }
-  .signoff-box { padding: 20px; }
-  .header-inner { padding: 0 16px 16px; }
-  main { padding: 20px 16px 60px; }
-  .quality-grid { grid-template-columns: repeat(2, 1fr); }
-}
-/* ── SPECIALTY SELECTOR ── */
-.spec-btn {
-  padding: 7px 14px;
-  border-radius: 50px;
-  border: 1px solid var(--card-border);
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: var(--sans);
-  transition: all 0.15s;
-}
-.spec-btn:hover { border-color: var(--teal); color: var(--teal); }
-.spec-btn.active {
-  background: rgba(28,184,160,0.15);
-  border-color: var(--teal);
-  color: var(--teal);
-  font-weight: 700;
-}
-/* ── LIGHT MODE ── */
-body.light-mode {
-  --navy: #F0F4F8;
-  --navy-mid: #E2EAF4;
-  --navy-light: #D0DCF0;
-  --text: #0B1F3A;
-  --text-muted: #4A6A8A;
-  --card: rgba(0,0,0,0.04);
-  --card-border: rgba(11,31,58,0.12);
-  background: #F0F4F8;
-  color: #0B1F3A;
-}
-body.light-mode header { background: #0B1F3A; }
-body.light-mode .step-tab { color: #4A6A8A; }
-body.light-mode .step-tab.active { color: #0B1F3A; }
-body.light-mode .card { background: #FFFFFF; border-color: rgba(11,31,58,0.1); color: #0B1F3A; }
-body.light-mode .card-title { color: #0B1F3A; }
-body.light-mode .card-sub { color: #5A7290; }
-body.light-mode .analysis-section { border-color: rgba(11,31,58,0.1); }
-body.light-mode input, body.light-mode textarea, body.light-mode select {
-  background: #FFFFFF; border-color: rgba(11,31,58,0.15); color: #0B1F3A;
-}
-body.light-mode .field label { color: #4A6A8A; }
-body.light-mode .vitals-grid .vital-chip { background: #F7F9FC; border-color: rgba(11,31,58,0.12); }
-body.light-mode .vital-val { color: #0B1F3A; }
-body.light-mode footer { background: #0B1F3A; }
-body.light-mode #sticky-banner { background: var(--amber); }
-
-/* ── ALLERGY BUTTONS ── */
-.allergy-btn.active {
-  background: rgba(28,184,160,0.15) !important;
-  border-color: var(--teal) !important;
-  color: var(--teal) !important;
-}
-.allergy-btn.allergy-known.active {
-  background: rgba(232,76,106,0.15) !important;
-  border-color: var(--rose) !important;
-  color: var(--rose) !important;
-}
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+  .section-sub { font-size: 0.8rem; color: var(--muted); margin-bottom: 16px; }
+  .mt-16 { margin-top: 16px; }
 </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" onerror="window._qrFailed=true"></script>
 </head>
 <body>
 
-<!-- DISCLAIMER OVERLAY -->
-<div id="disclaimer-overlay">
-  <div class="disclaimer-box">
-    <div class="disclaimer-tag">⚠ Demo Version — Research &amp; Educational Prototype</div>
-    <h2>Clinical Document Checker — HTPN</h2>
-    <p style="font-size:12px;color:var(--teal-dim);font-weight:600;margin-bottom:12px;">By Dr Naim &amp; AI Team HTPN · Hospital Tengku Permaisuri Norashikin</p>
-    <p>This tool is under active development. <strong>All AI-generated outputs must be reviewed, corrected, and signed off by a qualified clinician.</strong> Human-in-the-Loop (HITL) verification is mandatory before any output is used clinically.</p>
-    <p>It is advisable not to enter patient-identifiable information such as full name or IC number. Audio files are processed locally and deleted immediately after transcription. Feedback submitted may be anonymised.</p>
-    <p><strong>This tool does not constitute medical advice.</strong> Clinical responsibility remains entirely with the treating clinician.</p>
-    <p style="font-size:12px;color:#94A3B8;margin-top:8px;">By clicking below you acknowledge these terms.</p>
-    <button class="disclaimer-btn" onclick="
-  var o=document.getElementById('disclaimer-overlay');
-  o.classList.add('hidden');
-  o.style.display='none';
-  o.style.visibility='hidden';
-  o.style.pointerEvents='none';
-  o.style.position='absolute';
-  o.style.zIndex='-1';
-">I Understand — Enter Clinical Document Checker</button>
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <h1>ClinIQ</h1>
+    <p>CPG-RAG Clinical AI Assistant</p>
+    <span class="badge">MOH Malaysia</span>
   </div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Workspace</div>
+    <button class="nav-btn active" onclick="showPanel('dashboard')" id="nav-dashboard"><span class="icon">📊</span> Dashboard</button>
+    <button class="nav-btn" onclick="showPanel('session')" id="nav-session"><span class="icon">🎤</span> New Session</button>
+    <button class="nav-btn" onclick="showPanel('history')" id="nav-history"><span class="icon">📋</span> Session History</button>
+    <div class="nav-section">CPG Library</div>
+    <button class="nav-btn" onclick="showPanel('cpg')" id="nav-cpg"><span class="icon">📖</span> CPG Browser</button>
+    <div class="nav-section">Settings</div>
+    <button class="nav-btn" onclick="showPanel('settings')" id="nav-settings"><span class="icon">⚙️</span> Settings</button>
+  </div>
+  <div class="sidebar-footer">
+    <p>ClinIQ v2.0 · MOH CPG RAG</p>
+    <p style="margin-top:4px">For clinical decision support only</p>
+  </div>
+</nav>
+
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-msg" id="loading-msg">Processing…</div>
 </div>
 
-<!-- STICKY DISCLAIMER BANNER -->
-<div id="sticky-banner">⚠ DEMO / RESEARCH PROTOTYPE — All outputs require clinician review &amp; sign-off &nbsp;|&nbsp; Not for standalone clinical decision-making &nbsp;|&nbsp; HTPN</div>
-
-<!-- HEADER -->
-<header>
-  <div class="header-inner">
-    <div class="logo-block">
-      <div class="logo-badge">Cd</div>
-      <div class="logo-text">
-        <h1>Clinical Document Checker</h1>
-        <span>Hospital Tengku Permaisuri Norashikin · HTPN</span>
-        <div style="margin-top:4px;font-size:11px;color:var(--teal);font-weight:600;letter-spacing:0.04em;">By Dr Naim &amp; AI Team HTPN</div>
-      </div>
-    </div>
-    <div class="header-stats">
-      <div class="stat-pill"><span class="visitor-dot"></span> Total Visitors: <span class="val" id="visitor-count">—</span></div>
-      <div class="stat-pill">📋 Analyses: <span class="val" id="analysis-count">0</span></div>
-      <a href="dashboard.html" target="_blank" class="stat-pill" style="text-decoration:none;cursor:pointer;" title="View Analytics Dashboard">📊 Dashboard</a>
-      <div class="stat-pill" onclick="toggleDbConfig()" style="cursor:pointer;" title="Configure Analytics">⚙️ Analytics</div>
-      <div class="stat-pill" onclick="toggleDarkMode()" id="dark-mode-btn" style="cursor:pointer;" title="Toggle Dark/Light Mode">🌙 Dark</div>
-      <div class="stat-pill" onclick="showQR()" style="cursor:pointer;" title="Share app via QR code">📷 QR</div>
-      <div class="stat-pill">🇲🇾 HTPN</div>
+<div id="main">
+  <div id="topbar">
+    <div><h2 id="topbar-title">Dashboard</h2></div>
+    <div id="session-info">
+      <span class="session-chip" id="topbar-date"></span>
+      <span class="session-chip" id="topbar-session">No active session</span>
     </div>
   </div>
 
-  <!-- STEP NAV -->
-  <div class="step-nav">
-    <div class="step-nav-inner">
-      <button class="step-btn active" data-step="1" onclick="goStep(1)"><span class="step-num">1</span> Data Entry</button>
-      <button class="step-btn" data-step="2" onclick="goStep(2)"><span class="step-num">2</span> Reference Doc</button>
-      <button class="step-btn" data-step="3" onclick="goStep(3)"><span class="step-num">3</span> Transcript</button>
-      <button class="step-btn" data-step="4" onclick="goStep(4)"><span class="step-num">4</span> SOAP Form</button>
-      <button class="step-btn" data-step="5" onclick="goStep(5)"><span class="step-num">5</span> AI Analysis</button>
-      <button class="step-btn" data-step="6" onclick="goStep(6)"><span class="step-num">6</span> Sign-off &amp; Export</button>
-      <button class="step-btn" data-step="7" onclick="goStep(7)"><span class="step-num">7</span> Feedback</button>
-    </div>
-  </div>
-</header>
+  <div id="content">
 
-<!-- API KEY BAR (shown outside main) -->
-<div style="background:var(--navy);padding:0 24px;display:none;">
-  <div style="max-width:1100px;margin:0 auto;">
-    <div class="api-key-bar">
-      <label>🔑 API Keys (session only — not stored)</label>
-      <input type="password" id="claude-key" placeholder="Claude API Key (sk-ant-...)">
-      <input type="password" id="openai-key" placeholder="OpenAI API Key (for Whisper audio — optional)">
-      <button class="btn btn-primary" onclick="saveKeys()" style="white-space:nowrap;font-size:13px;padding:8px 16px;">Save Keys</button>
-      <span id="key-saved" style="font-size:12px;color:var(--teal);display:none;">✓ Saved</span>
-    </div>
-  </div>
-</div>
-
-<main>
-
-<!-- ─────────────── STEP 1: DATA ENTRY ─────────────── -->
-<div class="step-panel active" id="step-1">
-  <div class="card">
-    <div class="card-title">📥 Step 1 — Data Entry</div>
-    <div class="card-sub">Choose your input method: upload audio, images, or enter text manually.</div>
-
-    <!-- SPECIALTY SELECTOR -->
-    <div style="margin-bottom:20px;">
-      <label style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:8px;">Clinical Specialty</label>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;" id="specialty-bar">
-        <button class="spec-btn active" onclick="setSpecialty('General Medicine',this)">🏥 General Medicine</button>
-        <button class="spec-btn" onclick="setSpecialty('Emergency',this)">🚨 Emergency</button>
-        <button class="spec-btn" onclick="setSpecialty('Surgery',this)">🔪 Surgery</button>
-        <button class="spec-btn" onclick="setSpecialty('Paediatrics',this)">👶 Paediatrics</button>
-        <button class="spec-btn" onclick="setSpecialty('O&G',this)">🤰 O&amp;G</button>
-        <button class="spec-btn" onclick="setSpecialty('Orthopaedics',this)">🦴 Orthopaedics</button>
-        <button class="spec-btn" onclick="setSpecialty('Psychiatry',this)">🧠 Psychiatry</button>
-        <button class="spec-btn" onclick="setSpecialty('Respiratory',this)">🫁 Respiratory</button>
-        <button class="spec-btn" onclick="setSpecialty('Cardiology',this)">❤️ Cardiology</button>
+    <div class="panel active" id="panel-dashboard">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-label">Sessions Today</div><div class="stat-value" id="stat-today">0</div><div class="stat-sub">Clinical encounters</div></div>
+        <div class="stat-card"><div class="stat-label">Total Sessions</div><div class="stat-value" id="stat-total">0</div><div class="stat-sub">All time</div></div>
+        <div class="stat-card"><div class="stat-label">CPG References</div><div class="stat-value" id="stat-cpg">10</div><div class="stat-sub">MOH guidelines loaded</div></div>
+        <div class="stat-card"><div class="stat-label">RAG Mode</div><div class="stat-value" style="font-size:1.2rem;padding-top:8px">✅ Active</div><div class="stat-sub">Grounded responses</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Quick Start</div>
+        <p class="section-sub">Upload a pre-recorded consultation audio, select relevant CPG guidelines, then generate AI-assisted SOAP notes grounded in MOH CPG evidence.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+          <div style="padding:20px;background:#f0f7ff;border-radius:10px;text-align:center;cursor:pointer" onclick="showPanel('session')"><div style="font-size:2rem;margin-bottom:8px">🎤</div><div style="font-weight:700;font-size:0.9rem;color:var(--primary)">New Session</div><div style="font-size:0.75rem;color:var(--muted);margin-top:4px">Upload audio &amp; transcribe</div></div>
+          <div style="padding:20px;background:#f0fdf4;border-radius:10px;text-align:center;cursor:pointer" onclick="showPanel('cpg')"><div style="font-size:2rem;margin-bottom:8px">📖</div><div style="font-weight:700;font-size:0.9rem;color:var(--accent)">CPG Browser</div><div style="font-size:0.75rem;color:var(--muted);margin-top:4px">Browse MOH guidelines</div></div>
+          <div style="padding:20px;background:#fefce8;border-radius:10px;text-align:center;cursor:pointer" onclick="showPanel('history')"><div style="font-size:2rem;margin-bottom:8px">📋</div><div style="font-weight:700;font-size:0.9rem;color:#92400e">History</div><div style="font-size:0.75rem;color:var(--muted);margin-top:4px">Past clinical sessions</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> About ClinIQ RAG</div>
+        <p style="font-size:0.84rem;line-height:1.8;color:var(--muted)">ClinIQ uses <strong>Retrieval-Augmented Generation (RAG)</strong> with embedded MOH Clinical Practice Guidelines to ground AI responses in evidence-based medicine. Instead of relying purely on generative AI (which can hallucinate), ClinIQ retrieves the relevant CPG section and injects it into the prompt context — so every recommendation cites MOH guidelines.</p>
       </div>
     </div>
 
-    <div class="mode-tab-bar">
-      <button class="mode-tab active" onclick="setMode('audio',this)">🎙 Voice &amp; Audio</button>
-      <button class="mode-tab" onclick="setMode('image',this)">🖼 Image Upload</button>
-      <button class="mode-tab" onclick="setMode('text',this)">✏️ Manual Text</button>
-    </div>
-
-    <!-- AUDIO MODE — Groq Upload + Web Speech -->
-    <div id="mode-audio">
-
-      <!-- SUB TABS -->
-      <div style="display:flex;gap:8px;margin-bottom:16px;">
-        <button class="mode-tab active" id="sub-live" onclick="setAudioSub('live',this)" style="font-size:12px;padding:6px 14px;">🎙 Live Dictation</button>
-        <button class="mode-tab" id="sub-file" onclick="setAudioSub('file',this)" style="font-size:12px;padding:6px 14px;">📂 Upload Recording</button>
-      </div>
-
-      <!-- LIVE DICTATION -->
-      <div id="audio-sub-live">
-        <div id="browser-warning" class="alert alert-warn" style="display:none;margin-bottom:14px;">
-          <span>⚠</span>
-          <div><strong>Voice Dictation is not supported in Safari or this browser.</strong> Please use <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>, or use the Upload Recording tab instead.</div>
+    <div class="panel" id="panel-session">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Step 1 — Patient Information</div>
+        <div class="form-row">
+          <div class="form-group"><label>Patient Name</label><input type="text" id="p-name" placeholder="Full name"></div>
+          <div class="form-group"><label>IC / MRN</label><input type="text" id="p-ic" placeholder="IC number or MRN"></div>
         </div>
-        <div id="speech-info-banner" style="background:#F0F9F6;border:1.5px solid rgba(28,184,160,0.25);border-radius:var(--r);padding:16px 18px;margin-bottom:14px;font-size:13px;">
-          <div style="font-weight:600;color:var(--navy);margin-bottom:10px;font-size:13.5px;">🎙 Live Dictation Guidelines — Please Read Before Starting</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div>
-              <div style="font-weight:600;color:#0F8C7A;margin-bottom:6px;">✅ DO</div>
-              <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px;color:var(--text-muted);">
-                <li>🔇 Speak in a quiet environment</li>
-                <li>🗣 Speak clearly at normal pace</li>
-                <li>📋 State patient age, gender, complaint</li>
-                <li>💊 State drug name, dose and frequency clearly</li>
-                <li>🔢 Speak vitals explicitly (e.g. "BP one-fifty-eight over ninety-six")</li>
-                <li>✏️ Edit the transcript before proceeding</li>
-              </ul>
-            </div>
-            <div>
-              <div style="font-weight:600;color:var(--rose);margin-bottom:6px;">❌ DON'T</div>
-              <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px;color:var(--text-muted);">
-                <li>🚫 State patient's full name or IC number</li>
-                <li>🚫 Record patient voice without consent</li>
-                <li>🚫 Speak too fast or mumble drug names</li>
-                <li>🚫 Use heavy abbreviations without spelling out</li>
-                <li>🚫 Rely solely on AI output — always verify</li>
-              </ul>
-            </div>
-          </div>
-          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(28,184,160,0.15);display:flex;flex-direction:column;gap:6px;font-size:12px;">
-            <div style="display:flex;align-items:flex-start;gap:8px;background:rgba(28,184,160,0.06);border:1px solid rgba(28,184,160,0.15);border-radius:8px;padding:9px 12px;">
-              <span style="flex-shrink:0;">✅</span>
-              <span style="color:var(--text-muted);line-height:1.6;"><strong style="color:var(--teal);">Chrome / Edge / Android</strong> — works instantly, completely free, no account needed.</span>
-            </div>
-            <div style="display:flex;align-items:flex-start;gap:8px;background:rgba(244,166,35,0.06);border:1px solid rgba(244,166,35,0.2);border-radius:8px;padding:9px 12px;">
-              <span style="flex-shrink:0;">⚠️</span>
-              <span style="color:var(--text-muted);line-height:1.6;"><strong style="color:var(--amber);">iPhone / iPad / Safari / Firefox</strong> — not supported here. Please use the <strong>Upload Recording</strong> tab instead — same quality, works on all devices.</span>
-            </div>
-          </div>
+        <div class="form-row-3">
+          <div class="form-group"><label>Age</label><input type="number" id="p-age" placeholder="Years" min="0" max="130"></div>
+          <div class="form-group"><label>Gender</label><select id="p-gender"><option value="">Select</option><option>Male</option><option>Female</option></select></div>
+          <div class="form-group"><label>Ethnicity</label><select id="p-ethnicity"><option value="">Select</option><option>Malay</option><option>Chinese</option><option>Indian</option><option>Orang Asal</option><option>Others</option></select></div>
         </div>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
-        <button class="btn btn-primary" id="speech-start-btn" onclick="startSpeech()" style="gap:8px;">
-          🎙 Start Dictation
-        </button>
-        <button class="btn btn-danger" id="speech-stop-btn" onclick="stopSpeech()" style="display:none;">
-          ⏹ Stop Dictation
-        </button>
-        <div id="speech-indicator" style="display:none;align-items:center;gap:8px;font-size:13px;color:var(--rose);">
-          <span style="width:10px;height:10px;background:var(--rose);border-radius:50%;animation:pulse-dot 1s ease-in-out infinite;display:inline-block;"></span>
-          Recording — speak clearly...
+        <div class="form-row">
+          <div class="form-group"><label>Known Medical Conditions</label><input type="text" id="p-pmhx" placeholder="e.g. HPT, DM, IHD"></div>
+          <div class="form-group"><label>Current Medications</label><input type="text" id="p-meds" placeholder="e.g. Amlodipine 5mg, Metformin 500mg"></div>
         </div>
       </div>
-      <div class="section-label">Live Transcript (editable)</div>
-      <textarea id="speech-live" rows="6" placeholder="Your dictation will appear here in real time as you speak..." style="background:#F7F9FC;border:1.5px solid #DDE4ED;border-radius:var(--r);padding:14px;font-family:var(--mono);font-size:13px;line-height:1.8;width:100%;resize:vertical;outline:none;"></textarea>
-        <div id="audio-status" class="alert alert-info" style="display:none;margin-top:12px;"></div>
-      </div>
 
-      <!-- FILE UPLOAD (Groq Whisper) -->
-      <div id="audio-sub-file" style="display:none;">
-        <div style="background:#F0F9F6;border:1.5px solid rgba(28,184,160,0.25);border-radius:var(--r);padding:16px 18px;margin-bottom:14px;font-size:13px;">
-          <div style="font-weight:600;color:var(--navy);margin-bottom:10px;font-size:13.5px;">📂 Upload Recording Guidelines — Please Read Before Uploading</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div>
-              <div style="font-weight:600;color:#0F8C7A;margin-bottom:6px;">✅ DO</div>
-              <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px;color:var(--text-muted);">
-                <li>🔇 Record in a quiet environment</li>
-                <li>🗣 Speak clearly and at normal pace</li>
-                <li>📋 Include patient age, gender, complaint</li>
-                <li>💊 State drug name, dose and frequency clearly</li>
-                <li>🔢 Speak vitals explicitly (e.g. "BP one-fifty-eight over ninety-six")</li>
-                <li>📁 Use .mp3, .m4a, .wav or .ogg format</li>
-                <li>⏱ Keep recordings under 10 minutes for best accuracy</li>
-              </ul>
-            </div>
-            <div>
-              <div style="font-weight:600;color:var(--rose);margin-bottom:6px;">❌ DON'T</div>
-              <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px;color:var(--text-muted);">
-                <li>🚫 State patient's full name or IC number</li>
-                <li>🚫 Record in noisy wards without a microphone</li>
-                <li>🚫 Speak too fast or mumble drug names</li>
-                <li>🚫 Upload files larger than 25MB</li>
-                <li>🚫 Use highly specialised abbreviations without spelling out</li>
-                <li>🚫 Rely solely on AI output — always verify</li>
-              </ul>
-            </div>
-          </div>
-          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(28,184,160,0.15);display:flex;flex-direction:column;gap:6px;font-size:12px;">
-            <div style="display:flex;align-items:flex-start;gap:8px;background:rgba(28,184,160,0.06);border:1px solid rgba(28,184,160,0.15);border-radius:8px;padding:9px 12px;">
-              <span style="flex-shrink:0;">✅</span>
-              <span style="color:var(--text-muted);line-height:1.6;"><strong style="color:var(--teal);">Works on ALL devices</strong> — iPhone, iPad, Safari, Chrome, Edge, Android, Firefox. Powered by <strong>Groq Whisper</strong> — free, fast, supports English and Bahasa Malaysia.</span>
-            </div>
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;background:rgba(244,166,35,0.06);border:1px solid rgba(244,166,35,0.2);border-radius:8px;padding:9px 12px;">
-              <div style="display:flex;gap:8px;align-items:flex-start;">
-                <span style="flex-shrink:0;">⚠️</span>
-                <span style="color:var(--text-muted);line-height:1.6;"><strong style="color:var(--amber);">Shared quota — resets daily.</strong> If the limit is reached, register free at <a href="https://console.groq.com" target="_blank" style="color:var(--teal);font-weight:600;">console.groq.com</a> and use your own key.</span>
-              </div>
-              <button onclick="toggleGroqKeyPrompt()" style="white-space:nowrap;padding:5px 12px;background:rgba(28,184,160,0.15);border:1px solid rgba(28,184,160,0.3);border-radius:6px;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">🔑 Use own key</button>
-            </div>
-            <div id="groq-key-prompt" style="display:none;flex-direction:column;gap:10px;background:rgba(28,184,160,0.06);border:1.5px solid rgba(28,184,160,0.25);border-radius:10px;padding:14px;">
-              <div style="font-size:13px;font-weight:700;color:var(--teal);">🔑 Enter Your Own Groq Key</div>
-              <div style="font-size:12px;color:var(--text-muted);">Register free at <a href="https://console.groq.com" target="_blank" style="color:var(--teal);font-weight:600;">console.groq.com</a> → copy API key → paste below. Saved in your browser only.</div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <input id="groq-key-input" type="password" placeholder="Paste your Groq API key here..." style="flex:1;padding:9px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(28,184,160,0.3);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;min-width:200px;">
-                <button onclick="saveGroqKey()" style="padding:9px 18px;background:var(--teal);border:none;border-radius:8px;color:white;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Save & Use</button>
-                <button onclick="document.getElementById('groq-key-prompt').style.display='none'" style="padding:9px 14px;background:transparent;border:1px solid var(--card-border);border-radius:8px;color:var(--text-muted);font-size:13px;cursor:pointer;">✕</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="upload-zone" id="audio-file-zone" onclick="document.getElementById('audio-file-input').click()" ondragover="dragOver(event,'audio-file-zone')" ondragleave="dragLeave('audio-file-zone')" ondrop="dropFile(event,'audiofile')">
-          <input type="file" id="audio-file-input" accept=".mp3,.m4a,.wav,.ogg,.webm" onchange="handleAudioFile(this)">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Step 2 — Upload Pre-recorded Audio</div>
+        <p class="section-sub">Upload a .mp3, .m4a, .wav, or .webm recording of the clinical consultation.</p>
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
           <div class="upload-icon">🎵</div>
-          <h3>Drop audio file here or tap to upload</h3>
-          <p>.mp3 · .m4a · .wav · .ogg — max 25MB</p>
+          <h3>Click to upload audio</h3>
+          <p>or drag and drop here · MP3, M4A, WAV, WEBM, OGG</p>
+          <p style="margin-top:6px;font-size:0.72rem;color:#94a3b8">Max 25MB · Pre-recorded consultations</p>
         </div>
-        <div id="audio-file-list" class="file-list"></div>
-        <div id="groq-status" class="alert alert-info" style="display:none;margin-top:12px;"></div>
+        <input type="file" id="file-input" accept="audio/*" onchange="handleFileSelect(event)">
+        <audio id="audio-player" controls></audio>
+        <div id="file-info" style="display:none;margin-top:12px;padding:10px 14px;background:#f0f7ff;border-radius:8px;font-size:0.82rem;color:var(--primary)"></div>
       </div>
 
-    </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Step 3 — Transcript</div>
+        <p class="section-sub">Paste the consultation transcript or type clinical encounter notes directly.</p>
+        <div class="alert alert-info show" id="transcript-alert"><span>ℹ️</span><span>Paste or type the consultation transcript below. Click ⋆ Extract Vitals after pasting to auto-fill vital signs.</span></div>
+        <textarea id="transcript-box" placeholder="Paste or type the consultation transcript here...
 
-    <!-- IMAGE MODE -->
-    <div id="mode-image" style="display:none;">
-      <div class="upload-zone" id="image-zone" onclick="document.getElementById('image-input').click()" ondragover="dragOver(event,'image-zone')" ondragleave="dragLeave('image-zone')" ondrop="dropFile(event,'image')">
-        <input type="file" id="image-input" accept=".jpg,.jpeg,.png" multiple onchange="handleImages(this)">
-        <div class="upload-icon">🏥</div>
-        <h3>Upload clinical documents</h3>
-        <p>Referral letters, discharge summaries, lab reports — .jpg or .png, multiple files allowed</p>
+Example:
+Patient: Doctor, I have headache and my blood pressure reading was 158 over 96 at home.
+Doctor: How long have you had this?
+Patient: About 2 weeks. Also my sugar reading has been high, around 12 to 14 before meal.
+Doctor: Are you taking your medications regularly?
+Patient: Sometimes I forget the amlodipine and metformin."></textarea>
+        <div class="btn-row">
+          <button class="btn btn-outline btn-sm" onclick="extractVitals()">⚡ Extract Vitals from Transcript</button>
+          <button class="btn btn-outline btn-sm" onclick="clearTranscript()">🗑️ Clear</button>
+        </div>
       </div>
-      <div id="image-file-list" class="file-list"></div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Step 4 — Vital Signs</div>
+        <p class="section-sub">Verify and complete vitals extracted from transcript or enter manually.</p>
+        <div class="vitals-grid">
+          <div class="vital-box"><label>Blood Pressure</label><input type="text" id="v-bp" placeholder="120/80"><span>mmHg</span></div>
+          <div class="vital-box"><label>Heart Rate</label><input type="number" id="v-hr" placeholder="72"><span>bpm</span></div>
+          <div class="vital-box"><label>Temperature</label><input type="number" step="0.1" id="v-temp" placeholder="37.0"><span>°C</span></div>
+          <div class="vital-box"><label>SpO2</label><input type="number" id="v-spo2" placeholder="99"><span>%</span></div>
+          <div class="vital-box"><label>Respiratory Rate</label><input type="number" id="v-rr" placeholder="18"><span>/min</span></div>
+          <div class="vital-box"><label>Weight</label><input type="number" step="0.1" id="v-wt" placeholder="65.0"><span>kg</span></div>
+          <div class="vital-box"><label>Height</label><input type="number" step="0.1" id="v-ht" placeholder="165"><span>cm</span></div>
+          <div class="vital-box"><label>Blood Glucose</label><input type="number" step="0.1" id="v-bg" placeholder="5.6"><span>mmol/L</span></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-outline btn-sm" onclick="calcBMI()">📐 Calculate BMI</button>
+          <span id="bmi-result" style="font-size:0.84rem;color:var(--muted);align-self:center"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--accent)"></span> Step 5 — Select CPG Guidelines (RAG Context) <span class="tag tag-rag">RAG</span></div>
+        <p class="section-sub">Select the relevant MOH Clinical Practice Guidelines. Selected CPGs are injected as RAG context into the AI prompt to ground responses in evidence-based medicine.</p>
+        <div class="cpg-grid" id="cpg-selector">
+          <div class="cpg-chip" data-cpg="hypertension" onclick="toggleCPG(this)"><span class="cpg-icon">🩺</span> Hypertension</div>
+          <div class="cpg-chip" data-cpg="diabetes" onclick="toggleCPG(this)"><span class="cpg-icon">🩸</span> Diabetes T2</div>
+          <div class="cpg-chip" data-cpg="dyslipidaemia" onclick="toggleCPG(this)"><span class="cpg-icon">💉</span> Dyslipidaemia</div>
+          <div class="cpg-chip" data-cpg="asthma" onclick="toggleCPG(this)"><span class="cpg-icon">�ac1</span> Asthma</div>
+          <div class="cpg-chip" data-cpg="copd" onclick="toggleCPG(this)"><span class="cpg-icon">💨</span> COPD</div>
+          <div class="cpg-chip" data-cpg="heartfailure" onclick="toggleCPG(this)"><span class="cpg-icon">❤️</span> Heart Failure</div>
+          <div class="cpg-chip" data-cpg="ckd" onclick="toggleCPG(this)"><span class="cpg-icon">�ae8</span> CKD</div>
+          <div class="cpg-chip" data-cpg="stroke" onclick="toggleCPG(this)"><span class="cpg-icon">🧠</span> Stroke / TIA</div>
+          <div class="cpg-chip" data-cpg="depression" onclick="toggleCPG(this)"><span class="cpg-icon">🧘</span> Depression</div>
+          <div class="cpg-chip" data-cpg="gout" onclick="toggleCPG(this)"><span class="cpg-icon">🦵</span> Gout</div>
+        </div>
+        <div id="selected-cpg-info" style="font-size:0.78rem;color:var(--muted)">No CPG selected — AI will use general medical knowledge only.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:#6366f1"></span> Step 6 — AI Analysis &amp; SOAP Notes <span class="tag tag-ai">AI</span></div>
+        <p class="section-sub">Generate SOAP notes and clinical recommendations grounded in selected MOH CPG guidelines.</p>
+        <div class="alert alert-warn" id="no-transcript-warn"><span>⚠️</span><span>Please add a transcript or notes in Step 3 before running analysis.</span></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="runFullAnalysis()" id="btn-analyse">🤖 Generate SOAP Notes + AI Analysis</button>
+          <button class="btn btn-outline" onclick="clearAnalysis()">🗑️ Clear Output</button>
+        </div>
+        <div id="analysis-progress" style="display:none;margin-top:16px">
+          <div style="font-size:0.8rem;color:var(--muted)" id="analysis-status">Preparing…</div>
+          <div class="progress-wrap"><div class="progress-bar" id="analysis-bar"></div></div>
+        </div>
+      </div>
+
+      <div class="card" id="soap-card" style="display:none">
+        <div class="card-title"><span class="dot"></span> SOAP Notes</div>
+        <div class="soap-grid">
+          <div class="soap-section"><label>S — Subjective</label><textarea id="soap-s" rows="6"></textarea></div>
+          <div class="soap-section"><label>O — Objective</label><textarea id="soap-o" rows="6"></textarea></div>
+          <div class="soap-section"><label>A — Assessment</label><textarea id="soap-a" rows="6"></textarea></div>
+          <div class="soap-section"><label>P — Plan</label><textarea id="soap-p" rows="6"></textarea></div>
+        </div>
+      </div>
+
+      <div id="analysis-out">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+          <div><div style="font-weight:700;font-size:1.1rem">AI Clinical Analysis</div><div id="analysis-cpg-refs" style="margin-top:6px"></div></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm" style="background:rgba(255,255,255,0.15);color:#fff;border:none" onclick="printSession()">🖨️ Print</button>
+            <button class="btn btn-sm" style="background:rgba(255,255,255,0.15);color:#fff;border:none" onclick="saveSession()">💾 Save Session</button>
+          </div>
+        </div>
+        <div class="analysis-block"><div class="analysis-label">Working Diagnosis</div><div class="analysis-val" id="a-dx"></div></div>
+        <div class="divider" style="background:rgba(255,255,255,0.15)"></div>
+        <div class="analysis-block"><div class="analysis-label">CPG-Based Targets &amp; Thresholds</div><div class="analysis-chips" id="a-targets"></div></div>
+        <div class="divider" style="background:rgba(255,255,255,0.15)"></div>
+        <div class="analysis-block"><div class="analysis-label">Flags &amp; Alerts</div><div class="analysis-chips" id="a-flags"></div></div>
+        <div class="divider" style="background:rgba(255,255,255,0.15)"></div>
+        <div class="analysis-block"><div class="analysis-label">CPG-Grounded Recommendations</div><div class="analysis-val" id="a-recs"></div></div>
+        <div class="divider" style="background:rgba(255,255,255,0.15)"></div>
+        <div class="analysis-block"><div class="analysis-label">Follow-up &amp; Monitoring Plan</div><div class="analysis-val" id="a-fu"></div></div>
+        <div class="divider" style="background:rgba(255,255,255,0.15)"></div>
+        <div class="analysis-block"><div class="analysis-label">Referral Recommendations</div><div class="analysis-val" id="a-ref"></div></div>
+      </div>
     </div>
 
-    <!-- TEXT MODE -->
-    <div id="mode-text" style="display:none;">
-      <div class="section-label">Clinical Notes / History</div>
-      <textarea id="manual-text" rows="8" placeholder="Enter clinical history, HOPI, examination findings, investigation results, medications, plan... 
-
-Example: 65yo Malay female with T2DM and hypertension presenting with 3-day history of productive cough, fever 38.5°C, RR 24, SpO2 94% RA. CXR shows right lower lobe consolidation..."></textarea>
+    <div class="panel" id="panel-history">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Session History</div>
+        <p class="section-sub">All sessions stored locally in your browser. No patient data sent to external servers except when AI analysis is triggered.</p>
+        <div class="table-wrap">
+          <table id="history-table">
+            <thead><tr><th>Date/Time</th><th>Patient</th><th>CPG Used</th><th>Working Diagnosis</th><th>Actions</th></tr></thead>
+            <tbody id="history-tbody"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:40px">No sessions saved yet.</td></tr></tbody>
+          </table>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-outline btn-sm" onclick="exportHistory()">📥 Export CSV</button>
+          <button class="btn btn-danger btn-sm" onclick="clearHistory()">🗑️ Clear All History</button>
+        </div>
+      </div>
     </div>
 
-    <div class="nav-buttons">
-      <button class="btn btn-primary" onclick="processInput()">Process Input →</button>
+    <div class="panel" id="panel-cpg">
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--accent)"></span> MOH Clinical Practice Guidelines</div>
+        <p class="section-sub">Browse embedded CPG content sourced from <a href="https://mymahtas.moh.gov.my/index.php/docman-list/publications/cpg-list" target="_blank" style="color:var(--primary)">mymahtas.moh.gov.my</a>. These guidelines are injected as RAG context during AI analysis.</p>
+        <div class="cpg-grid">
+          <div class="cpg-chip" onclick="viewCPG('hypertension')"><span class="cpg-icon">🩺</span> Hypertension</div>
+          <div class="cpg-chip" onclick="viewCPG('diabetes')"><span class="cpg-icon">🩸</span> Diabetes T2</div>
+          <div class="cpg-chip" onclick="viewCPG('dyslipidaemia')"><span class="cpg-icon">💉</span> Dyslipidaemia</div>
+          <div class="cpg-chip" onclick="viewCPG('asthma')"><span class="cpg-icon">�ac1</span> Asthma</div>
+          <div class="cpg-chip" onclick="viewCPG('copd')"><span class="cpg-icon">💨</span> COPD</div>
+          <div class="cpg-chip" onclick="viewCPG('heartfailure')"><span class="cpg-icon">❤️</span> Heart Failure</div>
+          <div class="cpg-chip" onclick="viewCPG('ckd')"><span class="cpg-icon">�ae8</span> CKD</div>
+          <div class="cpg-chip" onclick="viewCPG('stroke')"><span class="cpg-icon">🧠</span> Stroke / TIA</div>
+          <div class="cpg-chip" onclick="viewCPG('depression')"><span class="cpg-icon">🧘</span> Depression</div>
+          <div class="cpg-chip" onclick="viewCPG('gout')"><span class="cpg-icon">🦵</span> Gout</div>
+        </div>
+      </div>
+      <div class="card" id="cpg-viewer-card" style="display:none">
+        <div class="card-title"><span class="dot" style="background:var(--accent)"></span><span id="cpg-viewer-title"></span><a id="cpg-source-link" href="https://mymahtas.moh.gov.my/index.php/docman-list/publications/cpg-list" target="_blank" style="font-size:0.72rem;color:var(--primary);margin-left:auto;text-decoration:none">🔗 MOH Source</a></div>
+        <pre id="cpg-viewer-content"></pre>
+      </div>
     </div>
+
+    <div class="panel" id="panel-settings">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Application Settings</div>
+        <div class="form-group" style="margin-bottom:16px"><label>Clinic / Facility Name</label><input type="text" id="s-clinic" placeholder="e.g. Klinik Kesihatan Putrajaya"></div>
+        <div class="form-group" style="margin-bottom:16px"><label>Doctor Name</label><input type="text" id="s-doctor" placeholder="e.g. Dr. Ahmad bin Abdullah"></div>
+        <div class="form-group" style="margin-bottom:16px"><label>Default Specialty</label><select id="s-specialty"><option>General Practice / Family Medicine</option><option>Internal Medicine</option><option>Emergency Medicine</option><option>Cardiology</option><option>Endocrinology</option><option>Nephrology</option><option>Respiratory Medicine</option><option>Neurology</option><option>Psychiatry</option></select></div>
+        <div class="form-group" style="margin-bottom:16px"><label>AI Model</label><select id="s-model"><option value="claude-sonnet-4-6">Claude Sonnet 4.6 (Recommended)</option><option value="claude-opus-4-8">Claude Opus 4.8 (Most Capable)</option><option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (Fastest)</option></select></div>
+        <div class="form-group" style="margin-bottom:16px"><label>Output Language</label><select id="s-lang"><option value="English">English</option><option value="Bahasa Malaysia">Bahasa Malaysia</option><option value="English and Bahasa Malaysia">English + Bahasa Malaysia</option></select></div>
+        <div class="form-group" style="margin-bottom:20px"><label>Max Tokens for AI Response</label><select id="s-tokens"><option value="2000">2,000 (Fast)</option><option value="4000" selected>4,000 (Balanced)</option><option value="6000">6,000 (Detailed)</option><option value="8000">8,000 (Maximum)</option></select></div>
+        <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+        <div class="alert alert-success mt-16" id="settings-saved"><span>✅</span> Settings saved.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Privacy &amp; Data</div>
+        <p style="font-size:0.84rem;line-height:1.8;color:var(--muted)"><strong>Local Storage:</strong> All session history and settings stored only in your browser's localStorage. No patient data uploaded to external servers except transcript text sent to Claude AI when analysis is triggered.<br><br><strong>No Audio Stored:</strong> Audio files processed locally and never uploaded.<br><br><strong>Disclaimer:</strong> ClinIQ is a clinical decision <em>support</em> tool only. All clinical decisions must be made by a qualified healthcare professional.</p>
+      </div>
+    </div>
+
   </div>
 </div>
-
-<!-- ─────────────── STEP 2: REFERENCE DOC ─────────────── -->
-<div class="step-panel" id="step-2">
-  <div class="card">
-    <div class="card-title">📚 Step 2 — Reference Document (RAG Context)</div>
-    <div class="card-sub">Upload a clinical guideline, drug formulary, or previous discharge summary as reference. This gives the AI grounded context and reduces hallucination on drug names, dosing, and diagnostic criteria.</div>
-
-    <div class="alert alert-warn">
-      <span>⚠</span>
-      <span><strong>Reference document — not patient data.</strong> Only the first ~8,000 characters will be passed to the AI. Uploading irrelevant documents may cause over-anchoring. Use guidelines, protocols, or formularies.</span>
-    </div>
-
-    <div class="upload-zone" id="pdf-zone" onclick="document.getElementById('pdf-input').click()" ondragover="dragOver(event,'pdf-zone')" ondragleave="dragLeave('pdf-zone')" ondrop="dropFile(event,'pdf')">
-      <input type="file" id="pdf-input" accept=".pdf,.txt" onchange="handlePDF(this)">
-      <div class="upload-icon">📄</div>
-      <h3>Drop reference PDF or TXT here</h3>
-      <p>Clinical guidelines · Drug formulary · Diagnostic criteria · Protocol documents</p>
-    </div>
-
-    <div id="pdf-file-list" class="file-list"></div>
-
-    <div id="ref-preview" style="display:none; margin-top:16px;">
-      <div class="section-label">Reference document preview (first 500 chars)</div>
-      <div class="transcript-box" id="ref-preview-text" style="min-height:60px; font-size:12px; color:var(--text-muted);"></div>
-      <div id="ref-char-count" style="font-size:12px;color:var(--text-muted);margin-top:4px;"></div>
-    </div>
-
-    <div class="nav-buttons">
-      <button class="btn btn-outline" onclick="goStep(1)">← Back</button>
-      <button class="btn btn-primary" onclick="goStep(3)">Continue →</button>
-    </div>
-  </div>
-</div>
-
-<!-- ─────────────── STEP 3: TRANSCRIPT ─────────────── -->
-<div class="step-panel" id="step-3">
-  <div class="card">
-    <div class="card-title">📝 Step 3 — Transcription &amp; Extraction</div>
-    <div class="card-sub">Review and edit the extracted text before proceeding. Corrections here improve the quality of the SOAP note and AI analysis.</div>
-
-    <div class="alert alert-info" id="transcribe-status">
-      <span>ℹ</span>
-      <span>Extracted text will appear below. Edit freely before proceeding.</span>
-    </div>
-
-    <div class="section-label">Extracted / Transcribed Text (editable)</div>
-    <textarea class="transcript-box" id="transcript-text" rows="14" placeholder="Transcribed or extracted text will appear here...
-
-You can also type or paste clinical notes directly."></textarea>
-
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:8px;">
-      <span id="transcript-chars" style="font-size:12px;color:var(--text-muted);">0 characters</span>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-outline" onclick="clearTranscript()">Clear</button>
-        <button class="btn btn-primary" onclick="fillSOAP()">Pre-fill SOAP Form →</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ─────────────── STEP 4: SOAP FORM ─────────────── -->
-<div class="step-panel" id="step-4">
-  <div class="card">
-    <div class="card-title">🩺 Step 4 — SOAP Clinical Form</div>
-    <div class="card-sub">Review and complete the pre-filled SOAP note. All fields will be used for AI analysis.</div>
-
-    <!-- Chief Complaint + HOPI -->
-    <div class="analysis-section">
-      <h3>📋 Subjective</h3>
-      <div class="field" style="margin-bottom:12px;">
-        <label>Chief Complaint</label>
-        <input type="text" id="f-cc" placeholder="e.g. Fever and productive cough for 3 days">
-      </div>
-      <div class="field">
-        <label>History of Presenting Illness (HOPI)</label>
-        <textarea id="f-hopi" rows="5" placeholder="Detailed history including onset, duration, character, associated symptoms, relevant PMH, medications, allergies, social/family history..."></textarea>
-      </div>
-
-      <!-- DRUG ALLERGY — required field -->
-      <div class="field" style="margin-top:12px;">
-        <label style="display:flex;align-items:center;gap:8px;">
-          Drug Allergy Status
-          <span style="background:rgba(232,76,106,0.15);color:var(--rose);font-size:10px;font-weight:700;padding:2px 8px;border-radius:50px;border:1px solid rgba(232,76,106,0.3);">REQUIRED</span>
-        </label>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;" id="allergy-btn-bar">
-          <button class="allergy-btn active" onclick="setAllergy('NKDA',this)" style="padding:7px 16px;border-radius:8px;border:1px solid rgba(28,184,160,0.4);background:rgba(28,184,160,0.15);color:var(--teal);font-size:13px;font-weight:600;cursor:pointer;">✅ NKDA</button>
-          <button class="allergy-btn" onclick="setAllergy('Known allergy',this)" style="padding:7px 16px;border-radius:8px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:600;cursor:pointer;">⚠️ Known Allergy</button>
-          <button class="allergy-btn" onclick="setAllergy('Not documented',this)" style="padding:7px 16px;border-radius:8px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:600;cursor:pointer;">❓ Not Documented</button>
-        </div>
-        <input type="text" id="f-allergy" value="NKDA"
-          placeholder="e.g. NKDA / Penicillin — rash / Sulfa — anaphylaxis"
-          style="border-left:3px solid var(--rose);">
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">⚕️ Medico-legal requirement. Must be documented before any antibiotic prescription.</div>
-      </div>
-    </div>
-
-    <!-- Vitals -->
-    <div class="analysis-section">
-      <h3>💓 Objective — Vitals</h3>
-      <div class="form-row vitals">
-        <div class="vital-chip">
-          <label>BP</label>
-          <input id="v-bp" type="text" placeholder="120/80">
-          <span>mmHg</span>
-        </div>
-        <div class="vital-chip">
-          <label>PR</label>
-          <input id="v-pr" type="text" placeholder="88">
-          <span>bpm</span>
-        </div>
-        <div class="vital-chip">
-          <label>Temp</label>
-          <input id="v-temp" type="text" placeholder="37.5">
-          <span>°C</span>
-        </div>
-        <div class="vital-chip">
-          <label>RR</label>
-          <input id="v-rr" type="text" placeholder="18">
-          <span>/min</span>
-        </div>
-        <div class="vital-chip">
-          <label>SpO₂</label>
-          <input id="v-spo2" type="text" placeholder="98">
-          <span>% RA</span>
-        </div>
-        <div class="vital-chip">
-          <label>Glucose</label>
-          <input id="v-glucose" type="text" placeholder="6.2">
-          <span>mmol/L</span>
-        </div>
-        <div class="vital-chip">
-          <label>GCS</label>
-          <input id="v-gcs" type="text" placeholder="15">
-          <span>/15</span>
-        </div>
-        <div class="vital-chip">
-          <label>Weight</label>
-          <input id="v-weight" type="text" placeholder="65">
-          <span>kg</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Investigations -->
-    <div class="analysis-section">
-      <h3>🔬 Objective — Investigations</h3>
-      <div class="form-row" style="margin-bottom:12px;">
-        <div class="field">
-          <label>Blood Investigations (trend)</label>
-          <textarea id="f-bloods" rows="4" placeholder="FBC: Hb 11.2, WBC 14.5 (neutrophils 82%), Plt 210&#10;RFT: Creatinine 98, Urea 6.2&#10;LFT: Normal&#10;CRP: 85, Procalcitonin: 0.8"></textarea>
-        </div>
-        <div class="field">
-          <label>Imaging Reports</label>
-          <textarea id="f-imaging" rows="4" placeholder="CXR: Right lower lobe consolidation, no effusion&#10;AXR: NAD&#10;USS: ..."></textarea>
-        </div>
-      </div>
-      <div class="field">
-        <label>Procedure Reports (if any)</label>
-        <textarea id="f-procedures" rows="3" placeholder="Lumbar puncture, pleural tap, bronchoscopy results..."></textarea>
-      </div>
-    </div>
-
-    <!-- Drug List -->
-    <div class="analysis-section">
-      <h3>💊 Drug List</h3>
-      <div style="overflow-x:auto;border-radius:var(--r-sm);border:1px solid #DDE4ED;">
-        <table class="drug-table" id="drug-table">
-          <thead><tr><th>#</th><th>Drug Name</th><th>Dose</th><th>Route</th><th>Frequency</th><th>Duration</th><th></th></tr></thead>
-          <tbody id="drug-tbody">
-            <tr><td>1</td><td><input placeholder="Amoxicillin-clavulanate"></td><td><input placeholder="625mg"></td><td><input placeholder="PO"></td><td><input placeholder="BD"></td><td><input placeholder="7 days"></td><td><button onclick="removeDrugRow(this)" style="border:none;background:none;color:var(--rose);cursor:pointer;font-size:16px;">×</button></td></tr>
-          </tbody>
-        </table>
-      </div>
-      <button class="btn btn-outline" onclick="addDrugRow()" style="margin-top:10px;font-size:13px;padding:7px 14px;">+ Add Drug</button>
-    </div>
-
-    <!-- Assessment -->
-    <div class="analysis-section">
-      <h3>🏥 Assessment</h3>
-      <div class="form-row">
-        <div class="field">
-          <label>Diagnosis List</label>
-          <textarea id="f-diagnosis" rows="4" placeholder="1. Community-acquired pneumonia (primary)&#10;2. Type 2 Diabetes Mellitus (known)&#10;3. Hypertension (known)"></textarea>
-        </div>
-        <div class="field">
-          <label>Issue List</label>
-          <textarea id="f-issues" rows="4" placeholder="1. Sepsis workup pending&#10;2. Glycaemic control suboptimal&#10;3. Antibiotic choice — penicillin allergy?"></textarea>
-        </div>
-      </div>
-    </div>
-
-    <!-- Plan -->
-    <div class="analysis-section">
-      <h3>📋 Plan</h3>
-      <div class="form-row">
-        <div class="field">
-          <label>Short-term Plan (24–72 hours)</label>
-          <textarea id="f-short-plan" rows="4" placeholder="IV co-amoxiclav 1.2g TDS&#10;Repeat FBC and CRP in 48h&#10;Monitor vitals 4-hourly&#10;Fluid chart&#10;Physiotherapy review"></textarea>
-        </div>
-        <div class="field">
-          <label>Long-term Plan / Discharge Plan</label>
-          <textarea id="f-long-plan" rows="4" placeholder="Step-down to oral antibiotics when afebrile >24h&#10;Optimise DM medications&#10;Outpatient follow-up in 4 weeks&#10;Smoking cessation counselling"></textarea>
-        </div>
-      </div>
-    </div>
-
-    <div class="nav-buttons">
-      <button class="btn btn-outline" onclick="goStep(3)">← Back</button>
-      <button class="btn btn-primary" onclick="runAnalysis()">🤖 Run AI Analysis →</button>
-    </div>
-  </div>
-</div>
-
-<!-- ─────────────── STEP 5: AI ANALYSIS ─────────────── -->
-<div class="step-panel" id="step-5">
-  <div id="analysis-loading" style="text-align:center;padding:60px 20px;display:none;">
-    <div style="font-size:48px;margin-bottom:16px;">🤖</div>
-    <div style="font-family:var(--serif);font-size:22px;color:var(--navy);margin-bottom:8px;" id="loading-msg">Generating SOAP note...</div>
-    <div class="progress-track" style="max-width:400px;margin:0 auto 8px;"><div class="progress-fill" id="loading-bar" style="width:0%"></div></div>
-    <div style="font-size:13px;color:var(--text-muted);" id="loading-sub">This may take 20–40 seconds</div>
-  </div>
-
-  <div id="analysis-output" style="display:none;">
-    <!-- SOAP -->
-    <div class="card">
-      <div class="card-title">📝 AI-Generated SOAP Note</div>
-      <div class="card-sub">Review, edit, and confirm before sign-off. This is AI-generated and requires clinician verification.</div>
-      <div class="analysis-section">
-        <h3>S — Subjective</h3>
-        <div class="soap-block" id="out-soap-s" contenteditable="true"></div>
-      </div>
-      <div class="analysis-section">
-        <h3>O — Objective</h3>
-        <div class="soap-block" id="out-soap-o" contenteditable="true"></div>
-      </div>
-      <div class="analysis-section">
-        <h3>A — Assessment</h3>
-        <div class="soap-block" id="out-soap-a" contenteditable="true"></div>
-      </div>
-      <div class="analysis-section">
-        <h3>P — Plan</h3>
-        <div class="soap-block" id="out-soap-p" contenteditable="true"></div>
-      </div>
-    </div>
-
-    <!-- ICD-11 -->
-    <div class="card">
-      <div class="card-title">🏷 ICD-11 Coding</div>
-      <div class="card-sub">AI-suggested codes with confidence scores. Verify against official ICD-11 browser before documentation.</div>
-      <div id="out-icd"></div>
-    </div>
-
-    <!-- Quality -->
-    <div class="card">
-      <div class="card-title">📊 Documentation Quality Assessment</div>
-      <div class="quality-grid" id="out-quality"></div>
-    </div>
-
-    <!-- Flags -->
-    <div class="card">
-      <div class="card-title">⚠ Medico-legal Risk Flags &amp; Recommendations</div>
-      <div id="out-flags"></div>
-      <div style="margin-top:16px;">
-        <div class="section-label">AI Recommendations</div>
-        <div class="soap-block" id="out-recommendations" style="border-left-color:var(--amber);"></div>
-      </div>
-    </div>
-
-    <div class="nav-buttons">
-      <button class="btn btn-outline" onclick="goStep(4)">← Edit SOAP</button>
-      <button class="btn btn-primary" onclick="goStep(6)">Proceed to Sign-off →</button>
-    </div>
-  </div>
-</div>
-
-<!-- ─────────────── STEP 6: SIGN-OFF & EXPORT ─────────────── -->
-<div class="step-panel" id="step-6">
-  <div class="signoff-box">
-    <h3>✍ Clinician Sign-off (Mandatory)</h3>
-    <p>HITL verification required. Your signature attests that you have reviewed, corrected, and approved this AI-generated documentation.</p>
-    <div class="form-row" style="margin-bottom:12px;">
-      <div class="field"><label>Full Name</label><input type="text" id="sign-name" placeholder="Dr. ___________"></div>
-      <div class="field"><label>Designation / Specialty</label><input type="text" id="sign-designation" placeholder="e.g. Medical Officer, Internal Medicine"></div>
-    </div>
-    <div class="form-row" style="margin-bottom:12px;">
-      <div class="field"><label>MMC Registration No.</label><input type="text" id="sign-mmc" placeholder="MMC/XXXXXX"></div>
-      <div class="field"><label>Department / Ward</label><input type="text" id="sign-dept" placeholder="e.g. Ward 5B, HTPN"></div>
-    </div>
-    <div class="form-row" style="margin-bottom:20px;">
-      <div class="field"><label>Date &amp; Time of Sign-off</label><input type="datetime-local" id="sign-datetime"></div>
-      <div class="field"><label>Review Status</label>
-        <select id="sign-status">
-          <option value="">Select status...</option>
-          <option value="approved">✅ Approved as-is</option>
-          <option value="modified">✏️ Approved with modifications</option>
-          <option value="partial">⚠ Partial approval — further review needed</option>
-        </select>
-      </div>
-    </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <button class="btn btn-amber" onclick="exportDoc('txt')">⬇ Download .TXT</button>
-      <button class="btn btn-primary" onclick="exportDoc('doc')">⬇ Download .DOC</button>
-      <button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.2);" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
-    </div>
-    <p style="font-size:12px;margin-top:14px;opacity:0.5;">Note: For EMR upload, copy the text and paste into your hospital EMR system. No data is transmitted to external servers without your API key.</p>
-  </div>
-
-  <!-- Previous downloads -->
-  <div class="card" style="margin-top:20px;">
-    <div class="card-title">📁 Session Documents</div>
-    <div id="session-docs">
-      <p style="color:var(--text-muted);font-size:13px;">Signed documents will appear here for re-download during this session.</p>
-    </div>
-  </div>
-</div>
-
-<!-- ─────────────── STEP 7: FEEDBACK ─────────────── -->
-<div class="step-panel" id="step-7">
-  <div class="card">
-    <div class="card-title">💬 Feedback — Help Improve Clinical Document Checker</div>
-    <div class="card-sub">Your feedback directly informs development. All submissions go to the HTPN AI Team. Anonymous submission available.</div>
-
-    <div class="form-row" style="margin-bottom:16px;">
-      <div class="field">
-        <label>Your Role</label>
-        <select id="fb-role">
-          <option value="">Select role...</option>
-          <option>Medical Officer</option>
-          <option>Specialist / Consultant</option>
-          <option>Houseman / HO</option>
-          <option>Nurse / Matron</option>
-          <option>Pharmacist</option>
-          <option>Allied Health Professional</option>
-          <option>Medical Student</option>
-          <option>IT / Administrative Staff</option>
-          <option>Other</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Department</label>
-        <select id="fb-dept">
-          <option value="">Select department...</option>
-          <option>Internal Medicine</option>
-          <option>Emergency Department</option>
-          <option>Surgery</option>
-          <option>Obstetrics &amp; Gynaecology</option>
-          <option>Paediatrics</option>
-          <option>Orthopaedics</option>
-          <option>Psychiatry</option>
-          <option>Anaesthesiology &amp; ICU</option>
-          <option>Radiology</option>
-          <option>Pathology</option>
-          <option>Pharmacy</option>
-          <option>Rehabilitation Medicine</option>
-          <option>Ophthalmology</option>
-          <option>ENT</option>
-          <option>Dermatology</option>
-          <option>Other</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="analysis-section">
-      <h3>📊 Likert Scale Ratings (1 = Strongly Disagree, 5 = Strongly Agree)</h3>
-      <div id="likert-questions"></div>
-    </div>
-
-    <div class="field" style="margin-bottom:16px;">
-      <label>Most Useful Feature</label>
-      <select id="fb-best-feature">
-        <option value="">Select...</option>
-        <option>SOAP note generation</option>
-        <option>ICD-11 auto-coding</option>
-        <option>Documentation quality checker</option>
-        <option>Medico-legal risk flags</option>
-        <option>Audio transcription</option>
-        <option>Image OCR / extraction</option>
-        <option>PDF reference document</option>
-        <option>Sign-off &amp; export</option>
-        <option>Overall workflow</option>
-      </select>
-    </div>
-
-    <div class="field" style="margin-bottom:16px;">
-      <label>⏱ Approximately how many minutes did this tool save you today?</label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;" id="time-saved-bar">
-        <button class="time-btn" onclick="setTimeSaved('Less than 5 min',this)" style="padding:8px 16px;border-radius:8px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);">&lt; 5 min</button>
-        <button class="time-btn" onclick="setTimeSaved('5-10 min',this)" style="padding:8px 16px;border-radius:8px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);">5–10 min</button>
-        <button class="time-btn" onclick="setTimeSaved('10-20 min',this)" style="padding:8px 16px;border-radius:8px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);">10–20 min</button>
-        <button class="time-btn" onclick="setTimeSaved('More than 20 min',this)" style="padding:8px 16px;border-radius:8px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);">&gt; 20 min</button>
-        <button class="time-btn" onclick="setTimeSaved('No time saved',this)" style="padding:8px 16px;border-radius:8px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);">No time saved</button>
-      </div>
-      <input type="hidden" id="fb-time-saved" value="">
-    </div>
-
-    <div class="field" style="margin-bottom:16px;">
-      <label>Suggested Improvement / Free Text</label>
-      <textarea id="fb-text" rows="5" placeholder="What would make this tool more useful in your clinical workflow? Any bugs, inaccuracies, or features you'd like to see?"></textarea>
-    </div>
-
-    <div class="section-label" style="margin-bottom:8px;">Identity</div>
-    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
-      <button class="mode-tab active" id="id-tab-name" onclick="setIdentityMode('name',this)" style="font-size:12px;padding:6px 14px;">👤 Include My Name</button>
-      <button class="mode-tab" id="id-tab-anon" onclick="setIdentityMode('anon',this)" style="font-size:12px;padding:6px 14px;">🔒 Submit Anonymously</button>
-    </div>
-    <div id="id-name-fields">
-      <div class="form-row" style="margin-bottom:12px;">
-        <div class="field">
-          <label>Your Name (optional)</label>
-          <input type="text" id="fb-name" placeholder="Dr. ___________">
-        </div>
-        <div class="field">
-          <label>Your Email (optional — for follow-up)</label>
-          <input type="email" id="fb-email" placeholder="you@moh.gov.my">
-        </div>
-      </div>
-    </div>
-    <div id="id-anon-msg" style="display:none;" class="alert alert-info" style="margin-bottom:12px;">
-      <span>🔒</span><span>Submitting anonymously — your name, email and role will not be included.</span>
-    </div>
-    <input type="hidden" id="fb-anon" value="false">
-
-    <button class="btn btn-primary" onclick="submitFeedback()">Submit Feedback →</button>
-    <div id="fb-status" style="margin-top:12px;display:none;"></div>
-  </div>
-</div>
-
-<!-- QR CODE MODAL -->
-<div id="qr-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(11,31,58,0.85);z-index:9000;align-items:center;justify-content:center;padding:20px;">
-  <div style="background:#112847;border:1px solid rgba(28,184,160,0.3);border-radius:16px;padding:32px;max-width:360px;width:100%;text-align:center;box-shadow:0 24px 80px rgba(0,0,0,0.5);">
-    <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--teal);margin-bottom:6px;">📷 Share App</div>
-    <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Scan to open Clinical Document Checker on any device</div>
-    <div id="qr-code" style="display:inline-block;background:white;padding:12px;border-radius:10px;margin-bottom:20px;"></div>
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px;word-break:break-all;font-family:monospace;">htpn-clinical-checker.vercel.app</div>
-    <button onclick="document.getElementById('qr-modal').style.display='none'" style="padding:10px 28px;background:var(--teal);border:none;border-radius:8px;color:white;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--sans);">Close</button>
-  </div>
-</div>
-
-</main>
-
-<footer>
-  Clinical Document Checker · Hospital Tengku Permaisuri Norashikin (HTPN) · HTPN<br>
-  By Dr Naim &amp; AI Team HTPN · Research &amp; Educational Prototype · Not for standalone clinical use
-</footer>
 
 <script>
+let selectedCPGs = new Set();
+let currentSessionData = null;
 
-
-// ── AUDIO SUB-TABS ──
-function setAudioSub(mode, btn) {
-  document.querySelectorAll('#mode-audio .mode-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('audio-sub-live').style.display = mode === 'live' ? 'block' : 'none';
-  document.getElementById('audio-sub-file').style.display = mode === 'file' ? 'block' : 'none';
-  if (mode === 'live') checkSpeechSupport();
-}
-
-// ── GROQ FILE UPLOAD ──
-let uploadedAudioFile = null;
-
-function handleAudioFile(input) {
-  const file = input.files[0];
-  if (!file) return;
-  uploadedAudioFile = file;
-  document.getElementById('audio-file-list').innerHTML = `
-    <div class="file-item">
-      <span>🎵</span>
-      <span class="file-name">${file.name}</span>
-      <span class="file-type">${(file.size/1024/1024).toFixed(1)} MB</span>
-      <button onclick="uploadedAudioFile=null;document.getElementById('audio-file-list').innerHTML=''">×</button>
-    </div>`;
-}
-
-async function transcribeWithGroq(file) {
-  const statusEl = document.getElementById('groq-status');
-  statusEl.style.display = 'flex';
-  statusEl.className = 'alert alert-info';
-
-  const buildFormData = () => {
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('model', 'whisper-large-v3-turbo');
-    fd.append('language', 'en');
-    fd.append('response_format', 'json');
-    return fd;
-  };
-
-  // OPTION 1: Try shared proxy first (no key needed from user)
-  statusEl.innerHTML = '<span>⏳</span><span>Transcribing with shared Groq Whisper quota...</span>';
-  try {
-    const resp = await fetch('/api/groq', { method: 'POST', body: buildFormData() });
-    const data = await resp.json();
-    if (data.text) {
-      statusEl.innerHTML = '<span>✅</span><span>Transcription complete. Click Process Input to continue.</span>';
-      return data.text;
-    }
-    // Quota exceeded error from Groq
-    const errMsg = data.error?.message || '';
-    if (resp.status === 429 || errMsg.toLowerCase().includes('rate') || errMsg.toLowerCase().includes('quota')) {
-      throw new Error('QUOTA_EXCEEDED');
-    }
-    throw new Error(errMsg || 'Groq transcription failed');
-  } catch(err) {
-    if (err.message !== 'QUOTA_EXCEEDED' && !err.message.includes('rate') && !err.message.includes('quota')) {
-      // Real error — not quota related
-      statusEl.className = 'alert alert-warn';
-      statusEl.innerHTML = '<span>⚠</span><span>Transcription error: ' + err.message + '</span>';
-      return null;
-    }
-
-    // OPTION 2: Shared quota reached — try personal key
-    const personalKey = localStorage.getItem('htpn_groq_key') || '';
-    if (personalKey) {
-      statusEl.innerHTML = '<span>⏳</span><span>Shared quota reached — using your personal Groq key...</span>';
-      try {
-        // Direct call to Groq API with personal key
-        const fd2 = buildFormData();
-        const resp2 = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + personalKey },
-          body: fd2
-        });
-        const data2 = await resp2.json();
-        if (data2.text) {
-          statusEl.innerHTML = '<span>✅</span><span>Transcription complete (personal key used). Review below.</span>';
-          return data2.text;
-        }
-        throw new Error(data2.error?.message || 'Personal key transcription failed');
-      } catch(err2) {
-        statusEl.className = 'alert alert-warn';
-        statusEl.innerHTML = '<span>⚠</span><span>Personal key error: ' + err2.message + '</span>';
-        return null;
-      }
-    }
-
-    // No personal key — show prompt
-    statusEl.className = 'alert alert-warn';
-    statusEl.innerHTML = '<span>⚠</span><span>Shared daily quota reached. Use your own free Groq key to continue.</span>';
-    document.getElementById('groq-key-prompt').style.display = 'flex';
-    return null;
+const CPG_DB = {
+  hypertension: {
+    title: "CPG Management of Hypertension (6th Ed, 2023)",
+    content: `DIAGNOSIS\n- Hypertension: SBP ≥40 mmHg or DBP ≥90 mmHg on ≥2 separate visits\n- Grade 1: SBP 140–159 / DBP 90–99; Grade 2: SBP 160–179 / DBP 100–109; Grade 3: SBP ≥180 / DBP ≥110\n- Hypertensive urgency: BP >180/120 without end-organ damage\n- Hypertensive emergency: BP >180/120 WITH end-organ damage\n\nBP TARGETS\n- General adults: <140/90 mmHg\n- Elderly (≥65y): <150/90 mmHg, aim <140/90 if tolerated\n- Diabetes: <130/80 mmHg; CKD: <130/80 mmHg (if proteinuria)\n- Post-stroke/TIA: <130/80 mmHg; CAD/Heart failure: <130/80 mmHg\n\nLIFESTYLE MODIFICATIONS\n- Weight reduction, DASH diet, low sodium (<5g NaCl/day)\n- Physical activity ≥30 min moderate exercise, 5 days/week; Limit alcohol, stop smoking\n\nPHARMACOTHERAPY\n- ACEi/ARB: preferred in DM, CKD with proteinuria, post-MI, HFrEF\n- CCB (amlodipine): preferred in elderly, isolated systolic HT\n- Combination: ACEi/ARB + CCB (preferred 1st combination)\n- DO NOT combine ACEi + ARB\n- Pregnancy: methyldopa, labetalol, nifedipine — AVOID ACEi/ARB\n- Resistant HT: add spironolactone 25–50mg\n\nMONITORING\n- BP check every 1–3 months until target, then 3–6 monthly\n- U&E + glucose + lipid panel annually`
+  },
+  diabetes: {
+    title: "CPG Management of Type 2 Diabetes (6th Ed, 2020)",
+    content: `DIAGNOSIS\n- FPG ≥7.0 mmol/L on 2 occasions; 2h PG ≥11.1 mmol/L (OGTT)\n- HbA1c ≥6.5% on 2 occasions; Pre-diabetes: IFG 6.1–6.9, HbA1c 5.7–6.4%\n\nGLYCAEMIC TARGETS\n- HbA1c: <6.5–7.0% (individualise); FPG: 4.4–7.0 mmol/L; 2h PPG: <10.0 mmol/L\n\nPHARMACOTHERAPY\nStep 1: Metformin (1st line, unless eGFR <30)\nStep 2 add-on:\n- SGLT2i: preferred if CVD, HF, CKD (eGFR ≥30)\n- GLP-1 RA: preferred if atherosclerotic CVD, obesity\n- DPP4i: low hypoglycaemia risk\n- SU: low cost, hypoglycaemia risk\nStep 3: Basal insulin if HbA1c >9% + symptomatic\n\nMONITORING\n- HbA1c 3-monthly until target, then 6-monthly\n- UACR annually; fundoscopy annually; foot exam each visit\n- BP target: <130/80 mmHg; statin if age >40`
+  },
+  dyslipidaemia: {
+    title: "CPG Management of Dyslipidaemia (Updated 2023)",
+    content: `LDL-C TARGETS\n- Very high risk (CVD, DM+EOD): <1.8 mmol/L AND ≥50% reduction\n- High risk (DM, CKD, 10-yr risk 10–20%): <2.6 mmol/L\n- Moderate risk: <3.4 mmol/L\n\nPHARMACOTHERAPY\n- High-intensity statin: atorvastatin 40–80mg, rosuvastatin 20–40mg\n- Add ezetimibe 10mg if statin insufficient; PCSK9i for very high risk/FH\n- Fenofibrate for high TG (>5.6 mmol/L)\n\nMONITORING: Lipids 4–6 weeks after start, 3-monthly until target, then annually`
+  },
+  asthma: {
+    title: "CPG Management of Asthma Adults (5th Ed, 2017)",
+    content: `STEP TREATMENT\nStep 1: SABA PRN only\nStep 2: Low-dose ICS + SABA PRN\nStep 3: Low-dose ICS + LABA OR medium-dose ICS\nStep 4: Medium/high-dose ICS + LABA\nStep 5: High-dose ICS + LABA + biologics if IgE-mediated\n\nACUTE EXACERBATION\n- SABA 2.5mg nebulised every 20 min x3\n- Oral prednisolone 40–50mg/day x5 days; O2: SpO2 94–98%`
+  },
+  copd: {
+    title: "CPG Management of COPD (3rd Ed, 2022)",
+    content: `GOLD SPIROMETRY\n- GOLD 1: FEV1 ≥80%; GOLD 2: 50–80%; GOLD 3: 30–50%; GOLD 4: <30%\n\nSTABLE COPD\n- Group A: SABA PRN; Group B: LAMA preferred; Group C: LAMA alone\n- Group D: LAMA + LABA; if eos ≥300 add ICS\n\nAECOPD\n- SABA ± SAMA nebulised, prednisolone 40mg x5 days\n- Antibiotics if purulent exacerbation; O2 target SpO2 88–92%`
+  },
+  heartfailure: {
+    title: "CPG Heart Failure (3rd Ed, 2019)",
+    content: `FOUR PILLARS OF HFrEF (LVEF <40%)\n1. ACEi / ARB / ARNI (sacubitril/valsartan preferred)\n2. Beta-blocker (carvedilol, bisoprolol, metoprolol succinate)\n3. MRA (spironolactone 25–50mg if eGFR ≥30 and K+ <5.0)\n4. SGLT2i (dapagliflozin or empagliflozin 10mg)\n\nDIURETICS: furosemide for congestion only\nMONITORING: renal profile + K+ within 1–2 weeks of ACEi/MRA start`
+  },
+  ckd: {
+    title: "CPG Chronic Kidney Disease (2nd Ed, 2018)",
+    content: `STAGING\n- G1: eGFR ≥90; G2: 60–89; G3a: 45–59; G3b: 30–44; G4: 15–29; G5: <15\n- Albuminuria A2: 3–30 mg/mmol; A3: >30 mg/mmol\n\nMANAGEMENT\n- BP target <130/80; ACEi/ARB if proteinuria A2/A3\n- Metformin: reduce dose eGFR 30–45; STOP if <30\n- SGLT2i cardio-renoprotective to eGFR ≥25\n- Refer nephrologist if eGFR <30 for RRT planning`
+  },
+  stroke: {
+    title: "CPG Ischaemic Stroke/TIA (3rd Ed, 2020)",
+    content: `ACUTE AIS\n- IV alteplase within 4.5h, 0.9 mg/kg (max 90mg)\n- Mechanical thrombectomy within 24h if LVO\n- Aspirin 300mg within 24–48h\n\nSECONDARY PREVENTION\n- Non-cardioembolic: aspirin or clopidogrel\n- AF-related: DOAC (start 2–14 days post-stroke)\n- BP target <130/80; LDL <1.8 mmol/L (high-intensity statin)`
+  },
+  depression: {
+    title: "CPG Major Depressive Disorder (2nd Ed, 2019)",
+    content: `DIAGNOSIS (DSM-5): ≥5 symptoms for ≥2 weeks including depressed mood OR anhedonia\nPHQ-9 score ≥10 = moderate depression\n\nTREATMENT\n- Mild: psychoeducation, watchful waiting, CBT\n- Moderate-severe: SSRI (sertraline 50–200mg, escitalopram 10–20mg) + CBT\n- Duration: ≥6–9 months after remission; ≥2 episodes = ≥2 years\n- High suicide risk: hospitalise, urgent psychiatry referral`
+  },
+  gout: {
+    title: "CPG Management of Gout (2nd Ed, 2020)",
+    content: `ACUTE ATTACK\n- NSAIDs (naproxen 500mg BD) OR colchicine 1mg + 0.5mg 1h later OR prednisolone 30–40mg\n- DO NOT start ULT during acute attack\n\nURATE-LOWERING THERAPY\n- Target SUA: <360 μmol/L (<300 if tophi)\n- Allopurinol: start 50–100mg, titrate to target (max 900mg/day)\n- HLA-B*5801 screening mandatory in Malay/Chinese/Thai before starting\n- Prophylaxis: colchicine 0.5mg BD for 3–6 months after starting ULT`
   }
-}
+};
 
-// ── ASSEMBLYAI REAL-TIME STREAMING ──
-// Works on ALL browsers: Chrome, Firefox, Safari, iOS, Android
-// Replaces Web Speech API (Chrome/Edge desktop only)
-let aaiSocket = null;
-let aaiStream = null;
-let aaiProcessor = null;
-let aaiContext = null;
-let aaiPartialText = '';
-let aaiFinalText = '';
-
-function checkSpeechSupport() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const ua = navigator.userAgent.toLowerCase();
-  const isIOS = /iphone|ipad|ipod/.test(ua);
-  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-  const isFirefox = ua.includes('firefox');
-  const supported = !!SpeechRecognition && !isIOS && !isSafari && !isFirefox;
-
-  const warn = document.getElementById('browser-warning');
-  const info = document.getElementById('speech-info-banner');
-  const startBtn = document.getElementById('speech-start-btn');
-
-  if (!supported) {
-    if (warn) {
-      warn.style.display = 'flex';
-      const warnDiv = warn.querySelector('div');
-      if (warnDiv) {
-        if (isIOS) {
-          warnDiv.innerHTML = '<strong>Live Dictation is not available on iPhone or iPad.</strong> Apple restricts microphone access for browser speech recognition. Please use the <strong>Upload Recording</strong> tab instead.';
-        } else {
-          warnDiv.innerHTML = '<strong>Live Dictation is not supported in this browser.</strong> Please use <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> on desktop/laptop, or use the <strong>Upload Recording</strong> tab instead.';
-        }
-      }
-    }
-    if (info) info.style.display = 'none';
-    if (startBtn) startBtn.disabled = true;
-  } else {
-    if (warn) warn.style.display = 'none';
-    if (info) info.style.display = 'flex';
-    if (startBtn) startBtn.disabled = false;
-  }
-}
-
-function toggleAAIKeyPrompt() { /* removed — AssemblyAI no longer used */ }
-
-function toggleGroqKeyPrompt() {
-  const p = document.getElementById('groq-key-prompt');
-  p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
-  if (p.style.display === 'flex') {
-    const saved = localStorage.getItem('htpn_groq_key') || '';
-    document.getElementById('groq-key-input').value = saved;
-    document.getElementById('groq-key-input').focus();
-  }
-}
-
-function saveGroqKey() {
-  const key = document.getElementById('groq-key-input').value.trim();
-  if (!key) { alert('Please paste your Groq API key.'); return; }
-  localStorage.setItem('htpn_groq_key', key);
-  document.getElementById('groq-key-prompt').style.display = 'none';
-  const status = document.getElementById('groq-status');
-  if (status) {
-    status.style.display = 'flex';
-    status.className = 'alert alert-info';
-    status.innerHTML = '<span>✅</span><span>Your Groq key saved. Future uploads will use your personal quota.</span>';
-  }
-}
-
-function saveAAIKey() {
-  const key = document.getElementById('aai-key-input').value.trim();
-  if (!key) { alert('Please paste your AssemblyAI API key.'); return; }
-  localStorage.setItem('htpn_aai_key', key);
-  document.getElementById('audio-status').style.display = 'flex';
-  document.getElementById('audio-status').className = 'alert alert-info';
-  document.getElementById('audio-status').innerHTML = '<span>✅</span><span>Your AssemblyAI key saved. Click Start Dictation to begin.</span>';
-}
-
-// Web Speech API — free, no key needed
-let recognition = null;
-let speechFinal = '';
-
-function startSpeech() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const statusEl = document.getElementById('audio-status');
-
-  if (!SpeechRecognition) {
-    statusEl.style.display = 'flex';
-    statusEl.className = 'alert alert-warn';
-    statusEl.innerHTML = '<span>⚠</span><span>Live dictation is not supported on this browser. Please use <strong>Upload Recording</strong> instead, or switch to Chrome/Edge on desktop or Android.</span>';
-    return;
-  }
-
-  statusEl.style.display = 'flex';
-  statusEl.className = 'alert alert-info';
-  statusEl.innerHTML = '<span>🎙</span><span>Listening... speak now.</span>';
-
-  speechFinal = document.getElementById('speech-live').value;
-  recognition = new SpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = 'en-MY';
-
-  recognition.onresult = function(event) {
-    let interim = '';
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      if (event.results[i].isFinal) speechFinal += event.results[i][0].transcript + ' ';
-      else interim += event.results[i][0].transcript;
-    }
-    document.getElementById('speech-live').value = speechFinal + interim;
-  };
-
-  recognition.onerror = function(e) {
-    const statusEl2 = document.getElementById('audio-status');
-    statusEl2.className = 'alert alert-warn';
-    statusEl2.innerHTML = '<span>⚠</span><span>Microphone error: ' + e.error + '. Please allow microphone access and try again.</span>';
-    stopSpeech();
-  };
-
-  recognition.onend = function() {
-    if (document.getElementById('speech-indicator').style.display !== 'none') {
-      try { recognition.start(); } catch(e) { /* already stopped */ }
-    }
-  };
-
-  recognition.start();
-  document.getElementById('speech-start-btn').style.display = 'none';
-  document.getElementById('speech-stop-btn').style.display = 'inline-flex';
-  document.getElementById('speech-indicator').style.display = 'flex';
-}
-
-
-function stopSpeech() {
-  if (recognition) {
-    recognition.stop();
-    recognition = null;
-    speechFinal = '';
-  }
-  document.getElementById('speech-start-btn').style.display = 'inline-flex';
-  document.getElementById('speech-stop-btn').style.display = 'none';
-  document.getElementById('speech-indicator').style.display = 'none';
-  const text = document.getElementById('speech-live').value.trim();
-  if (text) {
-    const statusEl = document.getElementById('audio-status');
-    statusEl.style.display = 'flex';
-    statusEl.className = 'alert alert-info';
-    statusEl.innerHTML = '<span>✅</span><span>Dictation complete. Review and click Process Input to continue.</span>';
-  }
-}
-
-// ── INIT ──
-let currentStep = 1;
-let apiKeys = { claude: '', openai: '' };
-let uploadedAudio = null;
-let uploadedImages = [];
-let referenceText = '';
-let sessionDocs = [];
-let analysisData = {};
-
-const LIKERT_QUESTIONS = [
-  { id: 'q1', text: 'The AI-generated SOAP note was clinically accurate' },
-  { id: 'q2', text: 'The ICD-11 coding suggestions were relevant' },
-  { id: 'q3', text: 'The documentation quality checker identified real gaps' },
-  { id: 'q4', text: 'The medico-legal risk flags were appropriate' },
-  { id: 'q5', text: 'The overall workflow is feasible in daily clinical practice' },
-  { id: 'q6', text: 'I would recommend this tool to colleagues' },
-];
-
-// Visitor counter (simulated with localStorage)
-// ── SPECIALTY ──
-let selectedSpecialty = 'General Medicine';
-function setSpecialty(name, btn) {
-  selectedSpecialty = name;
-  document.querySelectorAll('.spec-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-}
-
-// ── ALLERGY ──
-function setAllergy(type, btn) {
-  document.querySelectorAll('.allergy-btn').forEach(b => {
-    b.classList.remove('active','allergy-known');
-    b.style.background = 'transparent';
-    b.style.borderColor = 'rgba(255,255,255,0.1)';
-    b.style.color = 'var(--text-muted)';
-  });
-  btn.classList.add('active');
-  if (type === 'Known allergy') {
-    btn.classList.add('allergy-known');
-  }
-  const input = document.getElementById('f-allergy');
-  if (type === 'NKDA') {
-    input.value = 'NKDA';
-    input.style.borderLeftColor = 'var(--teal)';
-  } else if (type === 'Known allergy') {
-    input.value = '';
-    input.placeholder = 'Specify: e.g. Penicillin — rash, Sulfa — anaphylaxis';
-    input.style.borderLeftColor = 'var(--rose)';
-    input.focus();
-  } else {
-    input.value = 'Not documented';
-    input.style.borderLeftColor = 'var(--amber)';
-  }
-}
-
-// ══════════════════════════════════════════
-// SESSION AUTO-SAVE & RESTORE
-// ══════════════════════════════════════════
-const SESSION_KEY = 'htpn_session';
-
-function autoSaveSession() {
-  try {
-    const session = {
-      transcript: document.getElementById('transcript-text')?.value || '',
-      cc: document.getElementById('f-cc')?.value || '',
-      hopi: document.getElementById('f-hopi')?.value || '',
-      allergy: document.getElementById('f-allergy')?.value || '',
-      bp: document.getElementById('v-bp')?.value || '',
-      pr: document.getElementById('v-pr')?.value || '',
-      temp: document.getElementById('v-temp')?.value || '',
-      rr: document.getElementById('v-rr')?.value || '',
-      spo2: document.getElementById('v-spo2')?.value || '',
-      glucose: document.getElementById('v-glucose')?.value || '',
-      gcs: document.getElementById('v-gcs')?.value || '',
-      bloods: document.getElementById('f-bloods')?.value || '',
-      imaging: document.getElementById('f-imaging')?.value || '',
-      procedures: document.getElementById('f-procedures')?.value || '',
-      diagnosis: document.getElementById('f-diagnosis')?.value || '',
-      issues: document.getElementById('f-issues')?.value || '',
-      shortPlan: document.getElementById('f-short-plan')?.value || '',
-      longPlan: document.getElementById('f-long-plan')?.value || '',
-      specialty: selectedSpecialty || 'General Medicine',
-      savedAt: new Date().toISOString(),
-    };
-    // Only save if there is meaningful data
-    if (session.transcript || session.cc || session.diagnosis) {
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    }
-  } catch(e) { /* silent fail */ }
-}
-
-function restoreSession() {
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    if (!raw) return;
-    const s = JSON.parse(raw);
-    if (!s.transcript && !s.cc && !s.diagnosis) return;
-
-    // Restore fields
-    if (s.transcript) { const el = document.getElementById('transcript-text'); if(el) el.value = s.transcript; }
-    if (s.cc) { const el = document.getElementById('f-cc'); if(el) el.value = s.cc; }
-    if (s.hopi) { const el = document.getElementById('f-hopi'); if(el) el.value = s.hopi; }
-    if (s.allergy) { const el = document.getElementById('f-allergy'); if(el) el.value = s.allergy; }
-    ['bp','pr','temp','rr','spo2','glucose','gcs'].forEach(v => {
-      if (s[v]) { const el = document.getElementById('v-'+v); if(el) el.value = s[v]; }
-    });
-    ['bloods','imaging','procedures','diagnosis','issues'].forEach(f => {
-      if (s[f]) { const el = document.getElementById('f-'+f); if(el) el.value = s[f]; }
-    });
-    if (s.shortPlan) { const el = document.getElementById('f-short-plan'); if(el) el.value = s.shortPlan; }
-    if (s.longPlan) { const el = document.getElementById('f-long-plan'); if(el) el.value = s.longPlan; }
-    if (s.specialty) {
-      selectedSpecialty = s.specialty;
-      document.querySelectorAll('.spec-btn').forEach(b => {
-        b.classList.toggle('active', b.textContent.includes(s.specialty));
-      });
-    }
-
-    // Show recovery banner
-    const banner = document.createElement('div');
-    banner.className = 'alert alert-info';
-    banner.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:7000;max-width:500px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.3);';
-    const savedTime = new Date(s.savedAt).toLocaleTimeString('en-MY', {hour:'2-digit',minute:'2-digit'});
-    banner.innerHTML = `<span>♻️</span><span><strong>Session recovered</strong> from ${savedTime} — review all fields before proceeding. <button onclick="sessionStorage.removeItem('${SESSION_KEY}');this.parentElement.parentElement.remove();" style="margin-left:10px;padding:2px 10px;border-radius:6px;border:1px solid rgba(28,184,160,0.4);background:transparent;color:var(--teal);cursor:pointer;font-size:12px;">Clear</button></span>`;
-    document.body.appendChild(banner);
-    setTimeout(() => banner.remove(), 8000);
-  } catch(e) { /* silent fail */ }
-}
-
-// Start auto-save every 30 seconds
-function startAutoSave() {
-  setInterval(autoSaveSession, 30000);
-}
-
-// ══════════════════════════════════════════
-// DARK MODE
-// ══════════════════════════════════════════
-function toggleDarkMode() {
-  const isDark = document.body.classList.toggle('light-mode');
-  const btn = document.getElementById('dark-mode-btn');
-  if (btn) btn.textContent = isDark ? '🌙 Dark' : '☀️ Light';
-  localStorage.setItem('htpn_theme', isDark ? 'light' : 'dark');
-}
-
-function initTheme() {
-  const theme = localStorage.getItem('htpn_theme') || 'dark';
-  if (theme === 'light') {
-    document.body.classList.add('light-mode');
-    const btn = document.getElementById('dark-mode-btn');
-    if (btn) btn.textContent = '☀️ Light';
-  }
-}
-
-// ══════════════════════════════════════════
-// QR CODE
-// ══════════════════════════════════════════
-let qrGenerated = false;
-function showQR() {
-  if (typeof QRCode === 'undefined') {
-    alert('QR library is still loading. Please try again in a moment.');
-    return;
-  }
-  const modal = document.getElementById('qr-modal');
-  modal.style.display = 'flex';
-  if (!qrGenerated) {
-    const container = document.getElementById('qr-code');
-    container.innerHTML = '';
-    new QRCode(container, {
-      text: window.location.origin + '/index.html',
-      width: 200, height: 200,
-      colorDark: '#0B1F3A',
-      colorLight: '#FFFFFF',
-      correctLevel: QRCode.CorrectLevel.H
-    });
-    qrGenerated = true;
-  }
-}
-
-// ══════════════════════════════════════════
-// TIME SAVED SELECTOR
-// ══════════════════════════════════════════
-function setTimeSaved(value, btn) {
-  document.querySelectorAll('.time-btn').forEach(b => {
-    b.style.background = 'transparent';
-    b.style.borderColor = 'rgba(255,255,255,0.1)';
-    b.style.color = 'var(--text-muted)';
-    b.style.fontWeight = '500';
-  });
-  btn.style.background = 'rgba(28,184,160,0.15)';
-  btn.style.borderColor = 'var(--teal)';
-  btn.style.color = 'var(--teal)';
-  btn.style.fontWeight = '700';
-  document.getElementById('fb-time-saved').value = value;
-}
-
-function initAssemblyAI() { /* AssemblyAI removed — using Web Speech API */ }
-
-function initCounters() {
-  // Reset visitor_logged when app updates so returning users get recounted on JSONBin
-  const APP_VER = 'v2.1';
-  if (localStorage.getItem('htpn_app_ver') !== APP_VER) {
-    localStorage.removeItem('htpn_visitor_logged');
-    localStorage.setItem('htpn_app_ver', APP_VER);
-  }
-
-  // Local display counter (cumulative, per device)
-  if (!localStorage.getItem('htpn_visited')) {
-    let v = parseInt(localStorage.getItem('htpn_visitors') || '0') + 1;
-    localStorage.setItem('htpn_visitors', v);
-    localStorage.setItem('htpn_visited', '1');
-  }
-  const v = parseInt(localStorage.getItem('htpn_visitors') || '1');
-  const visitorEl = document.getElementById('visitor-count');
-  if (visitorEl) visitorEl.textContent = v.toLocaleString();
-
-  const a = parseInt(localStorage.getItem('htpn_analyses') || '0');
-  const analysisEl = document.getElementById('analysis-count');
-  if (analysisEl) analysisEl.textContent = a.toLocaleString();
-}
-
-function incrementAnalysisCount() {
-  let a = parseInt(localStorage.getItem('htpn_analyses') || '0');
-  a++;
-  localStorage.setItem('htpn_analyses', a);
-  const el = document.getElementById('analysis-count');
-  if (el) el.textContent = a.toLocaleString();
-  logToJSONBin('analysis', a);
-}
-
-async function logToJSONBin(type, sessionCount) {
-  const key = localStorage.getItem('htpn_db_key');
-  const bin = localStorage.getItem('htpn_db_bin');
-  if (!key || !bin) return;
-  try {
-    const getResp = await fetch('https://api.jsonbin.io/v3/b/' + bin + '/latest', {
-      headers: { 'X-Master-Key': key }
-    });
-    if (!getResp.ok) return;
-    const current = await getResp.json();
-    const data = current.record || { analyses: [], totalAnalyses: 0, totalVisitors: 0 };
-
-    if (type === 'visitor') {
-      if (!localStorage.getItem('htpn_visitor_logged')) {
-        data.totalVisitors = (data.totalVisitors || 0) + 1;
-        localStorage.setItem('htpn_visitor_logged', '1');
-        data.lastUpdated = new Date().toISOString();
-        await fetch('https://api.jsonbin.io/v3/b/' + bin, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'X-Master-Key': key },
-          body: JSON.stringify(data)
-        });
-      }
-      return;
-    }
-
-    if (type === 'analysis') {
-      const activeTab = document.querySelector('.mode-tab.active');
-      const method = activeTab ? (
-        activeTab.textContent.includes('Voice') ? 'Voice/Audio' :
-        activeTab.textContent.includes('Image') ? 'Image Upload' : 'Manual Text'
-      ) : 'Unknown';
-      const entry = {
-        ts: new Date().toISOString(),
-        role: document.getElementById('fb-role') ? document.getElementById('fb-role').value : 'Not specified',
-        dept: document.getElementById('fb-dept') ? document.getElementById('fb-dept').value : 'Not specified',
-        method: method,
-        count: sessionCount
-      };
-      data.analyses = data.analyses || [];
-      data.analyses.push(entry);
-      if (data.analyses.length > 500) data.analyses = data.analyses.slice(-500);
-      data.totalAnalyses = (data.totalAnalyses || 0) + 1;
-      data.lastUpdated = new Date().toISOString();
-      await fetch('https://api.jsonbin.io/v3/b/' + bin, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'X-Master-Key': key },
-        body: JSON.stringify(data)
-      });
-    }
-  } catch(e) { console.log('Analytics skipped:', e.message); }
-}
-
-function logVisitorOnLoad() {
-  setTimeout(function() { logToJSONBin('visitor', 0); }, 3000);
-}
-
-// ── DISCLAIMER ──
-function closeDisclaimer() {
-  var o=document.getElementById('disclaimer-overlay');
-  o.classList.add('hidden');
-  o.style.display='none';
-  o.style.visibility='hidden';
-  o.style.pointerEvents='none';
-  o.style.zIndex='-1';
-}
-
-// ── API KEYS ──
-function saveKeys() {
-  apiKeys.claude = document.getElementById('claude-key').value.trim();
-  apiKeys.openai = document.getElementById('openai-key').value.trim();
-  const saved = document.getElementById('key-saved');
-  saved.style.display = 'inline';
-  setTimeout(() => saved.style.display = 'none', 2500);
-}
-
-// ── STEP NAVIGATION ──
-function goStep(n) {
-  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('step-' + n).classList.add('active');
-  document.querySelectorAll('.step-btn').forEach(b => {
-    const sn = parseInt(b.dataset.step);
-    b.classList.remove('active','done');
-    if (sn === n) b.classList.add('active');
-    else if (sn < n) b.classList.add('done');
-  });
-  currentStep = n;
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  
-  // Set sign-off timestamp
-  if (n === 6) {
-    const now = new Date();
-    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,16);
-    document.getElementById('sign-datetime').value = local;
-  }
-}
-
-// ── INPUT MODE ──
-function setMode(mode, btn) {
-  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  ['audio','image','text'].forEach(m => {
-    document.getElementById('mode-' + m).style.display = m === mode ? 'block' : 'none';
-  });
-  if (mode === 'audio') checkSpeechSupport();
-}
-
-// ── DRAG/DROP ──
-function dragOver(e, zoneId) {
-  e.preventDefault();
-  document.getElementById(zoneId).classList.add('dragover');
-}
-function dragLeave(zoneId) {
-  document.getElementById(zoneId).classList.remove('dragover');
-}
-function dropFile(e, type) {
-  e.preventDefault();
-  const files = e.dataTransfer.files;
-  if (!files.length) return;
-  if (type === 'audio') { handleAudio({ files }); dragLeave('audio-zone'); }
-  if (type === 'image') { handleImages({ files }); dragLeave('image-zone'); }
-  if (type === 'pdf')   { handlePDF({ files }); dragLeave('pdf-zone'); }
-}
-
-// ── AUDIO ──
-function handleAudio(input) {
-  const file = input.files[0];
-  if (!file) return;
-  uploadedAudio = file;
-  const list = document.getElementById('audio-file-list');
-  list.innerHTML = `<div class="file-item">
-    <span>🎵</span>
-    <span class="file-name">${file.name}</span>
-    <span class="file-type">${(file.size/1024).toFixed(0)} KB · ${file.type || 'audio'}</span>
-    <button onclick="uploadedAudio=null;this.closest('.file-item').remove()">×</button>
-  </div>`;
-}
-
-// ── IMAGES ──
-function handleImages(input) {
-  const files = Array.from(input.files);
-  uploadedImages = [...uploadedImages, ...files];
-  const list = document.getElementById('image-file-list');
-  list.innerHTML = '';
-  uploadedImages.forEach((f, i) => {
-    list.innerHTML += `<div class="file-item">
-      <span>🖼</span>
-      <span class="file-name">${f.name}</span>
-      <span class="file-type">${(f.size/1024).toFixed(0)} KB</span>
-      <button onclick="uploadedImages.splice(${i},1);handleImages({files:uploadedImages})">×</button>
-    </div>`;
-  });
-}
-
-// ── PDF ──
-function handlePDF(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    referenceText = e.target.result.substring(0, 8000);
-    document.getElementById('ref-preview').style.display = 'block';
-    document.getElementById('ref-preview-text').textContent = referenceText.substring(0,500) + (referenceText.length > 500 ? '...' : '');
-    document.getElementById('ref-char-count').textContent = `${referenceText.length.toLocaleString()} / 8,000 characters will be passed to AI`;
-    const list = document.getElementById('pdf-file-list');
-    list.innerHTML = `<div class="file-item">
-      <span class="ref-badge">📄 Reference Doc</span>
-      <span class="file-name">${file.name}</span>
-      <span class="file-type">${(file.size/1024).toFixed(0)} KB</span>
-      <button onclick="referenceText='';document.getElementById('ref-preview').style.display='none';this.closest('.file-item').remove()">×</button>
-    </div>`;
-  };
-  reader.readAsText(file);
-}
-
-// ── PROCESS INPUT → TRANSCRIPT ──
-async function processInput() {
-  const audioFile = uploadedAudio;
-  const images = uploadedImages;
-  const manualText = document.getElementById('manual-text').value.trim();
-  
-  const activeMode = document.querySelector('.mode-tab.active')?.textContent || '';
-  const statusEl = document.getElementById('transcribe-status');
-  const transcriptEl = document.getElementById('transcript-text');
-  
-  if (activeMode.includes('Voice') || activeMode.includes('Audio')) {
-    const activeSub = document.getElementById('sub-file')?.classList.contains('active') ? 'file' : 'live';
-    if (activeSub === 'file' && uploadedAudioFile) {
-      // Groq file transcription — wait for result BEFORE switching to Step 3
-      const text = await transcribeWithGroq(uploadedAudioFile);
-      if (text) {
-        transcriptEl.value = text;
-        updateTranscriptChars();
-        goStep(3); // Navigate AFTER text is written
-        statusEl.style.display = 'flex';
-        statusEl.innerHTML = '<span>✅</span><span>Audio transcribed via Groq. Review below or click Pre-fill SOAP Form.</span>';
-        statusEl.className = 'alert alert-info';
-        // Auto-trigger SOAP fill after short delay so user sees transcript first
-        setTimeout(() => {
-          if (document.getElementById('transcript-text').value.trim()) {
-            fillSOAP();
-          }
-        }, 1500);
-      } else {
-        return; // error already shown in groq-status
-      }
-    } else if (activeSub === 'file' && !uploadedAudioFile) {
-      statusEl.innerHTML = '<span>⚠</span><span>Please upload an audio file first.</span>';
-      statusEl.className = 'alert alert-warn';
-      return;
-    } else {
-      // Web Speech — pull from live transcript box
-      const speechText = document.getElementById('speech-live')?.value.trim();
-      if (speechText) {
-        transcriptEl.value = speechText;
-        updateTranscriptChars();
-        goStep(3);
-        statusEl.style.display = 'flex';
-        statusEl.innerHTML = '<span>✅</span><span>Voice dictation loaded. Review and edit below.</span>';
-        statusEl.className = 'alert alert-info';
-      } else {
-        goStep(3);
-        statusEl.style.display = 'flex';
-        statusEl.innerHTML = '<span>⚠</span><span>No dictation detected. Please click Start Dictation, speak, then Stop.</span>';
-        statusEl.className = 'alert alert-warn';
-      }
-    }
-  } else if (images.length > 0 && activeMode.includes('Image')) {
-    statusEl.style.display = 'flex';
-    statusEl.className = 'alert alert-info';
-    statusEl.innerHTML = `<span>⏳</span><span>Extracting text from ${images.length} image(s) — please wait...</span>`;
-    try {
-      statusEl.innerHTML = `<span>⏳</span><span>Processing all ${images.length} image(s) in parallel...</span>`;
-
-      // Convert all images to base64 in parallel
-      const base64Results = await Promise.all(images.map(async (img) => ({
-        base64: await fileToBase64(img),
-        mediaType: img.type || 'image/jpeg'
-      })));
-
-      // Send all API calls simultaneously
-      const extractionPromises = base64Results.map((img, i) =>
-        fetch('/api/claude', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 1500,
-            messages: [{
-              role: 'user',
-              content: [
-                { type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.base64 } },
-                { type: 'text', text: 'You are a clinical document parser for a hospital. Extract ALL text from this clinical document accurately. Preserve structure, headings, and data. Include dates, drug names, doses, diagnoses, investigation results. Output plain text only.' }
-              ]
-            }]
-          })
-        }).then(r => r.json()).then(d => d.content?.[0]?.text || '').catch(() => '')
-      );
-
-      const results = await Promise.all(extractionPromises);
-      const allText = results
-        .map((text, i) => images.length > 1 ? `--- Page ${i + 1} ---\n${text}` : text)
-        .filter(Boolean)
-        .join('\n\n');
-
-      transcriptEl.value = allText.trim();
-      updateTranscriptChars();
-      goStep(3);
-      statusEl.style.display = 'flex';
-      statusEl.className = 'alert alert-info';
-      statusEl.innerHTML = `<span>✅</span><span>Text extracted from ${images.length} image(s). Review and edit below.</span>`;
-    } catch(err) {
-      statusEl.style.display = 'flex';
-      statusEl.className = 'alert alert-warn';
-      statusEl.innerHTML = `<span>⚠</span><span>Extraction error: ${err.message}. Please paste notes manually.</span>`;
-    }
-  } else if (manualText) {
-    transcriptEl.value = manualText;
-    updateTranscriptChars();
-    goStep(3);
-    statusEl.style.display = 'flex';
-    statusEl.innerHTML = '<span>✅</span><span>Manual text loaded. Review and edit below.</span>';
-    statusEl.className = 'alert alert-info';
-  } else {
-    goStep(3);
-    statusEl.style.display = 'flex';
-    statusEl.innerHTML = '<span>ℹ</span><span>No input detected. Please type or paste clinical notes below.</span>';
-    statusEl.className = 'alert alert-info';
-  }
-}
-
-function fileToBase64(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result.split(',')[1]);
-    r.onerror = rej;
-    r.readAsDataURL(file);
-  });
-}
-
-function updateTranscriptChars() {
-  const t = document.getElementById('transcript-text');
-  document.getElementById('transcript-chars').textContent = t.value.length.toLocaleString() + ' characters';
-}
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('transcript-text').addEventListener('input', updateTranscriptChars);
+  updateDateDisplay();
+  loadSettings();
+  updateStats();
+  renderHistory();
 });
 
-function clearTranscript() {
-  document.getElementById('transcript-text').value = '';
-  updateTranscriptChars();
+function updateDateDisplay() {
+  const d = new Date();
+  document.getElementById('topbar-date').textContent = d.toLocaleDateString('en-MY', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
 }
 
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  const titles = { dashboard:'Dashboard', session:'New Clinical Session', history:'Session History', cpg:'CPG Browser', settings:'Settings' };
+  document.getElementById('topbar-title').textContent = titles[name] || name;
+  if (name === 'history') renderHistory();
+}
 
-// ── SMART LOCAL EXTRACTION (no API needed) ──
-function smartLocalExtract(text) {
+function handleFileSelect(e) { const file = e.target.files[0]; if (file) loadAudioFile(file); }
+function handleDrop(e) { e.preventDefault(); document.getElementById('upload-zone').classList.remove('drag-over'); const file = e.dataTransfer.files[0]; if (file && file.type.startsWith('audio/')) loadAudioFile(file); }
+function handleDragOver(e) { e.preventDefault(); document.getElementById('upload-zone').classList.add('drag-over'); }
+function handleDragLeave() { document.getElementById('upload-zone').classList.remove('drag-over'); }
+
+function loadAudioFile(file) {
+  const url = URL.createObjectURL(file);
+  const player = document.getElementById('audio-player');
+  player.src = url; player.style.display = 'block';
+  const info = document.getElementById('file-info');
+  info.style.display = 'block';
+  info.textContent = '📁 ' + file.name + ' · ' + (file.size/1024/1024).toFixed(2) + ' MB';
+  document.getElementById('upload-zone').innerHTML = '<div style="font-size:2rem;margin-bottom:8px">✅</div><h3>' + file.name + '</h3><p>Audio loaded. Paste transcript in Step 3 below.</p>';
+}
+
+function extractVitals() {
+  const text = document.getElementById('transcript-box').value;
+  if (!text.trim()) { alert('Please paste a transcript first.'); return; }
+  const patterns = {
+    'v-bp': [/\bBP[:\s]+(\d{2,3}\/\d{2,3})/i, /blood pressure[:\s]+(\d{2,3}\/\d{2,3})/i, /blood pressure[:\s]+(\d{2,3})\s+over\s+(\d{2,3})/i, /\bBP[:\s]+(\d{2,3})\s+over\s+(\d{2,3})/i, /(\d{2,3})\s*\/\s*(\d{2,3})\s*mmhg/i, /(\d{2,3})\s+over\s+(\d{2,3})\s*(?:mmhg)?/i],
+    'v-hr': [/(?:HR|heart rate|pulse)[:\s]+(\d{2,3})\s*(?:bpm)?/i, /(\d{2,3})\s*bpm/i],
+    'v-temp': [/(?:temp(?:erature)?)[:\s]+(3[5-9]|4[0-2])[.,]?\d*\s*°?C?/i, /\b(3[5-9]\.?\d*|4[0-2]\.?\d*)\s*°C/i],
+    'v-spo2': [/(?:SpO2|O2 sat(?:uration)?|oxygen sat)[:\s]*(\d{2,3})\s*%?/i],
+    'v-rr': [/(?:RR|resp(?:iratory)? rate)[:\s]+(\d{1,2})\s*(?:\/min)?/i],
+    'v-wt': [/(?:weight|wt)[:\s]+(\d{2,3}(?:\.\d)?)\s*kg/i],
+    'v-ht': [/(?:height|ht)[:\s]+(\d{3}(?:\.\d)?)\s*cm/i, /(\d{3})\s*cm/],
+    'v-bg': [/(?:blood sugar|blood glucose|BG|BSL|RBS|FBS|FBSL)[:\s]+([\d.]+)\s*(?:mmol)?/i, /([\d.]+)\s*mmol\/L/i]
+  };
   let filled = 0;
-  const t = text;
-  const tl = text.toLowerCase();
-
-  // Chief complaint — first sentence or presenting complaint
-  const ccPatterns = [
-    /(?:presenting complaint|chief complaint|referred for|presents? with|referred with)[:\s]+([^.\n]{10,120})/i,
-    /(?:patient|he|she) (?:is a|was|presents?)[^.]{0,30}(?:with|for) ([^.]{10,100})/i,
-  ];
-  let ccFilled = false;
-  for (const p of ccPatterns) {
-    const m = t.match(p);
-    if (m) { document.getElementById('f-cc').value = m[1].trim(); filled++; ccFilled = true; break; }
-  }
-  if (!ccFilled) {
-    // Fall back to first sentence of transcript
-    const firstSentence = t.split(/[.!?]/)[0].trim();
-    if (firstSentence.length > 5) {
-      document.getElementById('f-cc').value = firstSentence.substring(0, 120);
-      filled++;
+  for (const [id, pats] of Object.entries(patterns)) {
+    const el = document.getElementById(id);
+    if (!el || el.value) continue;
+    for (const pat of pats) {
+      const m = text.match(pat);
+      if (m) { el.value = (id === 'v-bp' && m[2]) ? m[1]+'/'+m[2] : m[1]; filled++; break; }
     }
   }
-
-  // HOPI — full transcript as history
-  const hopi = document.getElementById('f-hopi');
-  if (hopi) { hopi.value = t.substring(0, 1200); filled++; }
-
-  // Vitals extraction
-  const vitals = {
-    'v-bp': [/[Bb][Pp][:\s]+(\d{2,3}\/\d{2,3})/, /blood pressure[:\s]+(\d{2,3}\/\d{2,3})/i],
-    'v-pr': [/[Pp][Rr][:\s]+(\d{2,3})\s*(?:bpm)?/, /(?:pulse|heart rate)[:\s]+(\d{2,3})/i],
-    'v-temp': [/[Tt]emp(?:erature)?[:\s]+(\d{2}\.?\d?)\s*°?[Cc]?/, /(\d{2}\.?\d?)\s*°C/],
-    'v-rr': [/[Rr][Rr][:\s]+(\d{1,2})/, /respiratory rate[:\s]+(\d{1,2})/i],
-    'v-spo2': [/[Ss]p[Oo]2[:\s]+(\d{2,3})/, /(?:oxygen saturation|sats?)[:\s]+(\d{2,3})/i],
-    'v-glucose': [/(?:glucose|RBS|FBS|fasting blood glucose)[:\s]+(\d+\.?\d*)\s*mmol/i],
-    'v-gcs': [/[Gg][Cc][Ss][:\s]+(\d{1,2})/],
-    'v-weight': [/weight[:\s]+(\d{2,3})\s*kg/i],
-  };
-  for (const [id, patterns] of Object.entries(vitals)) {
-    for (const p of patterns) {
-      const m = t.match(p);
-      if (m) { const el = document.getElementById(id); if (el && !el.value) { el.value = m[1]; filled++; } break; }
-    }
-  }
-
-  // Blood investigations
-  const bloodPatterns = [/(?:FBC|FBE|CBC|full blood count)[:\s]([^\n.]{20,300})/i, /Hb(?:aemoglobin)?[:\s]+(\d+\.?\d*)/i];
-  let bloods = '';
-  for (const p of bloodPatterns) { const m = t.match(p); if (m) { bloods += m[0] + '\n'; } }
-  if (bloods) { document.getElementById('f-bloods').value = bloods.trim(); filled++; }
-
-  // Imaging
-  const imagingMatch = t.match(/(?:CXR|X-ray|CT|MRI|ultrasound|USS|ECG)[:\s]([^.\n]{10,200})/i);
-  if (imagingMatch) { document.getElementById('f-imaging').value = imagingMatch[0].trim(); filled++; }
-
-  // Diagnosis
-  const dxPatterns = [
-    /(?:diagnosis|impression|assessment)[:\s]+([^.\n]{10,200})/i,
-    /(?:likely|probable|confirmed)[:\s]+([^.\n]{10,150})/i,
-  ];
-  for (const p of dxPatterns) {
-    const m = t.match(p);
-    if (m) { document.getElementById('f-diagnosis').value = m[1].trim(); filled++; break; }
-  }
-
-  // Plan
-  const planPatterns = [/(?:management|plan|treatment)[:\s]+([^\n]{20,400})/i];
-  for (const p of planPatterns) {
-    const m = t.match(p);
-    if (m) { document.getElementById('f-short-plan').value = m[1].trim(); filled++; break; }
-  }
-
-  // Medications — simple dose pattern extraction
-  const doseRx = /(\w{4,})\s+(\d+\s*(?:mg|mcg|g|IU))\s*(BD|TDS|QID|OD|PRN|daily|nocte|once|twice)?/gi;
-  const drugs = [];
-  let dm;
-  const skipWords = /^(the|and|for|with|was|has|his|her|are|per|not|day|age|rate|dose|each|that|this|from|also|been)$/i;
-  while ((dm = doseRx.exec(t)) !== null && drugs.length < 8) {
-    if (!skipWords.test(dm[1])) {
-      drugs.push({ name: dm[1], dose: dm[2], route: 'PO', frequency: dm[3] || '', duration: '' });
-    }
-  }
-  if (drugs.length > 0) {
-    document.getElementById('drug-tbody').innerHTML = '';
-    drugs.forEach((dr, i) => addDrugRowData(i+1, dr.name, dr.dose, dr.route, dr.frequency, dr.duration));
-    filled++;
-  }
-
-  return filled;
+  calcBMI();
+  alert('Extracted ' + filled + ' vital sign(s). Please verify the values.');
 }
 
-// ── FILL SOAP ──
-async function fillSOAP() {
-  const transcript = document.getElementById('transcript-text').value.trim();
-  if (!transcript) {
-    alert('Please enter or paste some clinical text first.');
-    return;
+function calcBMI() {
+  const wt = parseFloat(document.getElementById('v-wt').value);
+  const ht = parseFloat(document.getElementById('v-ht').value) / 100;
+  if (wt && ht) {
+    const bmi = (wt/(ht*ht)).toFixed(1);
+    const cat = bmi < 18.5 ? 'Underweight' : bmi < 23 ? 'Normal' : bmi < 27.5 ? 'Overweight' : 'Obese';
+    document.getElementById('bmi-result').textContent = 'BMI: ' + bmi + ' kg/m² (' + cat + ')';
+  }
+}
+
+function clearTranscript() { document.getElementById('transcript-box').value = ''; }
+
+function toggleCPG(el) {
+  const id = el.dataset.cpg;
+  if (selectedCPGs.has(id)) { selectedCPGs.delete(id); el.classList.remove('selected'); }
+  else { selectedCPGs.add(id); el.classList.add('selected'); }
+  const info = document.getElementById('selected-cpg-info');
+  info.textContent = selectedCPGs.size === 0 ? 'No CPG selected — AI will use general medical knowledge only.' :
+    selectedCPGs.size + ' CPG(s) selected: ' + [...selectedCPGs].map(id => CPG_DB[id]?.title || id).join('; ');
+}
+
+function viewCPG(id) {
+  const cpg = CPG_DB[id]; if (!cpg) return;
+  document.getElementById('cpg-viewer-card').style.display = 'block';
+  document.getElementById('cpg-viewer-title').textContent = cpg.title;
+  document.getElementById('cpg-viewer-content').textContent = cpg.content;
+  document.getElementById('cpg-viewer-content').style.display = 'block';
+  document.getElementById('cpg-viewer-card').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function runFullAnalysis() {
+  const transcript = document.getElementById('transcript-box').value.trim();
+  if (!transcript) { document.getElementById('no-transcript-warn').classList.add('show'); return; }
+  document.getElementById('no-transcript-warn').classList.remove('show');
+
+  const patient = { name: document.getElementById('p-name').value, age: document.getElementById('p-age').value, gender: document.getElementById('p-gender').value, ethnicity: document.getElementById('p-ethnicity').value, pmhx: document.getElementById('p-pmhx').value, meds: document.getElementById('p-meds').value };
+  const vitals = { bp: document.getElementById('v-bp').value, hr: document.getElementById('v-hr').value, temp: document.getElementById('v-temp').value, spo2: document.getElementById('v-spo2').value, rr: document.getElementById('v-rr').value, weight: document.getElementById('v-wt').value, height: document.getElementById('v-ht').value, bg: document.getElementById('v-bg').value };
+  const settings = loadSettings();
+  const cpgList = [...selectedCPGs];
+
+  let cpgContext = '';
+  if (cpgList.length > 0) {
+    cpgContext = '\n\n=== MOH CLINICAL PRACTICE GUIDELINES (RAG CONTEXT) ===\nThe following guidelines are from Ministry of Health Malaysia. Ground your recommendations in these guidelines:\n\n';
+    for (const id of cpgList) { const cpg = CPG_DB[id]; if (cpg) cpgContext += '--- ' + cpg.title + ' ---\n' + cpg.content + '\n\n'; }
+    cpgContext += '=== END OF CPG CONTEXT ===\n';
   }
 
-  const transcribeStatus = document.getElementById('transcribe-status');
-  if (transcribeStatus) {
-    transcribeStatus.style.display = 'flex';
-    transcribeStatus.className = 'alert alert-info';
-    transcribeStatus.innerHTML = '<span>⏳</span><span>Extracting clinical data — please wait...</span>';
-  }
+  const prompt = 'You are a clinical AI assistant for Malaysian healthcare. Analyse this consultation and provide structured output grounded in the MOH CPG guidelines provided.' + cpgContext + '\n\nPATIENT:\n- Name: ' + (patient.name||'Not provided') + '\n- Age: ' + (patient.age||'Not provided') + ', Gender: ' + (patient.gender||'Not provided') + ', Ethnicity: ' + (patient.ethnicity||'Not provided') + '\n- PMHx: ' + (patient.pmhx||'Not provided') + '\n- Medications: ' + (patient.meds||'Not provided') + '\n\nVITALS:\n- BP: ' + (vitals.bp||'Not recorded') + ' mmHg, HR: ' + (vitals.hr||'Not recorded') + ' bpm\n- Temp: ' + (vitals.temp||'Not recorded') + '°C, SpO2: ' + (vitals.spo2||'Not recorded') + '%, RR: ' + (vitals.rr||'Not recorded') + '/min\n- Weight: ' + (vitals.weight||'Not recorded') + ' kg, Height: ' + (vitals.height||'Not recorded') + ' cm, Blood glucose: ' + (vitals.bg||'Not recorded') + ' mmol/L\n\nCONSULTATION TRANSCRIPT:\n' + transcript.substring(0,4000) + '\n\nINSTRUCTIONS: ' + (cpgList.length > 0 ? 'You MUST cite specific targets and recommendations from the CPG context above. CPGs provided: ' + cpgList.join(', ') : 'No CPG context provided. Use general evidence-based medicine.') + '\nOutput language: ' + (settings.lang||'English') + '\nSpecialty: ' + (settings.specialty||'General Practice') + '\n\nRespond with ONLY valid JSON (no markdown):\n{"soap":{"subjective":"...","objective":"...","assessment":"...","plan":"..."},"working_diagnosis":"Primary diagnosis with ICD code","cpg_targets":["target 1","target 2","target 3"],"flags":[{"text":"flag","level":"red|yellow|green"}],"recommendations":"Numbered recommendations citing CPG","followup":"Follow-up schedule and monitoring per CPG","referral":"Referral recommendations or No referral indicated"}';
 
-  // Navigate to step 4 and wait for DOM
-  goStep(4);
-  await sleep(400);
+  showLoading('Building CPG-RAG prompt…');
+  setProgress(20, 'Sending to Claude AI…');
+  const model = settings.model || 'claude-sonnet-4-6';
+  const maxTokens = parseInt(settings.tokens || '4000');
 
-  // ALWAYS do local smart extraction first (instant, no API needed)
-  const localFilled = smartLocalExtract(transcript);
-
-  // Show banner
-  let soapBanner = document.getElementById('soap-loading-banner');
-  if (!soapBanner) {
-    soapBanner = document.createElement('div');
-    soapBanner.id = 'soap-loading-banner';
-    soapBanner.className = 'alert alert-info';
-    soapBanner.style.marginBottom = '16px';
-    const soapCard = document.querySelector('#step-4 .card');
-    if (soapCard) soapCard.insertBefore(soapBanner, soapCard.firstChild);
-  }
-  soapBanner.style.display = 'flex';
-  soapBanner.innerHTML = `<span>✅</span><span>Form pre-filled from transcript (${localFilled} fields). AI is enhancing — please wait...</span>`;
-
-  // Then try Claude API to enhance/override with better extraction
   try {
-    const prompt = `You are a clinical documentation assistant specialising in ${selectedSpecialty || 'General Medicine'} at a hospital. Extract structured clinical information from the following text and return ONLY a JSON object with these exact keys: chief_complaint, hopi, allergy (drug allergy status — look for NKDA, allergy mentions, or state "Not documented"), bp, pr, temp, rr, spo2, glucose, gcs, bloods, imaging, procedures, diagnosis, issues, short_plan, long_plan, drugs (array of {name, dose, route, frequency, duration}).
-
-Text:
-${transcript.substring(0, 3000)}
-
-Respond with valid JSON only, no explanation.`;
-    const resp = await fetch('/api/claude', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] })
-    });
-
-    if (!resp.ok) throw new Error('API returned ' + resp.status);
-
+    setProgress(40, 'Analysing with ' + model + '…');
+    const resp = await fetch('/api/claude', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }) });
+    if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e.error || 'API error ' + resp.status); }
     const data = await resp.json();
-    if (data.error) throw new Error(data.error);
-
-    const raw = data.content?.[0]?.text || '{}';
-    console.log('Claude raw response:', raw);
-    const clean = raw.replace(/```json|```/g, '').trim();
-    console.log('Cleaned JSON:', clean.substring(0, 200));
-    let d;
-    try {
-      d = JSON.parse(clean);
-    } catch(parseErr) {
-      console.error('JSON parse error:', parseErr.message);
-      console.error('Raw was:', raw.substring(0, 500));
-      throw new Error('JSON parse failed: ' + parseErr.message);
-    }
-    console.log('Parsed fields:', Object.keys(d));
-
-    const filledCount = fillAllFields(d);
-    const banner2 = document.getElementById('soap-loading-banner');
-    if (banner2) {
-      banner2.className = 'alert alert-info';
-      banner2.innerHTML = `<span>✅</span><span>SOAP form enhanced by AI (${filledCount} fields updated). Review and edit before proceeding.</span>`;
-    }
+    if (data.error) throw new Error(data.error.message || 'Claude API error');
+    setProgress(80, 'Parsing response…');
+    const raw = data.content?.[0]?.text || '';
+    if (!raw) throw new Error('Empty response from AI');
+    const result = JSON.parse(raw.replace(/```json\s*/gi,'').replace(/```/g,'').trim());
+    setProgress(100, 'Done!');
+    hideLoading();
+    renderOutput(result, cpgList);
+    updateStats();
   } catch(err) {
-    console.error('fillSOAP API error:', err);
-    const banner2 = document.getElementById('soap-loading-banner');
-    if (banner2) {
-      banner2.className = 'alert alert-info';
-      banner2.innerHTML = `<span>✅</span><span>Form filled from transcript (${localFilled} fields). Review and complete manually.</span>`;
-    }
+    hideLoading();
+    console.error('Analysis error:', err);
+    alert('Analysis failed: ' + err.message + '\n\nCheck:\n1. CLAUDE_API_KEY set in Vercel env vars\n2. Transcript is not empty\n3. Internet connection');
   }
 }
 
-function setField(id, val) {
-  if (!val || val === 'null' || val === 'undefined') return;
-  const el = document.getElementById(id);
-  if (el) {
-    el.value = val;
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
+function renderOutput(result, cpgList) {
+  if (result.soap) {
+    document.getElementById('soap-s').value = result.soap.subjective || '';
+    document.getElementById('soap-o').value = result.soap.objective || '';
+    document.getElementById('soap-a').value = result.soap.assessment || '';
+    document.getElementById('soap-p').value = result.soap.plan || '';
+    document.getElementById('soap-card').style.display = 'block';
   }
+  document.getElementById('a-dx').textContent = result.working_diagnosis || '—';
+  const tEl = document.getElementById('a-targets'); tEl.innerHTML = '';
+  (result.cpg_targets||[]).forEach(t => { const c = document.createElement('span'); c.className='analysis-chip green'; c.textContent=t; tEl.appendChild(c); });
+  const fEl = document.getElementById('a-flags'); fEl.innerHTML = '';
+  (result.flags||[]).forEach(f => { const c = document.createElement('span'); c.className='analysis-chip '+(f.level||'yellow'); c.textContent=(f.level==='red'?'🔴 ':f.level==='green'?'\ud83d\.udfe2 ':'🟡 ')+f.text; fEl.appendChild(c); });
+  document.getElementById('a-recs').innerHTML = (result.recommendations||'—').replace(/\n/g,'<br>');
+  document.getElementById('a-fu').innerHTML = (result.followup||'—').replace(/\n/g,'<br>');
+  document.getElementById('a-ref').innerHTML = (result.referral||'—').replace(/\n/g,'<br>');
+  const refsEl = document.getElementById('analysis-cpg-refs');
+  refsEl.innerHTML = cpgList.length > 0 ?
+    '<div class="cpg-ref-badge">📖 RAG Context: ' + cpgList.map(id=>CPG_DB[id]?.title||id).join(' · ') + '</div>' :
+    '<div class="cpg-ref-badge" style="background:rgba(245,158,11,0.2);color:#fcd34d">⚠️ No CPG selected — general AI knowledge used</div>';
+  document.getElementById('analysis-out').style.display = 'block';
+  document.getElementById('analysis-out').scrollIntoView({ behavior: 'smooth' });
+  currentSessionData = { result, cpgList, timestamp: new Date().toISOString(), patient: { name: document.getElementById('p-name').value, age: document.getElementById('p-age').value } };
 }
 
-function cleanVital(val) {
-  if (!val) return val;
-  const s = String(val).trim();
-  // Extract just the numeric part for vitals
-  const num = s.match(/^([\d.\/]+)/);
-  return num ? num[1] : s.split(' ')[0];
+function clearAnalysis() {
+  document.getElementById('soap-card').style.display = 'none';
+  document.getElementById('analysis-out').style.display = 'none';
+  ['soap-s','soap-o','soap-a','soap-p'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['a-dx','a-recs','a-fu','a-ref'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=''; });
+  document.getElementById('a-targets').innerHTML = '';
+  document.getElementById('a-flags').innerHTML = '';
+  document.getElementById('analysis-cpg-refs').innerHTML = '';
 }
 
-function fillAllFields(d) {
-  // Handle case where Claude wraps response in a key
-  if (d.soap || d.data || d.result) d = d.soap || d.data || d.result;
+function showLoading(msg) { document.getElementById('loading-msg').textContent=msg; document.getElementById('loading').classList.add('show'); document.getElementById('analysis-progress').style.display='block'; }
+function hideLoading() { document.getElementById('loading').classList.remove('show'); setTimeout(()=>{document.getElementById('analysis-progress').style.display='none';},500); }
+function setProgress(pct,msg) { document.getElementById('analysis-bar').style.width=pct+'%'; document.getElementById('analysis-status').textContent=msg; document.getElementById('loading-msg').textContent=msg; }
 
-  const map = [
-    ['f-cc', d.chief_complaint || d.chiefComplaint || d.complaint],
-    ['f-hopi', d.hopi || d.history || d.presenting_illness],
-    ['f-allergy', d.allergy || d.drug_allergy || d.drugAllergy],
-    ['v-bp', cleanVital(d.bp || d.blood_pressure)],
-    ['v-pr', cleanVital(d.pr || d.pulse || d.heart_rate)],
-    ['v-temp', cleanVital(d.temp || d.temperature)],
-    ['v-rr', cleanVital(d.rr || d.respiratory_rate)],
-    ['v-spo2', cleanVital(d.spo2 || d.oxygen_saturation || d.spo)],
-    ['v-glucose', cleanVital(d.glucose || d.blood_glucose)],
-    ['v-gcs', cleanVital(d.gcs)],
-    ['f-bloods', d.bloods || d.blood_investigations || d.investigations],
-    ['f-imaging', d.imaging || d.radiology],
-    ['f-procedures', d.procedures],
-    ['f-diagnosis', d.diagnosis || d.diagnoses || d.assessment],
-    ['f-issues', d.issues || d.problem_list],
-    ['f-short-plan', d.short_plan || d.shortPlan || d.immediate_plan || d.plan],
-    ['f-long-plan', d.long_plan || d.longPlan || d.discharge_plan],
-  ];
-
-  let filled = 0;
-  for (const [id, val] of map) {
-    if (val && String(val).trim()) {
-      const el = document.getElementById(id);
-      if (el) {
-        el.value = String(val).trim();
-        filled++;
-      }
-    }
-  }
-
-  const drugs = d.drugs || d.medications || d.drug_list || [];
-  if (Array.isArray(drugs) && drugs.length) {
-    const tbody = document.getElementById('drug-tbody');
-    if (tbody) {
-      tbody.innerHTML = '';
-      drugs.forEach((dr, i) => {
-        const name = dr.name || dr.drug || dr.medication || '';
-        const dose = dr.dose || dr.dosage || '';
-        const route = dr.route || '';
-        const freq = dr.frequency || dr.freq || '';
-        const dur = dr.duration || '';
-        addDrugRowData(i+1, name, dose, route, freq, dur);
-      });
-    }
-  }
-  console.log('fillAllFields: filled', filled, 'fields from keys:', Object.keys(d));
-  return filled;
+function saveSession() {
+  if (!currentSessionData) return;
+  const sessions = JSON.parse(localStorage.getItem('cliniq_sessions')||'[]');
+  sessions.unshift({ id: Date.now(), ...currentSessionData });
+  localStorage.setItem('cliniq_sessions', JSON.stringify(sessions.slice(0,200)));
+  updateStats();
+  alert('Session saved!');
 }
 
-function fillDemoSOAP(transcript) {
-  const t = transcript.toLowerCase();
-  // Fill chief complaint and full HOPI from transcript
-  document.getElementById('f-cc').value = 'As per clinical history below';
-  document.getElementById('f-hopi').value = transcript.substring(0, 800);
-  // Try to extract vitals from text
-  const bpMatch = transcript.match(/[Bb][Pp][\s:]+(\d{2,3}\/\d{2,3})/);
-  const prMatch = transcript.match(/[Pp][Rr][\s:]+(\d{2,3})|[Pp]ulse[\s:]+(\d{2,3})/);
-  const tempMatch = transcript.match(/[Tt]emp[\s:]+(\d{2}\.?\d?)|(\d{2}\.?\d?)[\s]*[°]?[Cc]/);
-  const spo2Match = transcript.match(/[Ss]p[Oo]2[\s:]+(\d{2,3})|[Ss]at[\s:]+(\d{2,3})/);
-  const rrMatch = transcript.match(/[Rr][Rr][\s:]+(\d{1,2})|[Rr]espiratory [Rr]ate[\s:]+(\d{1,2})/);
-  if (bpMatch) document.getElementById('v-bp').value = bpMatch[1];
-  if (prMatch) document.getElementById('v-pr').value = prMatch[1] || prMatch[2];
-  if (tempMatch) document.getElementById('v-temp').value = tempMatch[1] || tempMatch[2];
-  if (spo2Match) document.getElementById('v-spo2').value = spo2Match[1] || spo2Match[2];
-  if (rrMatch) document.getElementById('v-rr').value = rrMatch[1] || rrMatch[2];
-  document.getElementById('v-gcs').value = '15';
-  // Fill investigations and plan from transcript hints
-  document.getElementById('f-bloods').value = t.includes('fbc') || t.includes('blood') ? 'See transcript for details' : '';
-  document.getElementById('f-diagnosis').value = 'Please enter diagnosis based on clinical assessment';
-  document.getElementById('f-short-plan').value = 'Please complete management plan';
-  document.getElementById('f-long-plan').value = 'Please complete discharge and follow-up plan';
+function renderHistory() {
+  const sessions = JSON.parse(localStorage.getItem('cliniq_sessions')||'[]');
+  const tbody = document.getElementById('history-tbody');
+  if (!tbody) return;
+  if (!sessions.length) { tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:40px">No sessions saved yet.</td></tr>'; return; }
+  tbody.innerHTML = sessions.map(s => '<tr><td>'+new Date(s.timestamp).toLocaleString('en-MY')+'</td><td>'+(s.patient?.name||'—')+' '+(s.patient?.age?'('+s.patient.age+'y)':'')+'</td><td>'+(s.cpgList||[]).map(id=>CPG_DB[id]?.title?.split(' ').slice(2,4).join(' ')||id).join(', ')||'—'+'</td><td>'+(s.result?.working_diagnosis||'—')+'</td><td><button class="btn btn-outline btn-sm" onclick="deleteSession('+s.id+')">🗑️</button></td></tr>').join('');
 }
 
-// ── DRUG TABLE ──
-let drugCount = 1;
-function addDrugRow() {
-  drugCount++;
-  addDrugRowData(drugCount,'','','','','');
-}
-function addDrugRowData(n, name, dose, route, freq, dur) {
-  const row = document.createElement('tr');
-  row.innerHTML = `<td>${n}</td>
-    <td><input placeholder="Drug name" value="${name||''}"></td>
-    <td><input placeholder="Dose" value="${dose||''}"></td>
-    <td><input placeholder="Route" value="${route||''}"></td>
-    <td><input placeholder="Frequency" value="${freq||''}"></td>
-    <td><input placeholder="Duration" value="${dur||''}"></td>
-    <td><button onclick="removeDrugRow(this)" style="border:none;background:none;color:var(--rose);cursor:pointer;font-size:16px;">×</button></td>`;
-  document.getElementById('drug-tbody').appendChild(row);
-}
-function removeDrugRow(btn) { btn.closest('tr').remove(); }
-
-function getDrugList() {
-  const rows = document.querySelectorAll('#drug-tbody tr');
-  return Array.from(rows).map(r => {
-    const inputs = r.querySelectorAll('input');
-    return `${inputs[0]?.value || ''} ${inputs[1]?.value || ''} ${inputs[2]?.value || ''} ${inputs[3]?.value || ''} x ${inputs[4]?.value || ''}`.trim();
-  }).filter(Boolean).join('\n');
+function deleteSession(id) {
+  if (!confirm('Delete this session?')) return;
+  let s = JSON.parse(localStorage.getItem('cliniq_sessions')||'[]');
+  localStorage.setItem('cliniq_sessions', JSON.stringify(s.filter(x=>x.id!==id)));
+  renderHistory(); updateStats();
 }
 
-// ── COLLECT SOAP DATA ──
-function collectSOAPData() {
-  return {
-    specialty: selectedSpecialty || 'General Medicine',
-    cc: document.getElementById('f-cc').value,
-    hopi: document.getElementById('f-hopi').value,
-    allergy: document.getElementById('f-allergy') ? document.getElementById('f-allergy').value || 'Not documented' : 'Not documented',
-    vitals: `BP ${document.getElementById('v-bp').value}, PR ${document.getElementById('v-pr').value}, Temp ${document.getElementById('v-temp').value}°C, RR ${document.getElementById('v-rr').value}, SpO₂ ${document.getElementById('v-spo2').value}%, Glucose ${document.getElementById('v-glucose').value} mmol/L, GCS ${document.getElementById('v-gcs').value}`,
-    bloods: document.getElementById('f-bloods').value,
-    imaging: document.getElementById('f-imaging').value,
-    procedures: document.getElementById('f-procedures').value,
-    drugs: getDrugList(),
-    diagnosis: document.getElementById('f-diagnosis').value,
-    issues: document.getElementById('f-issues').value,
-    shortPlan: document.getElementById('f-short-plan').value,
-    longPlan: document.getElementById('f-long-plan').value,
-  };
+function clearHistory() {
+  if (!confirm('Delete ALL session history?')) return;
+  localStorage.removeItem('cliniq_sessions');
+  renderHistory(); updateStats();
 }
 
-// ── RUN ANALYSIS ──
-async function runAnalysis() {
-  goStep(5);
-  document.getElementById('analysis-loading').style.display = 'block';
-  document.getElementById('analysis-output').style.display = 'none';
-  
-  const d = collectSOAPData();
-  const refContext = referenceText ? `\n\nREFERENCE DOCUMENT (clinical guideline/formulary):\n${referenceText.substring(0,4000)}` : '';
-  
-  animateProgress();
-  
-
-
-  const specialtyGuidance = {
-    'General Medicine': 'Focus on systemic review, chronic disease management, and polypharmacy. Include relevant comorbidities.',
-    'Emergency': 'Prioritise ABCDE assessment, time-critical diagnoses, and disposition. Use qSOFA for sepsis. Include triage time.',
-    'Surgery': 'Include surgical site, procedure indication, ASA grade, consent status, and post-op care plan. Check VTE prophylaxis.',
-    'Paediatrics': 'Include age, weight-based drug dosing, developmental milestones, immunisation status, and parent/guardian consent.',
-    'O&G': 'Include LMP, gestational age, obstetric history (G_P_), gynaecological history, and safeguarding considerations.',
-    'Orthopaedics': 'Include mechanism of injury, neurovascular status distal to injury, imaging findings, and mobility/weight-bearing status.',
-    'Psychiatry': 'Include mental state examination (MSE), risk assessment, capacity assessment, and MHA status if applicable.',
-    'Respiratory': 'Include smoking history (pack-years), oxygen requirement, spirometry if available, and exacerbation frequency.',
-    'Cardiology': 'Include cardiac risk factors, ECG findings, echo results, and anticoagulation/antiplatelet status.',
-  };
-  const specNote = specialtyGuidance[d.specialty] || specialtyGuidance['General Medicine'];
-  const allergyFlag = (!d.allergy || d.allergy === 'Not documented')
-    ? 'ALLERGY STATUS: NOT DOCUMENTED — medico-legal risk flag'
-    : 'Drug Allergy: ' + d.allergy;
-
-  const prompt = `You are a senior clinical documentation AI specialising in ${d.specialty} at Hospital Tengku Permaisuri Norashikin (HTPN), Malaysia.
-
-SPECIALTY: ${d.specialty}
-SPECIALTY GUIDANCE: ${specNote}
-
-CLINICAL DATA:
-Chief Complaint: ${d.cc}
-HOPI: ${d.hopi}
-${allergyFlag}
-Vitals: ${d.vitals}
-Blood Investigations: ${d.bloods}
-Imaging: ${d.imaging}
-Procedures: ${d.procedures}
-Drug List: ${d.drugs}
-Diagnosis: ${d.diagnosis}
-Issues: ${d.issues}
-Short-term Plan: ${d.shortPlan}
-Long-term Plan: ${d.longPlan}
-${refContext}
-
-Generate a JSON object with these exact keys:
-- soap_s: Subjective SOAP section tailored for ${d.specialty} (3-5 sentences including allergy status)
-- soap_o: Objective section with vitals and investigations
-- soap_a: Assessment with diagnoses, ${d.specialty}-appropriate
-- soap_p: Plan with ${d.specialty}-specific management steps
-- icd_codes: Array of {code, description, confidence, url} — top 3-5 ICD-11 codes. url must be "https://icd.who.int/browse/2024-01/mms/en" for all. Confidence 0-100.
-- completeness_score: 1-10 (deduct points if allergy not documented)
-- legibility_score: 1-10
-- medico_legal_score: 1-10 (deduct heavily if allergy = not documented)
-- flags: Array of {level:"high"|"mid"|"low", title, detail} — always flag undocumented allergy as high
-- recommendations: 3-5 actionable ${d.specialty}-specific recommendations as a numbered string
-
-Respond with valid JSON only.`;
-
-  try {
-    const resp = await fetch('/api/claude', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
-    });
-    const data = await resp.json();
-    const raw = data.content?.[0]?.text || '{}';
-    const clean = raw.replace(/```json|```/g, '').trim();
-    const result = JSON.parse(clean);
-    renderAnalysis(result);
-  } catch(err) {
-    fillDemoAnalysis(d);
-  }
-  
-  incrementAnalysisCount();
+function exportHistory() {
+  const sessions = JSON.parse(localStorage.getItem('cliniq_sessions')||'[]');
+  if (!sessions.length) { alert('No sessions to export.'); return; }
+  const rows = [['Date','Patient','Age','CPG Used','Diagnosis','Plan']];
+  sessions.forEach(s => rows.push([new Date(s.timestamp).toLocaleString(), s.patient?.name||'', s.patient?.age||'', (s.cpgList||[]).join('; '), s.result?.working_diagnosis||'', (s.result?.soap?.plan||'').replace(/\n/g,' ').substring(0,200)]));
+  const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a = document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='cliniq-sessions-'+new Date().toISOString().split('T')[0]+'.csv'; a.click();
 }
 
-function animateProgress() {
-  const bar = document.getElementById('loading-bar');
-  const msg = document.getElementById('loading-msg');
-  const msgs = ['Generating SOAP note...','Analysing ICD-11 codes...','Checking documentation quality...','Flagging medico-legal risks...','Finalising recommendations...'];
-  let i = 0; let w = 0;
-  const iv = setInterval(() => {
-    w = Math.min(w + 4, 92);
-    bar.style.width = w + '%';
-    if (i < msgs.length && w > i * 20) { msg.textContent = msgs[i++]; }
-  }, 180);
-  setTimeout(() => clearInterval(iv), 10000);
+function updateStats() {
+  const sessions = JSON.parse(localStorage.getItem('cliniq_sessions')||'[]');
+  const today = new Date().toDateString();
+  const el1 = document.getElementById('stat-today'); if(el1) el1.textContent = sessions.filter(s=>new Date(s.timestamp).toDateString()===today).length;
+  const el2 = document.getElementById('stat-total'); if(el2) el2.textContent = sessions.length;
 }
 
-function renderAnalysis(r) {
-  document.getElementById('analysis-loading').style.display = 'none';
-  document.getElementById('analysis-output').style.display = 'block';
-  
-  document.getElementById('out-soap-s').textContent = r.soap_s || '';
-  document.getElementById('out-soap-o').textContent = r.soap_o || '';
-  document.getElementById('out-soap-a').textContent = r.soap_a || '';
-  document.getElementById('out-soap-p').textContent = r.soap_p || '';
-  
-  // ICD — with clickable verification links
-  const icdEl = document.getElementById('out-icd');
-  icdEl.innerHTML = (r.icd_codes || []).map(c => `
-    <div class="icd-row">
-      <a href="https://icd.who.int/browse/2024-01/mms/en" target="_blank" rel="noopener"
-         title="Verify on WHO ICD-11 Browser"
-         style="font-family:var(--mono);font-weight:700;font-size:14px;color:var(--teal);text-decoration:none;white-space:nowrap;border-bottom:1px dashed var(--teal);padding-bottom:1px;">
-        ${c.code || ''}
-      </a>
-      <span class="icd-desc" style="flex:1;">${c.description || ''}</span>
-      <div class="conf-bar"><div class="conf-fill" style="width:${c.confidence||0}%"></div></div>
-      <span class="conf-pct">${c.confidence||0}%</span>
-      <a href="https://icd.who.int/browse/2024-01/mms/en" target="_blank" rel="noopener"
-         style="font-size:11px;color:var(--text-muted);text-decoration:none;white-space:nowrap;border:1px solid var(--card-border);padding:2px 8px;border-radius:50px;margin-left:4px;"
-         title="Verify this code">🔗 Verify</a>
-    </div>`).join('') || '<p style="color:var(--text-muted);font-size:13px;">No ICD codes generated.</p>';
-  
-  // Quality
-  const cs = r.completeness_score || 7;
-  const ls = r.legibility_score || 8;
-  const ms = r.medico_legal_score || 6;
-  const scoreClass = s => s >= 8 ? 'score-high' : s >= 5 ? 'score-mid' : 'score-low';
-  document.getElementById('out-quality').innerHTML = `
-    <div class="quality-tile"><div class="q-val ${scoreClass(cs)}">${cs}/10</div><div class="q-label">Completeness</div></div>
-    <div class="quality-tile"><div class="q-val ${scoreClass(ls)}">${ls}/10</div><div class="q-label">Legibility</div></div>
-    <div class="quality-tile"><div class="q-val ${scoreClass(ms)}">${ms}/10</div><div class="q-label">Medico-legal Score</div></div>`;
-  
-  // Flags
-  const flagsEl = document.getElementById('out-flags');
-  flagsEl.innerHTML = (r.flags || []).map(f => `
-    <div class="flag-item flag-${f.level||'low'}">
-      <span class="flag-icon">${f.level==='high'?'🔴':f.level==='mid'?'🟡':'🟢'}</span>
-      <div class="flag-text"><strong>${f.title||''}</strong><span>${f.detail||''}</span></div>
-    </div>`).join('') || '<p style="color:var(--text-muted);font-size:13px;">No flags generated.</p>';
-  
-  document.getElementById('out-recommendations').textContent = r.recommendations || '';
-  
-  analysisData = r;
+function loadSettings() {
+  const s = JSON.parse(localStorage.getItem('cliniq_settings')||'{}');
+  ['s-clinic','s-doctor','s-specialty','s-model','s-lang','s-tokens'].forEach(id => { const el=document.getElementById(id); if(el && s[id.replace('s-','')]) el.value=s[id.replace('s-','')]; });
+  return { specialty: s.specialty, model: s.model, lang: s.lang, tokens: s.tokens };
 }
 
-function fillDemoAnalysis(d) {
-  renderAnalysis({
-    soap_s: `Patient presents with ${d.cc || 'clinical complaints as documented'}. ${d.hopi ? d.hopi.substring(0,200) : 'History as per clinical notes.'}`,
-    soap_o: `Vitals: ${d.vitals}.\n\nInvestigations: ${d.bloods || 'Pending.'}\nImaging: ${d.imaging || 'Not documented.'}`,
-    soap_a: d.diagnosis || 'Diagnoses to be confirmed by clinician.',
-    soap_p: `Short-term: ${d.shortPlan || 'As per clinical plan.'}\n\nLong-term: ${d.longPlan || 'Follow-up as arranged.'}`,
-    icd_codes: [
-      { code: 'CA40.00', description: 'Pneumonia — unspecified', confidence: 82 },
-      { code: '5A11', description: 'Type 2 diabetes mellitus', confidence: 76 },
-      { code: 'BA80', description: 'Essential hypertension', confidence: 70 },
-    ],
-    completeness_score: 7,
-    legibility_score: 8,
-    medico_legal_score: 6,
-    flags: [
-      { level: 'high', title: 'Allergy status not documented', detail: 'Drug allergy history must be explicitly documented before antibiotic prescription. Medico-legal requirement.' },
-      { level: 'mid', title: 'Informed consent not referenced', detail: 'If any invasive procedure was performed, consent documentation should be referenced in the notes.' },
-      { level: 'low', title: 'Sepsis criteria not formally assessed', detail: 'Consider documenting qSOFA score given infective presentation with elevated inflammatory markers.' },
-    ],
-    recommendations: '1. Document drug allergy status explicitly before any antibiotic prescription.\n2. Include sepsis screening (qSOFA / SOFA score) given infective presentation.\n3. Ensure blood cultures were taken before antibiotic commencement and document this.\n4. Glycaemic control targets should be explicitly stated in the management plan.\n5. Discharge planning documentation should include community follow-up arrangements.'
-  });
+function saveSettings() {
+  const s = {}; ['clinic','doctor','specialty','model','lang','tokens'].forEach(k => { const el=document.getElementById('s-'+k); if(el) s[k]=el.value; });
+  localStorage.setItem('cliniq_settings', JSON.stringify(s));
+  const saved = document.getElementById('settings-saved'); if(saved) { saved.classList.add('show'); setTimeout(()=>saved.classList.remove('show'),3000); }
 }
 
-// ── EXPORT ──
-function buildFinalDocument() {
-  const name = document.getElementById('sign-name').value || '[Unsigned]';
-  const designation = document.getElementById('sign-designation').value || '';
-  const mmc = document.getElementById('sign-mmc').value || '';
-  const dept = document.getElementById('sign-dept').value || '';
-  const dt = document.getElementById('sign-datetime').value || new Date().toISOString();
-  const status = document.getElementById('sign-status').options[document.getElementById('sign-status').selectedIndex]?.text || '';
-  const d = collectSOAPData();
-  
-  const allergyVal = d.allergy || 'Not documented';
-  const allergyLine = allergyVal === 'Not documented'
-    ? 'Drug Allergy: NOT DOCUMENTED ⚠ — medico-legal risk'
-    : 'Drug Allergy: ' + allergyVal;
-
-  return `HOSPITAL TENGKU PERMAISURI NORASHIKIN (HTPN)
-HEALTHCARE INTELLIGENCE OFFICE
-CLINICAL DOCUMENT CHECKER — AI-ASSISTED DOCUMENTATION
-Specialty: ${d.specialty || 'General Medicine'}
-Generated by Clinical Document Checker · Dr Naim & AI Team HTPN
-${'─'.repeat(60)}
-
-DISCLAIMER: This document was generated with AI assistance (Claude).
-It has been reviewed and signed off by the treating clinician.
-For research/educational use. Not a standalone clinical record.
-
-${'═'.repeat(60)}
-SOAP CLINICAL NOTE — ${(d.specialty || 'General Medicine').toUpperCase()}
-${'═'.repeat(60)}
-
-SUBJECTIVE
-${allergyLine}
-${document.getElementById('out-soap-s')?.textContent || d.cc + '\n' + d.hopi}
-
-OBJECTIVE
-${document.getElementById('out-soap-o')?.textContent || d.vitals + '\n' + d.bloods}
-
-ASSESSMENT
-${document.getElementById('out-soap-a')?.textContent || d.diagnosis}
-
-PLAN
-${document.getElementById('out-soap-p')?.textContent || d.shortPlan + '\n' + d.longPlan}
-
-${'─'.repeat(60)}
-DRUG LIST
-${'─'.repeat(60)}
-${allergyLine}
-${d.drugs || 'No medications documented.'}
-
-${'─'.repeat(60)}
-ICD-11 CODES (AI-suggested — verify at icd.who.int before coding)
-${'─'.repeat(60)}
-${(analysisData.icd_codes || []).map(c => `${c.code}  ${c.description}  (${c.confidence}% confidence)  — https://icd.who.int/browse/2024-01/mms/en`).join('\n') || 'No ICD codes generated.'}
-
-${'─'.repeat(60)}
-DOCUMENTATION QUALITY
-${'─'.repeat(60)}
-Completeness: ${analysisData.completeness_score || 'N/A'}/10
-Legibility: ${analysisData.legibility_score || 'N/A'}/10
-Medico-legal Score: ${analysisData.medico_legal_score || 'N/A'}/10
-
-${'─'.repeat(60)}
-RISK FLAGS
-${'─'.repeat(60)}
-${(analysisData.flags || []).map(f => `[${f.level?.toUpperCase()}] ${f.title}: ${f.detail}`).join('\n') || 'No flags.'}
-
-${'═'.repeat(60)}
-CLINICIAN SIGN-OFF
-${'═'.repeat(60)}
-Name: ${name}
-Designation: ${designation}
-MMC No.: ${mmc}
-Department: ${dept}
-Specialty Documented: ${d.specialty || 'General Medicine'}
-Date/Time: ${dt}
-Review Status: ${status}
-
-HUMAN-IN-THE-LOOP VERIFICATION: COMPLETED
-Clinical responsibility remains with the treating clinician.
-
-${'─'.repeat(60)}
-Clinical Document Checker · HTPN · ${new Date().toISOString()}`;
+function printSession() {
+  const settings = loadSettings();
+  const cpgNames = [...selectedCPGs].map(id=>CPG_DB[id]?.title||id).join(', ');
+  const win = window.open('','_blank');
+  win.document.write('<!DOCTYPE html><html><head><title>ClinIQ Report</title><style>body{font-family:Arial,sans-serif;max-width:800px;margin:0 auto;padding:20px;font-size:12px;line-height:1.6}h1{font-size:1.4rem;border-bottom:2px solid #0f4c81;padding-bottom:8px;color:#0f4c81}h2{font-size:0.9rem;color:#0f4c81;margin-top:16px;margin-bottom:4px;text-transform:uppercase}.section{margin-bottom:14px;padding:10px;border:1px solid #ddd;border-radius:6px;background:#f9f9f9}.footer{margin-top:30px;font-size:10px;color:#666;border-top:1px solid #ddd;padding-top:10px}@media print{body{margin:0}}</style></head><body><h1>ClinIQ Clinical Report</h1><p><strong>Date:</strong> '+new Date().toLocaleString('en-MY')+'</p>'+(cpgNames?'<p><strong>CPG RAG:</strong> '+cpgNames+'</p>':'')+'<h2>Working Diagnosis</h2><div class="section">'+document.getElementById('a-dx').textContent+'</div><h2>SOAP Notes</h2><div class="section"><strong>S:</strong> '+document.getElementById('soap-s').value+'</div><div class="section"><strong>O:</strong> '+document.getElementById('soap-o').value+'</div><div class="section"><strong>A:</strong> '+document.getElementById('soap-a').value+'</div><div class="section"><strong>P:</strong> '+document.getElementById('soap-p').value+'</div><h2>Recommendations</h2><div class="section">'+document.getElementById('a-recs').innerText+'</div><h2>Follow-up</h2><div class="section">'+document.getElementById('a-fu').innerText+'</div><h2>Referral</h2><div class="section">'+document.getElementById('a-ref').innerText+'</div><div class="footer">Generated by ClinIQ · CPG-RAG Clinical AI · MOH Malaysia CPG Source: mymahtas.moh.gov.my · For clinical decision support only.</div></body></html>');
+  win.document.close(); win.print();
 }
-
-function exportDoc(type) {
-  const name = document.getElementById('sign-name').value;
-  const mmc = document.getElementById('sign-mmc').value;
-  const status = document.getElementById('sign-status').value;
-  
-  if (!name || !mmc || !status) {
-    alert('Please complete all sign-off fields (Name, MMC number, and Review Status) before exporting.');
-    return;
-  }
-
-  // Warn if allergy not documented (not block — clinician decision)
-  const allergyVal = document.getElementById('f-allergy')?.value || '';
-  if (!allergyVal || allergyVal === 'Not documented') {
-    const proceed = confirm('⚠️ Drug Allergy Status is NOT documented.\n\nThis is a medico-legal requirement before antibiotic prescription.\n\nDo you want to proceed with export anyway?');
-    if (!proceed) {
-      goStep(4);
-      document.getElementById('f-allergy')?.focus();
-      return;
-    }
-  }
-  
-  const content = buildFinalDocument();
-  const blob = new Blob([content], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const fname = `HTPN_ClinDoc_${new Date().toISOString().slice(0,10)}_${name.replace(/\s/g,'_')}.${type}`;
-  a.href = url; a.download = fname; a.click();
-  URL.revokeObjectURL(url);
-  
-  // Add to session docs
-  const docEl = document.getElementById('session-docs');
-  const docItem = document.createElement('div');
-  docItem.className = 'file-item';
-  docItem.innerHTML = `<span>📄</span><span class="file-name">${fname}</span><span class="file-type">${new Date().toLocaleTimeString()}</span>
-  <button onclick="reDownload('${encodeURIComponent(content)}','${fname}')">⬇</button>`;
-  docEl.innerHTML = '';
-  docEl.appendChild(docItem);
-  sessionDocs.push({ name: fname, content });
-}
-
-function reDownload(encoded, fname) {
-  const blob = new Blob([decodeURIComponent(encoded)], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob); const a = document.createElement('a');
-  a.href = url; a.download = fname; a.click(); URL.revokeObjectURL(url);
-}
-
-function copyToClipboard() {
-  navigator.clipboard.writeText(buildFinalDocument()).then(() => alert('Document copied to clipboard.')).catch(() => alert('Could not copy. Please use Download instead.'));
-}
-
-
-// ── IDENTITY MODE ──
-function setIdentityMode(mode, btn) {
-  document.querySelectorAll('#id-tab-name, #id-tab-anon').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('id-name-fields').style.display = mode === 'name' ? 'block' : 'none';
-  document.getElementById('id-anon-msg').style.display = mode === 'anon' ? 'flex' : 'none';
-  document.getElementById('fb-anon').value = mode === 'anon' ? 'true' : 'false';
-}
-
-// ── FEEDBACK ──
-function buildLikertUI() {
-  const container = document.getElementById('likert-questions');
-  container.innerHTML = LIKERT_QUESTIONS.map(q => `
-    <div class="field" style="margin-bottom:16px;">
-      <label>${q.text}</label>
-      <div class="likert-row">
-        ${[1,2,3,4,5].map(n => `<button class="likert-btn" data-q="${q.id}" data-val="${n}" onclick="selectLikert(this)">${n}</button>`).join('')}
-        <span style="font-size:12px;color:var(--text-muted);align-self:center;margin-left:4px;">1=Disagree · 5=Agree</span>
-      </div>
-    </div>`).join('');
-}
-
-function selectLikert(btn) {
-  const q = btn.dataset.q;
-  document.querySelectorAll(`[data-q="${q}"]`).forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
-}
-
-function getLikertValues() {
-  return LIKERT_QUESTIONS.reduce((acc, q) => {
-    const sel = document.querySelector(`[data-q="${q.id}"].selected`);
-    acc[q.id] = sel ? sel.dataset.val : null;
-    return acc;
-  }, {});
-}
-
-async function submitFeedback() {
-  const role = document.getElementById('fb-role').value;
-  const dept = document.getElementById('fb-dept').value;
-  const feature = document.getElementById('fb-best-feature').value;
-  const text = document.getElementById('fb-text').value;
-  const anon = document.getElementById('fb-anon').value === 'true';
-  const likert = getLikertValues();
-  const statusEl = document.getElementById('fb-status');
-  
-  if (!role) { alert('Please select your role.'); return; }
-  
-  statusEl.style.display = 'block';
-  statusEl.className = 'alert alert-info';
-  statusEl.innerHTML = '<span>⏳</span><span>Submitting feedback...</span>';
-  
-  const fbName = document.getElementById('fb-name')?.value || '';
-  const fbEmail = document.getElementById('fb-email')?.value || '';
-  const templateParams = {
-    from_name: anon ? 'Anonymous' : (fbName || 'Not provided'),
-    from_email: anon ? 'Anonymous' : (fbEmail || 'Not provided'),
-    from_role: anon ? 'Anonymous' : role,
-    from_dept: anon ? 'Anonymous' : dept,
-    best_feature: feature || 'Not specified',
-    time_saved: document.getElementById('fb-time-saved')?.value || 'Not answered',
-    q1: likert.q1 || '-', q2: likert.q2 || '-', q3: likert.q3 || '-',
-    q4: likert.q4 || '-', q5: likert.q5 || '-', q6: likert.q6 || '-',
-    free_text: text || '(none)',
-    analysis_count: localStorage.getItem('htpn_analyses') || '0',
-    timestamp: new Date().toISOString(),
-    to_email: 'ppnaim@moh.gov.my'
-  };
-
-  try {
-    if (typeof emailjs === 'undefined') {
-      throw new Error('EmailJS not loaded. Check internet connection.');
-    }
-    await emailjs.send('service_z0rh03y', 'template_lz0rzuy', templateParams);
-    statusEl.className = 'alert alert-info';
-    statusEl.innerHTML = '<span>✅</span><span>Feedback submitted to Dr Naim & AI Team HTPN (ppnaim@moh.gov.my). Thank you for helping improve Clinical Document Checker!</span>';
-    document.getElementById('fb-text').value = '';
-  } catch(e) {
-    statusEl.className = 'alert alert-warn';
-    statusEl.innerHTML = `<span>⚠</span><span>Could not send via EmailJS. Please email feedback directly to <strong>ppnaim@moh.gov.my</strong>. Error: ${e.text || e.message}</span>`;
-  }
-}
-
-// ── UTILITIES ──
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-
-// ── INIT ──
-initCounters();
-initAssemblyAI();
-initTheme();
-startAutoSave();
-restoreSession();
-logVisitorOnLoad();
-buildLikertUI();
-checkSpeechSupport();
 </script>
 </body>
 </html>

@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0B1F3A">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%2715%27 fill=%27%230B1F3A%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%277%27 fill=%27%231CB8A0%27/%3E%3C/svg%3E">
+<title>DFU Vision — Diabetic Foot Ulcer AI Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="vendor/tf.min.js"></script>
+<style>
+:root{
+  --navy:#0B1F3A; --navy-mid:#11294a; --teal:#1CB8A0; --teal-dim:#0F8C7A; --teal-glow:rgba(28,184,160,.14);
+  --amber:#F4A623; --rose:#E84C6A; --green:#22C55E; --violet:#8B7FE8;
+  --text:#13263c; --muted:#5A7290; --faint:#8aa0b8; --cloud:#EEF3F8; --line:#dde6f0; --card:#fff;
+  --serif:'DM Serif Display',Georgia,serif; --sans:'DM Sans',system-ui,-apple-system,sans-serif; --mono:'DM Mono',ui-monospace,monospace;
+  --r:14px; --shadow:0 2px 18px rgba(11,31,58,.07); --shadow-lg:0 12px 48px rgba(11,31,58,.18);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--cloud);color:var(--text);min-height:100vh;font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:15px}
+
+/* ── disclaimer gate ── */
+#gate{position:fixed;inset:0;z-index:9999;background:rgba(8,17,28,.96);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
+#gate.hidden{display:none}
+.gate-box{background:var(--card);border-radius:18px;max-width:640px;width:100%;padding:28px 26px;border-top:5px solid var(--amber);box-shadow:var(--shadow-lg);margin:auto}
+.tag{display:inline-block;background:var(--amber);color:var(--navy);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 11px;border-radius:999px}
+.gate-box h2{font-family:var(--serif);font-size:26px;margin:12px 0 6px;color:var(--navy);line-height:1.2}
+.gate-box p{color:var(--muted);font-size:14px;margin-bottom:10px}
+.protocol{background:var(--cloud);border-radius:12px;padding:14px 16px;margin:14px 0}
+.protocol h4{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--teal-dim);margin-bottom:8px}
+.protocol ul{list-style:none}
+.protocol li{font-size:13.5px;padding:4px 0 4px 26px;position:relative;color:var(--text)}
+.protocol li::before{content:"";position:absolute;left:0;top:9px;width:16px;height:16px;border-radius:50%;background:var(--teal);opacity:.9}
+.protocol li::after{content:"✓";position:absolute;left:3.5px;top:4.5px;color:#fff;font-size:11px;font-weight:700}
+.gate-box label{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;margin:12px 0;color:var(--text)}
+.gate-box label input{margin-top:4px;width:18px;height:18px;accent-color:var(--teal)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:11px;padding:13px 20px;font-weight:600;font-size:15px;transition:.15s}
+.btn-primary{background:var(--navy);color:#fff;width:100%}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-teal{background:var(--teal);color:#fff}
+.btn-ghost{background:transparent;color:var(--navy);border:1.5px solid var(--line)}
+.btn-sm{padding:8px 13px;font-size:13px;border-radius:9px}
+
+/* ── layout ── */
+header{background:linear-gradient(135deg,var(--navy),var(--navy-mid));color:#fff;padding:calc(14px + env(safe-area-inset-top)) 18px 16px}
+header .wrap{max-width:600px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px}
+header h1{font-family:var(--serif);font-size:21px;font-weight:400;letter-spacing:.01em}
+header h1 span{color:var(--teal)}
+header small{display:block;font-size:11.5px;opacity:.7;margin-top:1px}
+.pill{font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);white-space:nowrap}
+.pill.ok{background:rgba(28,184,160,.2);border-color:var(--teal)}
+main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:18px;margin-bottom:14px}
+.step{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.step .n{width:26px;height:26px;border-radius:50%;background:var(--navy);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step h3{font-size:16px;font-weight:600;color:var(--navy)}
+.step .hint{margin-left:auto;font-size:12px;color:var(--faint)}
+.hidden{display:none!important}
+
+/* capture */
+.capture-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.capture-btn{border:2px dashed var(--line);border-radius:12px;padding:20px 10px;text-align:center;background:var(--cloud);color:var(--navy);font-weight:600;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.capture-btn svg{width:30px;height:30px;stroke:var(--teal);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.capture-btn:active{background:var(--teal-glow)}
+.samples{margin-top:12px}
+.samples p{font-size:12px;color:var(--muted);margin-bottom:8px}
+.sample-row{display:flex;gap:8px}
+.sample{flex:1;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;padding:0;text-align:left}
+.sample img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.sample span{display:block;font-size:11.5px;font-weight:600;padding:6px 8px;color:var(--navy)}
+
+/* image + heatmap */
+.viewer{position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:1;max-width:100%}
+.viewer canvas{position:absolute;inset:0;width:100%;height:100%}
+#camCanvas{transition:opacity .25s}
+.viewer .badge{position:absolute;left:10px;top:10px;font-family:var(--mono);font-size:11px;background:rgba(11,31,58,.75);color:#fff;padding:4px 9px;border-radius:999px;z-index:2}
+.cam-controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;font-size:13px;color:var(--muted)}
+.cam-controls select{padding:6px 8px;border-radius:8px;border:1px solid var(--line)}
+.cam-controls input[type=range]{flex:1;min-width:80px;accent-color:var(--teal)}
+.seg{display:inline-flex;border:1.5px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{border:none;background:#fff;padding:7px 12px;font-size:13px;font-weight:600;color:var(--muted)}
+.seg button.on{background:var(--navy);color:#fff}
+
+/* results */
+.status{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--muted);padding:10px 0}
+.spinner{width:18px;height:18px;border:2.5px solid var(--line);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+@media (max-width:420px){.result-grid{grid-template-columns:1fr}}
+.metric{background:var(--cloud);border-radius:12px;padding:12px 14px}
+.metric h4{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.metric .val{font-family:var(--serif);font-size:24px;color:var(--navy);line-height:1.15}
+.metric .sub{font-size:12px;color:var(--muted);margin-top:2px}
+.bar{height:8px;border-radius:999px;background:#dde6f0;margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:999px;background:var(--teal);transition:width .6s ease}
+.bar i.warn{background:var(--amber)}.bar i.bad{background:var(--rose)}
+.texas{margin-top:14px}
+.texas h4{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.tgrid{display:grid;grid-template-columns:52px repeat(4,1fr);gap:4px;font-size:11.5px}
+.tgrid .h{background:var(--navy);color:#fff;border-radius:6px;padding:6px 4px;text-align:center;font-weight:600}
+.tgrid .rh{background:var(--navy-mid);color:#fff;border-radius:6px;padding:6px 4px;font-weight:600;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.15}
+.tgrid .c{background:var(--cloud);border-radius:6px;padding:9px 4px;text-align:center;font-family:var(--mono);color:var(--faint);position:relative}
+.tgrid .c.na{opacity:.45}
+.tgrid .c.hit{background:var(--teal);color:#fff;font-weight:700;box-shadow:0 0 0 3px var(--teal-glow)}
+.tgrid .c.hit.sev{background:var(--rose)}
+.texas-out{display:flex;align-items:center;gap:14px;margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--navy);color:#fff}
+.texas-out .big{font-family:var(--serif);font-size:40px;line-height:1}
+.texas-out .desc{font-size:12.5px;opacity:.85}
+.field{margin:10px 0}
+.field label{display:block;font-size:12.5px;font-weight:600;color:var(--navy);margin-bottom:5px}
+.field select,.field input,.field textarea{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff}
+.field textarea{min-height:64px;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 11px;font-size:12.5px;color:var(--text)}
+.chip.on{background:var(--teal-glow);border-color:var(--teal);color:var(--teal-dim);font-weight:600}
+.note{font-size:12.5px;color:var(--muted);background:var(--cloud);border-left:3px solid var(--amber);padding:8px 12px;border-radius:0 8px 8px 0;margin-top:10px}
+.note.teal{border-color:var(--teal)}
+.log-list{list-style:none;margin-top:8px}
+.log-list li{display:flex;gap:10px;align-items:center;border-top:1px solid var(--line);padding:9px 0;font-size:13px}
+.log-list img{width:42px;height:42px;border-radius:8px;object-fit:cover;flex-shrink:0}
+.log-list .who{flex:1}
+.log-list .who b{font-family:var(--mono);font-size:12.5px;color:var(--navy)}
+.log-list .who small{display:block;color:var(--muted);font-size:11.5px}
+.agree{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(34,197,94,.14);color:#15803d}
+.agree.no{background:rgba(232,76,106,.12);color:#be123c}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.kpi{background:var(--cloud);border-radius:10px;padding:10px;text-align:center}
+.kpi b{font-family:var(--serif);font-size:22px;color:var(--navy);display:block}
+.kpi span{font-size:11px;color:var(--muted)}
+.modelcard{font-size:12.5px;color:var(--muted)}
+.modelcard dt{font-weight:600;color:var(--navy);margin-top:8px}
+.modelcard dd{margin:0}
+footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 30px;max-width:600px;margin:0 auto}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:999px;font-size:13px;box-shadow:var(--shadow-lg);z-index:999;opacity:0;transition:.25s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- ───────────── DISCLAIMER GATE ───────────── -->
+<div id="gate">
+  <div class="gate-box">
+    <span class="tag">Research prototype · Not a medical device</span>
+    <h2>DFU Vision — before you take a photograph</h2>
+    <p>This demonstrator classifies diabetic foot ulcer photographs with a deep learning model. It is for education and Centre of Excellence demonstration only. It does <b>not</b> replace clinical assessment, probe-to-bone testing, vascular assessment or microbiology, and must not be used to make treatment decisions.</p>
+    <p>A model is only as good as its inputs. Photographs taken under different distances, lighting and angles are the single biggest source of error in wound image AI. Please follow the standardised image acquisition protocol:</p>
+    <div class="protocol">
+      <h4>Standardised image acquisition protocol</h4>
+      <ul>
+        <li><b>Prepare the wound:</b> remove the dressing, irrigate with saline and gently blot dry before photographing.</li>
+        <li><b>Distance and angle:</b> hold the camera 30–40 cm away, perpendicular to the wound surface; the ulcer should fill roughly one third of the frame.</li>
+        <li><b>Lighting:</b> even, diffuse room lighting; flash off; avoid shadows, glare and coloured light.</li>
+        <li><b>Background and scale:</b> plain drape or sheet behind the foot; place a disposable paper ruler or colour reference beside (not over) the wound.</li>
+        <li><b>Framing:</b> include a margin of peri-wound skin; no faces, name bands, documents or identifiers in the frame.</li>
+        <li><b>Consistency:</b> same device, same settings and same view at every visit so change over time is real, not photographic.</li>
+      </ul>
+    </div>
+    <label><input type="checkbox" id="ack1"> I understand this is a research prototype trained on publicly available images and is not validated for clinical use.</label>
+    <label><input type="checkbox" id="ack2"> I will follow the image acquisition protocol and will not upload identifiable patient information.</label>
+    <button class="btn btn-primary" id="enter" disabled>Continue to the tool</button>
+  </div>
+</div>
+
+<header>
+  <div class="wrap">
+    <div>
+      <h1>DFU <span>Vision</span></h1>
+      <small>Deep Learning Healthcare Centre of Excellence · prototype v0.1</small>
+    </div>
+    <span class="pill" id="modelPill">model: loading…</span>
+  </div>
+</header>
+
+<main>
+  <!-- ───────────── STEP 1: CAPTURE ───────────── -->
+  <section class="card" id="capture">
+    <div class="step"><span class="n">1</span><h3>Capture or upload the wound image</h3><span class="hint">runs on-device</span></div>
+    <div class="capture-grid">
+      <label class="capture-btn">
+        <svg viewBox="0 0 24 24"><path d="M4 7h3l2-3h6l2 3h3v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+        Take photo
+        <input type="file" accept="image/*" capture="environment" id="camInput" hidden>
+      </label>
+      <label class="capture-btn">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/></svg>
+        Upload from gallery
+        <input type="file" accept="image/*" id="fileInput" hidden>
+      </label>
+    </div>
+    <div class="samples">
+      <p>Or try a de-identified sample image (public FUSeg 2021 dataset, held out from training):</p>
+      <div class="sample-row">
+        <button class="sample" data-src="samples/mild_plantar_ulcer.jpg" data-name="Sample A"><img src="samples/mild_plantar_ulcer.jpg" alt="Sample A: small plantar ulcer"><span>A · small plantar ulcer</span></button>
+        <button class="sample" data-src="samples/severe_infected_ulcer.jpg" data-name="Sample B"><img src="samples/severe_infected_ulcer.jpg" alt="Sample B: sloughy ulcer with erythema"><span>B · sloughy, erythematous</span></button>
+        <button class="sample" data-src="samples/deep_heel_ulcer.jpg" data-name="Sample C"><img src="samples/deep_heel_ulcer.jpg" alt="Sample C: deep heel ulcer"><span>C · deep heel ulcer</span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────── STEP 2: ANALYSE ───────────── -->
+  <section class="card hidden" id="analyse">
+    <div class="step"><span class="n">2</span><h3>AI classification</h3><span class="hint" id="timing"></span></div>
+    <div class="viewer">
+      <span class="badge" id="imgName">image</span>
+      <canvas id="imgCanvas" width="448" height="448"></canvas>
+      <canvas id="camCanvas" width="448" height="448" style="opacity:0"></canvas>
+    </div>
+    <div class="cam-controls">
+      <div class="seg" id="camToggle"><button data-v="0" class="on">Image</button><button data-v="1">Grad-CAM</button></div>
+      <select id="camTarget">
+        <option value="grade:1">explain: severe</option>
+        <option value="grade:0">explain: mild</option>
+        <option value="infection:1">explain: infection</option>
+      </select>
+      <input type="range" id="camAlpha" min="0" max="100" value="55" title="heatmap opacity">
+    </div>
+    <div class="status" id="status"><span class="spinner"></span><span id="statusText">Loading model…</span></div>
+    <div id="results" class="hidden">
+      <div class="result-grid">
+        <div class="metric">
+          <h4>Infection (Texas stage)</h4>
+          <div class="val" id="infVal">—</div>
+          <div class="sub" id="infSub"></div>
+          <div class="bar"><i id="infBar"></i></div>
+        </div>
+        <div class="metric">
+          <h4>Depth / severity (Texas grade)</h4>
+          <div class="val" id="gradeVal">—</div>
+          <div class="sub" id="gradeSub"></div>
+          <div class="bar"><i id="gradeBar"></i></div>
+        </div>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label>Ischaemia (clinician input — not assessable from a photograph): pedal pulses / ABPI / toe pressure</label>
+        <div class="chips" id="ischChips">
+          <button class="chip on" data-v="0">No ischaemia</button>
+          <button class="chip" data-v="1">Ischaemia present</button>
+          <button class="chip" data-v="?">Not yet assessed</button>
+        </div>
+      </div>
+      <div class="texas">
+        <h4>University of Texas Diabetic Wound Classification</h4>
+        <div class="tgrid" id="tgrid"></div>
+        <div class="texas-out">
+          <div class="big" id="texasClass">—</div>
+          <div class="desc" id="texasDesc"></div>
+        </div>
+      </div>
+      <div class="note" id="caution">AI output is decision support only. Grade 0 and Grade 2 are not modelled by this prototype; the depth head separates a superficial (Grade 1‑like) from a deep or extensive (Grade 3‑like) appearance and cannot see tendon, capsule or bone. Confirm depth with probe‑to‑bone and imaging.</div>
+    </div>
+  </section>
+
+  <!-- ───────────── STEP 3: GROUND TRUTH ───────────── -->
+  <section class="card hidden" id="truth">
+    <div class="step"><span class="n">3</span><h3>Ground truth &amp; feedback loop</h3><span class="hint">closes the learning loop</span></div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:6px">Record the clinician's classification and the tissue culture &amp; sensitivity result. Logged cases become the labelled dataset for the next training cycle.</p>
+    <div class="row2">
+      <div class="field"><label>Clinician Texas grade</label>
+        <select id="gtGrade"><option value="">—</option><option>0</option><option>1</option><option>2</option><option>3</option></select></div>
+      <div class="field"><label>Clinician Texas stage</label>
+        <select id="gtStage"><option value="">—</option><option>A</option><option>B</option><option>C</option><option>D</option></select></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Probe‑to‑bone</label>
+        <select id="gtPtb"><option value="">—</option><option>Negative</option><option>Positive</option><option>Not done</option></select></div>
+      <div class="field"><label>Specimen date</label><input type="date" id="gtDate"></div>
+    </div>
+    <div class="field"><label>Tissue culture &amp; sensitivity — organism(s) isolated</label>
+      <div class="chips" id="orgChips">
+        <button class="chip" data-v="No growth">No growth</button><button class="chip" data-v="MSSA">MSSA</button><button class="chip" data-v="MRSA">MRSA</button>
+        <button class="chip" data-v="Streptococcus">Streptococcus spp.</button><button class="chip" data-v="Pseudomonas">Pseudomonas</button>
+        <button class="chip" data-v="E. coli">E. coli</button><button class="chip" data-v="Klebsiella">Klebsiella</button><button class="chip" data-v="Proteus">Proteus</button>
+        <button class="chip" data-v="Enterococcus">Enterococcus</button><button class="chip" data-v="Anaerobes">Anaerobes</button><button class="chip" data-v="Polymicrobial">Polymicrobial</button>
+      </div>
+    </div>
+    <div class="field"><label>Sensitivity pattern / notes</label><textarea id="gtNotes" placeholder="e.g. sensitive to co-amoxiclav, resistant to ciprofloxacin; ESBL negative"></textarea></div>
+    <button class="btn btn-teal" id="saveCase" style="width:100%">Save ground truth to case log</button>
+    <div class="note teal">Culture &amp; sensitivity is the reference standard for the infection head. The clinician grade/stage is the reference standard for the Texas classification. Stored locally in this browser only for the prototype.</div>
+  </section>
+
+  <!-- ───────────── CASE LOG ───────────── -->
+  <section class="card" id="logCard">
+    <div class="step"><span class="n">4</span><h3>Case log · model vs ground truth</h3><button class="btn btn-ghost btn-sm" id="exportCsv" style="margin-left:auto">Export CSV</button></div>
+    <div class="kpis">
+      <div class="kpi"><b id="kCases">0</b><span>cases logged</span></div>
+      <div class="kpi"><b id="kInf">—</b><span>infection agreement</span></div>
+      <div class="kpi"><b id="kCult">—</b><span>culture positive</span></div>
+    </div>
+    <ul class="log-list" id="logList"></ul>
+    <p id="logEmpty" style="font-size:13px;color:var(--faint);margin-top:8px">No cases logged yet.</p>
+  </section>
+
+  <!-- ───────────── MODEL CARD ───────────── -->
+  <section class="card">
+    <div class="step"><span class="n">i</span><h3>Model card (abridged)</h3></div>
+    <dl class="modelcard" id="modelCard">
+      <dt>Approach</dt><dd>Transfer learning: MobileNetV2 pre‑trained on ImageNet (1.4 M images), backbone frozen, two new softmax heads trained on foot‑ulcer photographs, then the top 30 layers fine‑tuned at a low learning rate. Exported to TensorFlow.js and executed entirely in the browser; no image leaves the device.</dd>
+      <dt>Explainability</dt><dd>Grad‑CAM on the final 7×7×1280 convolutional map (<code>out_relu</code>), computed live in the browser for the selected class.</dd>
+      <dt>Training data</dt><dd id="mcData">Loading…</dd>
+      <dt>Labels — important caveat</dt><dd>Demonstrator labels are <b>weak labels</b> derived from expert wound masks (wound area for depth/severity) and wound‑bed colour features (slough, eschar, peri‑wound erythema for infection). They are not clinician‑adjudicated or culture‑confirmed. Step 3 exists precisely to replace them.</dd>
+      <dt>Held‑out performance (against the weak labels)</dt><dd id="mcPerf">Loading…</dd>
+      <dt>Data source</dt><dd>FUSeg 2021 / AZH Wound and Vascular Center dataset, Wang C. et al., <i>Sci Rep</i> 2020;10:21897, github.com/uwm-bigdata/wound-segmentation.</dd>
+    </dl>
+  </section>
+</main>
+<footer>DFU Vision prototype · Deep Learning Healthcare Centre of Excellence · For demonstration only</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════ constants ═══════════════════════════ */
+const IMG = 224;
+const GRADE_LBL = ['Mild (Grade 1‑like)', 'Severe (Grade 3‑like)'];
+const INF_LBL = ['No infection (Stage A)', 'Infection suspected (Stage B)'];
+const TEXAS_DESC = {
+  '0':'Pre‑ or post‑ulcerative lesion, completely epithelialised', '1':'Superficial wound, not involving tendon, capsule or bone',
+  '2':'Wound penetrating to tendon or capsule', '3':'Wound penetrating to bone or joint',
+  'A':'clean', 'B':'infected', 'C':'ischaemic', 'D':'infected and ischaemic' };
+let model, convModel, tailModel, camLayerShape;
+let currentImg = null, currentName = '', lastPred = null, lastActs = null, isch = '0';
+const $ = id => document.getElementById(id);
+const toast = m => { const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); };
+
+/* ═══════════════════════════ gate ═══════════════════════════ */
+const gateCheck = () => { $('enter').disabled = !($('ack1').checked && $('ack2').checked); };
+$('ack1').onchange = $('ack2').onchange = gateCheck;
+$('enter').onclick = () => $('gate').classList.add('hidden');
+
+/* ═══════════════════════════ model ═══════════════════════════ */
+async function loadModel(){
+  const t0 = performance.now();
+  try {
+    if (tf.getBackend && !(await tf.setBackend('webgl'))) await tf.setBackend('cpu');
+  } catch(e){ await tf.setBackend('cpu'); }
+  await tf.ready();
+  model = await tf.loadLayersModel('model/model.json');
+  // Grad-CAM plumbing: split the network at the last conv map (out_relu) into "conv" and "tail" sub-models
+  const conv = model.getLayer('out_relu');
+  convModel = tf.model({inputs: model.inputs, outputs: conv.output});
+  camLayerShape = conv.output.shape.slice(1);
+  const tailIn = tf.input({shape: camLayerShape});
+  let y = model.getLayer('gap').apply(tailIn);
+  y = model.getLayer('drop').apply(y);
+  tailModel = tf.model({inputs: tailIn, outputs: [model.getLayer('grade').apply(y), model.getLayer('infection').apply(y)]});
+  // warm up
+  tf.tidy(() => { const z = tf.zeros([1, IMG, IMG, 3]); model.predict(z); });
+  $('modelPill').textContent = `model: ready · ${tf.getBackend()} · ${((performance.now()-t0)/1000).toFixed(1)}s`;
+  $('modelPill').classList.add('ok');
+  try {
+    const m = await (await fetch('model/metrics.json')).json();
+    $('mcData').textContent = `${m.train_images} training and ${m.val_images} held‑out validation photographs (FUSeg 2021), 224×224 px, augmented with flips, rotation, zoom, brightness and contrast.`;
+    const p = m.validation_on_weak_labels;
+    $('mcPerf').textContent = `Depth/severity head: AUC ${p.grade.auc.toFixed(2)}, accuracy ${(p.grade.accuracy*100).toFixed(0)} % (n=${p.grade.n}). Infection head: AUC ${p.infection.auc.toFixed(2)}, accuracy ${(p.infection.accuracy*100).toFixed(0)} % (n=${p.infection.n}). These numbers describe agreement with the weak labels, not clinical accuracy.`;
+  } catch(e){ $('mcPerf').textContent = 'metrics.json not found.'; }
+  if (currentImg) runInference();
+}
+loadModel().catch(e => { $('modelPill').textContent = 'model: failed'; $('statusText').textContent = 'Model failed to load: ' + e.message; console.error(e); });
+
+/* ═══════════════════════════ image intake ═══════════════════════════ */
+function useImage(img, name){
+  currentImg = img; currentName = name; lastPred = null;
+  $('imgName').textContent = name;
+  const c = $('imgCanvas'), ctx = c.getContext('2d');
+  const s = Math.min(img.naturalWidth || img.width, img.naturalHeight || img.height);
+  const sx = ((img.naturalWidth||img.width) - s)/2, sy = ((img.naturalHeight||img.height) - s)/2;
+  ctx.drawImage(img, sx, sy, s, s, 0, 0, c.width, c.height);   // centre square crop
+  $('camCanvas').getContext('2d').clearRect(0,0,448,448);
+  setCam(0);
+  $('analyse').classList.remove('hidden'); $('truth').classList.remove('hidden');
+  $('results').classList.add('hidden'); $('status').classList.remove('hidden');
+  $('analyse').scrollIntoView({behavior:'smooth', block:'start'});
+  if (model) runInference(); else $('statusText').textContent = 'Loading model…';
+}
+function fileToImage(file, name){
+  const url = URL.createObjectURL(file); const img = new Image();
+  img.onload = () => { useImage(img, name); URL.revokeObjectURL(url); };
+  img.src = url;
+}
+$('camInput').onchange = e => e.target.files[0] && fileToImage(e.target.files[0], 'camera capture');
+$('fileInput').onchange = e => e.target.files[0] && fileToImage(e.target.files[0], e.target.files[0].name);
+document.querySelectorAll('.sample').forEach(b => b.onclick = () => {
+  const img = new Image(); img.onload = () => useImage(img, b.dataset.name); img.src = b.dataset.src;
+});
+
+/* ═══════════════════════════ inference ═══════════════════════════ */
+function preprocess(){
+  return tf.tidy(() => {
+    const t = tf.browser.fromPixels($('imgCanvas')).resizeBilinear([IMG, IMG]).toFloat();
+    return t.div(127.5).sub(1).expandDims(0);           // MobileNetV2 preprocess_input
+  });
+}
+async function runInference(){
+  $('statusText').textContent = 'Analysing on device…';
+  await new Promise(r => setTimeout(r, 30));
+  const t0 = performance.now();
+  if (lastActs) lastActs.dispose();
+  const x = preprocess();
+  lastActs = convModel.predict(x);                         // [1,7,7,1280] kept for Grad-CAM
+  const [pg, pi] = tf.tidy(() => tailModel.predict(lastActs));
+  const grade = await pg.data(), inf = await pi.data();
+  pg.dispose(); pi.dispose(); x.dispose();
+  lastPred = { grade: Array.from(grade), infection: Array.from(inf), ms: performance.now() - t0 };
+  showResults();
+  await drawGradCam();
+}
+function showResults(){
+  const p = lastPred;
+  $('timing').textContent = `${p.ms.toFixed(0)} ms on ${tf.getBackend()}`;
+  $('status').classList.add('hidden'); $('results').classList.remove('hidden');
+  const infIdx = p.infection[1] >= 0.5 ? 1 : 0, gIdx = p.grade[1] >= 0.5 ? 1 : 0;
+  $('infVal').textContent = INF_LBL[infIdx];
+  $('infSub').textContent = `P(infection) = ${(p.infection[1]*100).toFixed(0)} %` + (Math.max(...p.infection) < 0.65 ? ' · low confidence' : '');
+  const ib = $('infBar'); ib.style.width = (p.infection[1]*100)+'%'; ib.className = p.infection[1]>0.5 ? 'bad' : '';
+  $('gradeVal').textContent = GRADE_LBL[gIdx];
+  $('gradeSub').textContent = `P(severe) = ${(p.grade[1]*100).toFixed(0)} %` + (Math.max(...p.grade) < 0.65 ? ' · low confidence' : '');
+  const gb = $('gradeBar'); gb.style.width = (p.grade[1]*100)+'%'; gb.className = p.grade[1]>0.5 ? 'bad' : '';
+  renderTexas();
+}
+function texasClass(){
+  const p = lastPred; if (!p) return null;
+  const grade = p.grade[1] >= 0.5 ? '3' : '1';
+  const infected = p.infection[1] >= 0.5;
+  let stage = infected ? 'B' : 'A';
+  if (isch === '1') stage = infected ? 'D' : 'C';
+  return { grade, stage, unknownIsch: isch === '?' };
+}
+function renderTexas(){
+  const t = texasClass(); const g = $('tgrid'); g.innerHTML = '';
+  const cell = (cls, txt) => { const d = document.createElement('div'); d.className = cls; d.textContent = txt; g.appendChild(d); };
+  cell('h', 'Stage ⟍ Grade'); ['0','1','2','3'].forEach(x => cell('h', x));
+  ['A','B','C','D'].forEach(st => {
+    cell('rh', `${st}\n${TEXAS_DESC[st]}`);
+    ['0','1','2','3'].forEach(gr => {
+      let c = 'c'; if (gr === '0' || gr === '2') c += ' na';
+      if (t && t.grade === gr && t.stage === st) c += ' hit' + (gr === '3' || st !== 'A' ? ' sev' : '');
+      cell(c, gr + st);
+    });
+  });
+  if (t){
+    $('texasClass').textContent = t.grade + t.stage + (t.unknownIsch ? '?' : '');
+    $('texasDesc').textContent = `Grade ${t.grade}: ${TEXAS_DESC[t.grade]}. Stage ${t.stage}: ${TEXAS_DESC[t.stage]}.` + (t.unknownIsch ? ' Stage provisional until vascular status is assessed (C/D if ischaemic).' : '');
+  }
+}
+$('ischChips').querySelectorAll('.chip').forEach(b => b.onclick = () => {
+  $('ischChips').querySelectorAll('.chip').forEach(x => x.classList.remove('on')); b.classList.add('on'); isch = b.dataset.v; renderTexas();
+});
+
+/* ═══════════════════════════ Grad-CAM ═══════════════════════════ */
+async function drawGradCam(){
+  if (!lastActs) return;
+  const [head, cls] = $('camTarget').value.split(':'); const hi = head === 'grade' ? 0 : 1, ci = +cls;
+  const cam = tf.tidy(() => {
+    const scoreFn = a => tailModel.apply(a)[hi].slice([0, ci], [1, 1]).sum();   // score of the target class
+    const grads = tf.grad(scoreFn)(lastActs);                                     // d score / d conv map
+    const weights = grads.mean([1, 2], true);                                     // global-average-pooled gradients [1,1,1,C]
+    let m = lastActs.mul(weights).sum(-1).relu();                                 // weighted sum of channels, ReLU
+    m = m.sub(m.min()).div(m.max().sub(m.min()).add(1e-6));                       // normalise 0..1
+    return tf.image.resizeBilinear(m.expandDims(-1), [448, 448]).squeeze();
+  });
+  const data = await cam.data(); cam.dispose();
+  const c = $('camCanvas'), ctx = c.getContext('2d'), img = ctx.createImageData(448, 448);
+  for (let i = 0; i < data.length; i++){
+    const [r, g, b] = jet(data[i]); const o = i * 4;
+    img.data[o] = r; img.data[o+1] = g; img.data[o+2] = b; img.data[o+3] = Math.min(255, Math.max(0, (data[i] - 0.15) * 1.3 * 255));
+  }
+  ctx.putImageData(img, 0, 0);
+}
+function jet(v){ // 0..1 -> blue..cyan..yellow..red
+  const r = Math.max(0, Math.min(1, 1.5 - Math.abs(4*v - 3))), g = Math.max(0, Math.min(1, 1.5 - Math.abs(4*v - 2))), b = Math.max(0, Math.min(1, 1.5 - Math.abs(4*v - 1)));
+  return [r*255, g*255, b*255];
+}
+function setCam(v){
+  $('camToggle').querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.v === v));
+  $('camCanvas').style.opacity = v ? ($('camAlpha').value/100) : 0;
+}
+$('camToggle').querySelectorAll('button').forEach(b => b.onclick = () => setCam(+b.dataset.v));
+$('camAlpha').oninput = () => { if ($('camToggle').querySelector('.on').dataset.v === '1') $('camCanvas').style.opacity = $('camAlpha').value/100; };
+$('camTarget').onchange = async () => { await drawGradCam(); setCam(1); };
+
+/* ═══════════════════════════ ground truth + case log ═══════════════════════════ */
+const LOG_KEY = 'dfu_vision_cases_v1';
+const loadLog = () => { try { return JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); } catch(e){ return []; } };
+const saveLog = l => { try { localStorage.setItem(LOG_KEY, JSON.stringify(l)); } catch(e){ toast('Could not save (storage blocked)'); } };
+$('orgChips').querySelectorAll('.chip').forEach(b => b.onclick = () => b.classList.toggle('on'));
+$('saveCase').onclick = () => {
+  if (!lastPred) return toast('Analyse an image first');
+  const orgs = [...$('orgChips').querySelectorAll('.chip.on')].map(b => b.dataset.v);
+  const gtStage = $('gtStage').value, gtGrade = $('gtGrade').value;
+  const thumb = (() => { const c = document.createElement('canvas'); c.width = c.height = 96; c.getContext('2d').drawImage($('imgCanvas'), 0, 0, 96, 96); return c.toDataURL('image/jpeg', 0.6); })();
+  const t = texasClass();
+  const rec = { id: Date.now(), when: new Date().toISOString(), image: currentName, thumb,
+    ai_grade: t.grade, ai_stage: t.stage, p_severe: +lastPred.grade[1].toFixed(3), p_infection: +lastPred.infection[1].toFixed(3),
+    gt_grade: gtGrade, gt_stage: gtStage, probe_to_bone: $('gtPtb').value, specimen_date: $('gtDate').value,
+    organisms: orgs, sensitivity_notes: $('gtNotes').value.trim(),
+    culture_positive: orgs.length ? !(orgs.length === 1 && orgs[0] === 'No growth') : null };
+  const log = loadLog(); log.unshift(rec); saveLog(log); renderLog(); toast('Case saved to log');
+  $('logCard').scrollIntoView({behavior:'smooth', block:'start'});
+};
+function renderLog(){
+  const log = loadLog(); $('kCases').textContent = log.length; $('logEmpty').classList.toggle('hidden', log.length > 0);
+  const withCult = log.filter(r => r.culture_positive !== null);
+  const agree = withCult.filter(r => (r.p_infection >= 0.5) === r.culture_positive).length;
+  $('kInf').textContent = withCult.length ? `${Math.round(100*agree/withCult.length)} %` : '—';
+  $('kCult').textContent = withCult.length ? `${withCult.filter(r => r.culture_positive).length}/${withCult.length}` : '—';
+  $('logList').innerHTML = log.slice(0, 8).map(r => {
+    const a = r.culture_positive === null ? '' : `<span class="agree ${(r.p_infection>=0.5)===r.culture_positive?'':'no'}">${(r.p_infection>=0.5)===r.culture_positive?'agrees with C&S':'disagrees with C&S'}</span>`;
+    return `<li><img src="${r.thumb}" alt=""><div class="who"><b>AI ${r.ai_grade}${r.ai_stage} · clinician ${r.gt_grade||'?'}${r.gt_stage||'?'}</b><small>${r.image} · ${new Date(r.when).toLocaleString()} · ${r.organisms.join(', ') || 'no C&S yet'}</small></div>${a}</li>`;
+  }).join('');
+}
+$('exportCsv').onclick = () => {
+  const log = loadLog(); if (!log.length) return toast('Nothing to export');
+  const cols = ['id','when','image','ai_grade','ai_stage','p_severe','p_infection','gt_grade','gt_stage','probe_to_bone','specimen_date','organisms','sensitivity_notes','culture_positive'];
+  const esc = v => '"' + String(Array.isArray(v) ? v.join('; ') : (v ?? '')).replace(/"/g, '""') + '"';
+  const csv = [cols.join(',')].concat(log.map(r => cols.map(c => esc(r[c])).join(','))).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'dfu_vision_cases.csv'; a.click();
+};
+renderLog();
+</script>
+</body>
+</html>

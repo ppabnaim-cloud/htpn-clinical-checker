@@ -1,0 +1,29 @@
+{
+ "backbone": "MobileNetV2 (alpha 1.0, 224px, ImageNet weights)",
+ "heads": {
+  "grade": [
+   "mild",
+   "severe"
+  ],
+  "infection": [
+   "none",
+   "suspected"
+  ]
+ },
+ "gradcam_layer": "out_relu",
+ "train_images": 717,
+ "val_images": 171,
+ "validation_on_weak_labels": {
+  "grade": {
+   "n": 107,
+   "auc": 0.9267676767676767,
+   "accuracy": 0.8411214953271028
+  },
+  "infection": {
+   "n": 157,
+   "auc": 0.8047735618115055,
+   "accuracy": 0.7515923566878981
+  }
+ },
+ "label_note": "Weak labels derived from FUSeg masks + colour features (demonstrator only)."
+}

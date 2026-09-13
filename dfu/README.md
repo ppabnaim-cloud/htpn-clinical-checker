@@ -24,6 +24,59 @@ Live path once deployed with the rest of this repository on Vercel: `https://<yo
 
 The recorded walk-through is in `demo/dfu-demo.mp4` (26 s, phone viewport).
 
+## Version 0.2 — train on your own data
+
+The **Train on your data** tab turns the demonstrator into a small platform for the DrPH study:
+
+| Source | How | Where the images go |
+|---|---|---|
+| Upload folder | Choose a folder whose sub-folders are classes (`wagner_0 … wagner_5`, `1A … 3D`, `infected / not_infected`) | Stay in the browser |
+| Add per class | Name a class, add images from the phone gallery (works on iPhone, which has no folder upload) | Stay in the browser |
+| Google Drive | OAuth client ID + Drive folder ID; sub-folders are classes; images are downloaded with `drive.readonly` scope | Downloaded into the browser only |
+| Load Colab model | Select `model.json`, the `.bin` shards and `classes.json` exported by `ml/DFU_finetune_colab.ipynb` | n/a |
+
+**In-browser transfer learning.** Each image is passed once through the frozen ImageNet MobileNetV2 backbone to obtain a
+1,280-number embedding (with horizontal/vertical flip augmentation), a stratified 20 % is held out, and a new head
+(dense 128 → dropout → softmax, class-weighted) is trained with TensorFlow.js. Sixty images train in about a minute on a
+laptop. The result shows held-out accuracy, macro F1, a confusion matrix and per-class precision/recall, and can be
+activated in the Assess tab (Grad-CAM works on it), saved on the device (IndexedDB) and downloaded.
+
+**GPU fine-tuning.** `ml/DFU_finetune_colab.ipynb` fine-tunes a whole backbone (EfficientNetB0, DenseNet121,
+InceptionV3, ResNet101V2 or MobileNetV2, the families named in the protocol) on Google Colab's free T4 GPU, using a
+stratified 70/15/15 split, class weights, early stopping, and reports AUC, sensitivity, specificity, PPV, NPV, F1 and MCC
+on the held-out test set. It exports a float16 TensorFlow.js model plus `classes.json` (class names, Grad-CAM layer,
+input range, scheme, metrics) that the app loads directly.
+
+**Wagner as well as Texas.** The scheme toggle in the Assess tab shows either the Texas grid or the Meggitt–Wagner
+ladder. For the demo model, Wagner is a mapping (superficial → 1, deep/extensive → 2, or 3 when infection is also
+predicted). For a model trained on Wagner-named folders, the ladder shows the predicted grade directly. Wagner is
+appearance-based, which suits an image-only model and a primary-care triage rule such as "refer at Wagner ≥ 2"; Texas
+depth and stage need probe-to-bone, vascular assessment and microbiology, which the app collects in Step 3 rather than
+pretending to infer.
+
+**Data governance.** The DrPH protocol commits to an institution-hosted server under the PDPA 2010. Consumer Google Drive
+is not that. Use the Drive option only for de-identified images; for study data, prefer the zip-upload path in the Colab
+notebook under an institutional account, or run the notebook on an institutional GPU.
+
+### Google Drive setup (one-off)
+
+1. Google Cloud Console → create a project → **APIs & Services → Library** → enable **Google Drive API**.
+2. **OAuth consent screen** → External (or Internal for a Workspace) → add your account as a test user.
+3. **Credentials → Create credentials → OAuth client ID → Web application** → add the app's origin
+   (e.g. `https://htpn-clinical-checker.vercel.app`) under *Authorised JavaScript origins*.
+4. Paste the client ID and the Drive folder ID (the part of the folder URL after `/folders/`) into the app.
+
+### Online GPU options
+
+| Option | Cost | Notes |
+|---|---|---|
+| Google Colab (free) | Free | T4 GPU, session limits of a few hours; enough for a few thousand 224 px images with EfficientNetB0 |
+| Google Colab Pro / Pro+ | About USD 10 / 50 per month | Longer sessions, faster GPUs (L4/A100), background execution |
+| Kaggle Notebooks | Free | 30 GPU-hours per week (T4 ×2 or P100); dataset must be uploaded to Kaggle |
+| Lightning AI Studios | Free tier, then pay-as-you-go | Persistent environment; GPU hours included monthly |
+| Paperspace Gradient / RunPod / Vast.ai | Pay-as-you-go from about USD 0.2–0.5 per hour | Rent a GPU VM; you control where data lives |
+| Institutional GPU (university HPC, MOH data centre) | Usually free to the study | The only option that clearly satisfies the PDPA/institution-hosted commitment |
+
 ## How it works
 
 ```
@@ -106,6 +159,7 @@ network can use your machine's IP). Camera capture requires HTTPS or localhost, 
 | `samples/` | Three held-out sample photographs (cropped, de-identified, from FUSeg 2021) |
 | `vendor/tf.min.js` | TensorFlow.js 4.22.0 (Apache-2.0), vendored so the app has no runtime CDN dependency |
 | `demo/` | Recorded walk-through video |
+| `../ml/DFU_finetune_colab.ipynb` | GPU fine-tuning notebook (Drive or zip upload → TF.js export) |
 | `../ml/` | Labelling, training/export and video-recording scripts |
 
 ## Roadmap for a real system (what the prototype is *not* yet)

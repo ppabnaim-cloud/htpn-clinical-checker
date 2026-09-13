@@ -21,6 +21,7 @@
 body{font-family:var(--sans);background:var(--cloud);color:var(--text);min-height:100vh;font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
 button{font-family:inherit;cursor:pointer}
 input,select,textarea{font-family:inherit;font-size:15px}
+code{font-family:var(--mono);font-size:.9em}
 
 /* ── disclaimer gate ── */
 #gate{position:fixed;inset:0;z-index:9999;background:rgba(8,17,28,.96);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
@@ -39,19 +40,22 @@ input,select,textarea{font-family:inherit;font-size:15px}
 .gate-box label input{margin-top:4px;width:18px;height:18px;accent-color:var(--teal)}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:11px;padding:13px 20px;font-weight:600;font-size:15px;transition:.15s}
 .btn-primary{background:var(--navy);color:#fff;width:100%}
-.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn:disabled{opacity:.4;cursor:not-allowed}
 .btn-teal{background:var(--teal);color:#fff}
 .btn-ghost{background:transparent;color:var(--navy);border:1.5px solid var(--line)}
 .btn-sm{padding:8px 13px;font-size:13px;border-radius:9px}
 
 /* ── layout ── */
-header{background:linear-gradient(135deg,var(--navy),var(--navy-mid));color:#fff;padding:calc(14px + env(safe-area-inset-top)) 18px 16px}
-header .wrap{max-width:600px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px}
+header{background:linear-gradient(135deg,var(--navy),var(--navy-mid));color:#fff;padding:calc(14px + env(safe-area-inset-top)) 18px 0}
+header .wrap{max-width:600px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:12px}
 header h1{font-family:var(--serif);font-size:21px;font-weight:400;letter-spacing:.01em}
 header h1 span{color:var(--teal)}
 header small{display:block;font-size:11.5px;opacity:.7;margin-top:1px}
 .pill{font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);white-space:nowrap}
 .pill.ok{background:rgba(28,184,160,.2);border-color:var(--teal)}
+.tabs{max-width:600px;margin:0 auto;display:flex;gap:4px}
+.tabs button{flex:1;border:none;background:transparent;color:rgba(255,255,255,.6);font-weight:600;font-size:13.5px;padding:10px 6px;border-bottom:3px solid transparent}
+.tabs button.on{color:#fff;border-bottom-color:var(--teal)}
 main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:18px;margin-bottom:14px}
 .step{display:flex;align-items:center;gap:10px;margin-bottom:12px}
@@ -59,10 +63,11 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .step h3{font-size:16px;font-weight:600;color:var(--navy)}
 .step .hint{margin-left:auto;font-size:12px;color:var(--faint)}
 .hidden{display:none!important}
+.small{font-size:12.5px;color:var(--muted)}
 
 /* capture */
 .capture-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.capture-btn{border:2px dashed var(--line);border-radius:12px;padding:20px 10px;text-align:center;background:var(--cloud);color:var(--navy);font-weight:600;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.capture-btn{border:2px dashed var(--line);border-radius:12px;padding:20px 10px;text-align:center;background:var(--cloud);color:var(--navy);font-weight:600;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer}
 .capture-btn svg{width:30px;height:30px;stroke:var(--teal);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .capture-btn:active{background:var(--teal-glow)}
 .samples{margin-top:12px}
@@ -86,7 +91,7 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 
 /* results */
 .status{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--muted);padding:10px 0}
-.spinner{width:18px;height:18px;border:2.5px solid var(--line);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite}
+.spinner{width:18px;height:18px;border:2.5px solid var(--line);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
 .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
 @media (max-width:420px){.result-grid{grid-template-columns:1fr}}
@@ -97,35 +102,50 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .bar{height:8px;border-radius:999px;background:#dde6f0;margin-top:8px;overflow:hidden}
 .bar i{display:block;height:100%;border-radius:999px;background:var(--teal);transition:width .6s ease}
 .bar i.warn{background:var(--amber)}.bar i.bad{background:var(--rose)}
+.probs{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.prob{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;background:var(--cloud);border-radius:10px;padding:9px 12px}
+.prob b{font-size:14px;color:var(--navy)}
+.prob span{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.prob .bar{grid-column:1/3;margin-top:4px}
+.prob.top{outline:2px solid var(--teal)}
 .texas{margin-top:14px}
-.texas h4{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.texas h4,.wagner h4{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 .tgrid{display:grid;grid-template-columns:52px repeat(4,1fr);gap:4px;font-size:11.5px}
 .tgrid .h{background:var(--navy);color:#fff;border-radius:6px;padding:6px 4px;text-align:center;font-weight:600}
-.tgrid .rh{background:var(--navy-mid);color:#fff;border-radius:6px;padding:6px 4px;font-weight:600;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.15}
+.tgrid .rh{background:var(--navy-mid);color:#fff;border-radius:6px;padding:6px 4px;font-weight:600;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.15;white-space:pre-line}
 .tgrid .c{background:var(--cloud);border-radius:6px;padding:9px 4px;text-align:center;font-family:var(--mono);color:var(--faint);position:relative}
 .tgrid .c.na{opacity:.45}
 .tgrid .c.hit{background:var(--teal);color:#fff;font-weight:700;box-shadow:0 0 0 3px var(--teal-glow)}
 .tgrid .c.hit.sev{background:var(--rose)}
-.texas-out{display:flex;align-items:center;gap:14px;margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--navy);color:#fff}
-.texas-out .big{font-family:var(--serif);font-size:40px;line-height:1}
-.texas-out .desc{font-size:12.5px;opacity:.85}
+.wagner{margin-top:14px}
+.ladder{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.rung{background:var(--cloud);border-radius:8px;padding:8px 4px;text-align:center;font-size:11px;color:var(--muted);line-height:1.2}
+.rung b{display:block;font-family:var(--serif);font-size:20px;color:var(--faint)}
+.rung.hit{background:var(--teal);color:#fff}.rung.hit b{color:#fff}
+.rung.hit.sev{background:var(--rose)}
+.rung.maybe{background:rgba(28,184,160,.25)}
+.class-out{display:flex;align-items:center;gap:14px;margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--navy);color:#fff}
+.class-out .big{font-family:var(--serif);font-size:40px;line-height:1;white-space:nowrap}
+.class-out .desc{font-size:12.5px;opacity:.85}
 .field{margin:10px 0}
 .field label{display:block;font-size:12.5px;font-weight:600;color:var(--navy);margin-bottom:5px}
 .field select,.field input,.field textarea{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff}
 .field textarea{min-height:64px;resize:vertical}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 11px;font-size:12.5px;color:var(--text)}
 .chip.on{background:var(--teal-glow);border-color:var(--teal);color:var(--teal-dim);font-weight:600}
 .note{font-size:12.5px;color:var(--muted);background:var(--cloud);border-left:3px solid var(--amber);padding:8px 12px;border-radius:0 8px 8px 0;margin-top:10px}
 .note.teal{border-color:var(--teal)}
+.note.rose{border-color:var(--rose)}
 .log-list{list-style:none;margin-top:8px}
 .log-list li{display:flex;gap:10px;align-items:center;border-top:1px solid var(--line);padding:9px 0;font-size:13px}
 .log-list img{width:42px;height:42px;border-radius:8px;object-fit:cover;flex-shrink:0}
-.log-list .who{flex:1}
+.log-list .who{flex:1;min-width:0}
 .log-list .who b{font-family:var(--mono);font-size:12.5px;color:var(--navy)}
 .log-list .who small{display:block;color:var(--muted);font-size:11.5px}
-.agree{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(34,197,94,.14);color:#15803d}
+.agree{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(34,197,94,.14);color:#15803d;white-space:nowrap}
 .agree.no{background:rgba(232,76,106,.12);color:#be123c}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
 .kpi{background:var(--cloud);border-radius:10px;padding:10px;text-align:center}
@@ -135,8 +155,34 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .modelcard dt{font-weight:600;color:var(--navy);margin-top:8px}
 .modelcard dd{margin:0}
 footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 30px;max-width:600px;margin:0 auto}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:999px;font-size:13px;box-shadow:var(--shadow-lg);z-index:999;opacity:0;transition:.25s;pointer-events:none}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:999px;font-size:13px;box-shadow:var(--shadow-lg);z-index:999;opacity:0;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.show{opacity:1}
+
+/* training */
+.src-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.src-tabs button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;font-size:13px;font-weight:600;color:var(--muted)}
+.src-tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.class-list{display:flex;flex-direction:column;gap:8px}
+.class-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:var(--cloud);border-radius:10px;padding:8px 10px}
+.class-row input{padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:#fff;min-width:0}
+.class-row .cnt{font-family:var(--mono);font-size:12px;color:var(--muted);min-width:64px;text-align:right}
+.class-row .addbtn{border:1.5px solid var(--teal);color:var(--teal-dim);background:#fff;border-radius:8px;padding:7px 10px;font-size:12.5px;font-weight:600;cursor:pointer}
+.thumbs{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;grid-column:1/4}
+.thumbs img{width:34px;height:34px;object-fit:cover;border-radius:5px}
+.progress{height:10px;border-radius:999px;background:#dde6f0;overflow:hidden;margin:10px 0 6px}
+.progress i{display:block;height:100%;background:var(--teal);width:0;transition:width .3s}
+.trainlog{font-family:var(--mono);font-size:11.5px;background:#0c1a27;color:#b7ffe9;border-radius:10px;padding:10px 12px;max-height:150px;overflow:auto;white-space:pre-wrap;line-height:1.5}
+.cm{border-collapse:collapse;font-size:12px;margin-top:8px;font-variant-numeric:tabular-nums}
+.cm th,.cm td{border:1px solid var(--line);padding:5px 8px;text-align:center}
+.cm th{background:var(--cloud);color:var(--navy);font-weight:600}
+.cm td.diag{background:rgba(28,184,160,.18);font-weight:700}
+.tablewrap{overflow-x:auto}
+.mstat{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+@media (max-width:420px){.mstat{grid-template-columns:repeat(2,1fr)}}
+.model-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:13px}
+.model-row .who{flex:1}
+.model-row .who b{color:var(--navy)}
+.model-row .who small{display:block;color:var(--muted);font-size:11.5px}
 </style>
 </head>
 <body>
@@ -169,14 +215,20 @@ footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 3
   <div class="wrap">
     <div>
       <h1>DFU <span>Vision</span></h1>
-      <small>Deep Learning Healthcare Centre of Excellence · prototype v0.1</small>
+      <small>Deep Learning Healthcare Centre of Excellence · prototype v0.2</small>
     </div>
     <span class="pill" id="modelPill">model: loading…</span>
   </div>
+  <nav class="tabs">
+    <button class="on" data-tab="assess" id="tabAssess">Assess a wound</button>
+    <button data-tab="train" id="tabTrain">Train on your data</button>
+  </nav>
 </header>
 
 <main>
-  <!-- ───────────── STEP 1: CAPTURE ───────────── -->
+<!-- ═══════════════════════════ ASSESS TAB ═══════════════════════════ -->
+<div id="tab-assess">
+  <!-- STEP 1: CAPTURE -->
   <section class="card" id="capture">
     <div class="step"><span class="n">1</span><h3>Capture or upload the wound image</h3><span class="hint">runs on-device</span></div>
     <div class="capture-grid">
@@ -201,7 +253,7 @@ footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 3
     </div>
   </section>
 
-  <!-- ───────────── STEP 2: ANALYSE ───────────── -->
+  <!-- STEP 2: ANALYSE -->
   <section class="card hidden" id="analyse">
     <div class="step"><span class="n">2</span><h3>AI classification</h3><span class="hint" id="timing"></span></div>
     <div class="viewer">
@@ -211,16 +263,18 @@ footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 3
     </div>
     <div class="cam-controls">
       <div class="seg" id="camToggle"><button data-v="0" class="on">Image</button><button data-v="1">Grad-CAM</button></div>
-      <select id="camTarget">
-        <option value="grade:1">explain: severe</option>
-        <option value="grade:0">explain: mild</option>
-        <option value="infection:1">explain: infection</option>
-      </select>
+      <select id="camTarget"></select>
       <input type="range" id="camAlpha" min="0" max="100" value="55" title="heatmap opacity">
     </div>
     <div class="status" id="status"><span class="spinner"></span><span id="statusText">Loading model…</span></div>
     <div id="results" class="hidden">
-      <div class="result-grid">
+      <div class="cam-controls" style="margin:0 0 10px">
+        <span class="small">Classification scheme</span>
+        <div class="seg" id="schemeToggle"><button data-v="texas" class="on">Texas</button><button data-v="wagner">Wagner</button></div>
+        <span class="small" id="modelUsed"></span>
+      </div>
+      <!-- demo model: two heads -->
+      <div class="result-grid" id="demoHeads">
         <div class="metric">
           <h4>Infection (Texas stage)</h4>
           <div class="val" id="infVal">—</div>
@@ -234,7 +288,10 @@ footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 3
           <div class="bar"><i id="gradeBar"></i></div>
         </div>
       </div>
-      <div class="field" style="margin-top:12px">
+      <!-- custom model: class probabilities -->
+      <div class="probs hidden" id="customProbs"></div>
+
+      <div class="field" style="margin-top:12px" id="ischField">
         <label>Ischaemia (clinician input — not assessable from a photograph): pedal pulses / ABPI / toe pressure</label>
         <div class="chips" id="ischChips">
           <button class="chip on" data-v="0">No ischaemia</button>
@@ -242,27 +299,33 @@ footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 3
           <button class="chip" data-v="?">Not yet assessed</button>
         </div>
       </div>
-      <div class="texas">
+      <div class="texas" id="texasPanel">
         <h4>University of Texas Diabetic Wound Classification</h4>
         <div class="tgrid" id="tgrid"></div>
-        <div class="texas-out">
-          <div class="big" id="texasClass">—</div>
-          <div class="desc" id="texasDesc"></div>
-        </div>
       </div>
-      <div class="note" id="caution">AI output is decision support only. Grade 0 and Grade 2 are not modelled by this prototype; the depth head separates a superficial (Grade 1‑like) from a deep or extensive (Grade 3‑like) appearance and cannot see tendon, capsule or bone. Confirm depth with probe‑to‑bone and imaging.</div>
+      <div class="wagner hidden" id="wagnerPanel">
+        <h4>Meggitt–Wagner classification</h4>
+        <div class="ladder" id="ladder"></div>
+      </div>
+      <div class="class-out">
+        <div class="big" id="classBig">—</div>
+        <div class="desc" id="classDesc"></div>
+      </div>
+      <div class="note" id="caution"></div>
     </div>
   </section>
 
-  <!-- ───────────── STEP 3: GROUND TRUTH ───────────── -->
+  <!-- STEP 3: GROUND TRUTH -->
   <section class="card hidden" id="truth">
     <div class="step"><span class="n">3</span><h3>Ground truth &amp; feedback loop</h3><span class="hint">closes the learning loop</span></div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:6px">Record the clinician's classification and the tissue culture &amp; sensitivity result. Logged cases become the labelled dataset for the next training cycle.</p>
-    <div class="row2">
+    <p class="small" style="margin-bottom:6px">Record the clinician's classification and the tissue culture &amp; sensitivity result. Logged cases become the labelled dataset for the next training cycle.</p>
+    <div class="row3">
       <div class="field"><label>Clinician Texas grade</label>
         <select id="gtGrade"><option value="">—</option><option>0</option><option>1</option><option>2</option><option>3</option></select></div>
-      <div class="field"><label>Clinician Texas stage</label>
+      <div class="field"><label>Texas stage</label>
         <select id="gtStage"><option value="">—</option><option>A</option><option>B</option><option>C</option><option>D</option></select></div>
+      <div class="field"><label>Wagner grade</label>
+        <select id="gtWagner"><option value="">—</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
     </div>
     <div class="row2">
       <div class="field"><label>Probe‑to‑bone</label>
@@ -279,10 +342,10 @@ footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 3
     </div>
     <div class="field"><label>Sensitivity pattern / notes</label><textarea id="gtNotes" placeholder="e.g. sensitive to co-amoxiclav, resistant to ciprofloxacin; ESBL negative"></textarea></div>
     <button class="btn btn-teal" id="saveCase" style="width:100%">Save ground truth to case log</button>
-    <div class="note teal">Culture &amp; sensitivity is the reference standard for the infection head. The clinician grade/stage is the reference standard for the Texas classification. Stored locally in this browser only for the prototype.</div>
+    <div class="note teal">Culture &amp; sensitivity is the reference standard for infection. The clinician's Texas or Wagner class is the reference standard for the classification head. Stored locally in this browser only for the prototype.</div>
   </section>
 
-  <!-- ───────────── CASE LOG ───────────── -->
+  <!-- CASE LOG -->
   <section class="card" id="logCard">
     <div class="step"><span class="n">4</span><h3>Case log · model vs ground truth</h3><button class="btn btn-ghost btn-sm" id="exportCsv" style="margin-left:auto">Export CSV</button></div>
     <div class="kpis">
@@ -291,62 +354,164 @@ footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 3
       <div class="kpi"><b id="kCult">—</b><span>culture positive</span></div>
     </div>
     <ul class="log-list" id="logList"></ul>
-    <p id="logEmpty" style="font-size:13px;color:var(--faint);margin-top:8px">No cases logged yet.</p>
+    <p id="logEmpty" class="small" style="margin-top:8px;color:var(--faint)">No cases logged yet.</p>
   </section>
 
-  <!-- ───────────── MODEL CARD ───────────── -->
+  <!-- MODEL CARD -->
   <section class="card">
     <div class="step"><span class="n">i</span><h3>Model card (abridged)</h3></div>
     <dl class="modelcard" id="modelCard">
       <dt>Approach</dt><dd>Transfer learning: MobileNetV2 pre‑trained on ImageNet (1.4 M images), backbone frozen, two new softmax heads trained on foot‑ulcer photographs, then the top 30 layers fine‑tuned at a low learning rate. Exported to TensorFlow.js and executed entirely in the browser; no image leaves the device.</dd>
       <dt>Explainability</dt><dd>Grad‑CAM on the final 7×7×1280 convolutional map (<code>out_relu</code>), computed live in the browser for the selected class.</dd>
       <dt>Training data</dt><dd id="mcData">Loading…</dd>
-      <dt>Labels — important caveat</dt><dd>Demonstrator labels are <b>weak labels</b> derived from expert wound masks (wound area for depth/severity) and wound‑bed colour features (slough, eschar, peri‑wound erythema for infection). They are not clinician‑adjudicated or culture‑confirmed. Step 3 exists precisely to replace them.</dd>
+      <dt>Labels — important caveat</dt><dd>Demonstrator labels are <b>weak labels</b> derived from expert wound masks (wound area for depth/severity) and wound‑bed colour features (slough, eschar for infection). They are not clinician‑adjudicated or culture‑confirmed. Step 3 and the Train tab exist precisely to replace them.</dd>
       <dt>Held‑out performance (against the weak labels)</dt><dd id="mcPerf">Loading…</dd>
       <dt>Data source</dt><dd>FUSeg 2021 / AZH Wound and Vascular Center dataset, Wang C. et al., <i>Sci Rep</i> 2020;10:21897, github.com/uwm-bigdata/wound-segmentation.</dd>
     </dl>
   </section>
+</div>
+
+<!-- ═══════════════════════════ TRAIN TAB ═══════════════════════════ -->
+<div id="tab-train" class="hidden">
+  <section class="card">
+    <div class="step"><span class="n">A</span><h3>Bring your labelled images</h3><span class="hint">class = folder name</span></div>
+    <p class="small" style="margin-bottom:10px">Organise images into one folder per class, for example <code>wagner_0 … wagner_5</code>, or <code>1A, 1B, 3B</code> for Texas, or <code>infected / not_infected</code>. The class name is read from the folder. Images stay on this device unless you choose Google Drive.</p>
+    <div class="src-tabs">
+      <button class="on" data-src="folder">Upload folder</button>
+      <button data-src="classes">Add per class</button>
+      <button data-src="drive">Google Drive</button>
+      <button data-src="colab">Load Colab model</button>
+    </div>
+    <div id="src-folder">
+      <label class="capture-btn" style="padding:16px">
+        <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        Choose a dataset folder (subfolders = classes)
+        <input type="file" id="dirInput" webkitdirectory directory multiple hidden>
+      </label>
+      <p class="small" style="margin-top:6px">Folder upload works on desktop browsers and most Android browsers. On iPhone use "Add per class".</p>
+    </div>
+    <div id="src-classes" class="hidden">
+      <div class="class-list" id="classList"></div>
+      <button class="btn btn-ghost btn-sm" id="addClass" style="margin-top:8px">+ Add class</button>
+    </div>
+    <div id="src-drive" class="hidden">
+      <div class="note rose" style="margin:0 0 10px"><b>Data governance.</b> Your DrPH protocol commits to storing images on an institution‑hosted, password‑protected server under the PDPA 2010. Consumer Google Drive is not that. Use this option only for de‑identified images, and prefer the institutional server or the Colab notebook run under an institutional Google Workspace account.</div>
+      <div class="field"><label>Google OAuth client ID (Web application, from Google Cloud Console)</label><input id="gClientId" placeholder="123456789-abc.apps.googleusercontent.com"></div>
+      <div class="field"><label>Drive folder ID (the part after <code>/folders/</code> in the URL). Subfolders are classes.</label><input id="gFolderId" placeholder="1AbCdEfGhIjKlMnOpQrStUvWxYz"></div>
+      <div class="row2">
+        <div class="field"><label>Max images per class</label><input id="gMax" type="number" value="200" min="5"></div>
+        <div class="field" style="display:flex;align-items:flex-end"><button class="btn btn-teal" id="gConnect" style="width:100%">Connect &amp; import</button></div>
+      </div>
+      <p class="small">Setup once: Google Cloud Console → APIs &amp; Services → enable <b>Google Drive API</b> → Credentials → OAuth client ID (Web application) with this page's origin as an authorised JavaScript origin. Scope used: <code>drive.readonly</code>.</p>
+    </div>
+    <div id="src-colab" class="hidden">
+      <p class="small" style="margin-bottom:8px">Trained the full backbone on a GPU with <code>ml/DFU_finetune_colab.ipynb</code>? Select the exported files: <code>model.json</code>, the <code>.bin</code> shards and <code>classes.json</code>.</p>
+      <label class="capture-btn" style="padding:16px">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v3h16v-3"/></svg>
+        Select exported model files
+        <input type="file" id="colabInput" multiple hidden>
+      </label>
+      <div class="small" id="colabStatus" style="margin-top:8px"></div>
+    </div>
+    <div class="small" id="dataSummary" style="margin-top:12px"></div>
+  </section>
+
+  <section class="card">
+    <div class="step"><span class="n">B</span><h3>Transfer learning on this device</h3><span class="hint">frozen backbone · new head</span></div>
+    <p class="small" style="margin-bottom:8px">Every image is passed once through the ImageNet‑pre‑trained MobileNetV2 backbone to obtain a 1,280‑number embedding. A new classification head is then trained on those embeddings, here in the browser. A stratified 20 % of images is held out to estimate performance. Fine‑tuning the backbone itself needs a GPU: use the Colab notebook.</p>
+    <div class="row3">
+      <div class="field"><label>Epochs</label><input id="tEpochs" type="number" value="40" min="5" max="300"></div>
+      <div class="field"><label>Hidden units</label><input id="tHidden" type="number" value="128" min="16" max="512"></div>
+      <div class="field"><label>Flip augmentation</label><select id="tAug"><option value="1">On (×3)</option><option value="0">Off</option></select></div>
+    </div>
+    <button class="btn btn-primary" id="trainBtn" disabled>Train model</button>
+    <div class="progress"><i id="trainProg"></i></div>
+    <div class="trainlog" id="trainLog">Waiting for data…</div>
+    <div id="trainResults" class="hidden">
+      <div class="mstat">
+        <div class="kpi"><b id="mAcc">—</b><span>held-out accuracy</span></div>
+        <div class="kpi"><b id="mF1">—</b><span>macro F1</span></div>
+        <div class="kpi"><b id="mN">—</b><span>held-out images</span></div>
+        <div class="kpi"><b id="mTime">—</b><span>training time</span></div>
+      </div>
+      <div class="tablewrap"><table class="cm" id="cmTable"></table></div>
+      <div class="tablewrap"><table class="cm" id="prTable"></table></div>
+      <div class="row2" style="margin-top:10px">
+        <button class="btn btn-teal" id="activateBtn">Use this model in Assess</button>
+        <button class="btn btn-ghost" id="downloadBtn">Download model files</button>
+      </div>
+      <div class="note" style="margin-top:10px">Held‑out metrics from a few dozen images have wide confidence intervals. Treat them as a smoke test, not as validation. The DrPH protocol's 70/15/15 stratified split on ≥ 2,000 images with two‑clinician adjudication is the real evaluation.</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="step"><span class="n">C</span><h3>Models on this device</h3></div>
+    <div id="modelList"></div>
+  </section>
+</div>
 </main>
 <footer>DFU Vision prototype · Deep Learning Healthcare Centre of Excellence · For demonstration only</footer>
 <div class="toast" id="toast"></div>
 
 <script>
 /* ═══════════════════════════ constants ═══════════════════════════ */
-const IMG = 224;
+const IMG = 224, EMB = 1280;
 const GRADE_LBL = ['Mild (Grade 1‑like)', 'Severe (Grade 3‑like)'];
 const INF_LBL = ['No infection (Stage A)', 'Infection suspected (Stage B)'];
 const TEXAS_DESC = {
   '0':'Pre‑ or post‑ulcerative lesion, completely epithelialised', '1':'Superficial wound, not involving tendon, capsule or bone',
   '2':'Wound penetrating to tendon or capsule', '3':'Wound penetrating to bone or joint',
   'A':'clean', 'B':'infected', 'C':'ischaemic', 'D':'infected and ischaemic' };
-let model, convModel, tailModel, camLayerShape;
-let currentImg = null, currentName = '', lastPred = null, lastActs = null, isch = '0';
+const WAGNER = [
+  ['0','Intact skin: pre‑ulcerative lesion, healed ulcer or deformity'], ['1','Superficial ulcer, partial or full thickness'],
+  ['2','Deep ulcer to tendon, capsule or bone; no abscess or osteomyelitis'], ['3','Deep ulcer with abscess, osteomyelitis or joint sepsis'],
+  ['4','Localised gangrene (toes, forefoot or heel)'], ['5','Extensive gangrene of the whole foot'] ];
 const $ = id => document.getElementById(id);
-const toast = m => { const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); };
+const toast = m => { const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2600); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-/* ═══════════════════════════ gate ═══════════════════════════ */
+/* model registry: the demo model plus any custom heads / Colab exports */
+let base = null;                 // demo LayersModel (also supplies the shared MobileNetV2 backbone)
+let backbone = null;             // tf.model input -> out_relu  (shared by demo + in-browser heads)
+let active = null;               // { kind:'demo'|'head'|'full', name, classes, conv, tail, gradLayer, inputRange, scheme }
+let currentImg = null, currentName = '', lastPred = null, lastActs = null, isch = '0', scheme = 'texas', camManual = false;
+
+/* ═══════════════════════════ gate + tabs ═══════════════════════════ */
 const gateCheck = () => { $('enter').disabled = !($('ack1').checked && $('ack2').checked); };
 $('ack1').onchange = $('ack2').onchange = gateCheck;
 $('enter').onclick = () => $('gate').classList.add('hidden');
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  $('tab-assess').classList.toggle('hidden', b.dataset.tab !== 'assess');
+  $('tab-train').classList.toggle('hidden', b.dataset.tab !== 'train');
+  window.scrollTo({top:0});
+});
+document.querySelectorAll('.src-tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.src-tabs button').forEach(x => x.classList.toggle('on', x === b));
+  ['folder','classes','drive','colab'].forEach(s => $('src-'+s).classList.toggle('hidden', s !== b.dataset.src));
+});
 
-/* ═══════════════════════════ model ═══════════════════════════ */
+/* ═══════════════════════════ model loading ═══════════════════════════ */
+function splitAt(model, layerName){            // generic Grad-CAM split for a linear tail (GAP → … → softmax)
+  const layers = model.layers, idx = layers.findIndex(l => l.name === layerName);
+  if (idx < 0) throw new Error(`layer ${layerName} not found`);
+  const conv = tf.model({inputs: model.inputs, outputs: layers[idx].output});
+  const inp = tf.input({shape: layers[idx].outputShape.slice(1)});
+  let y = inp; for (let i = idx + 1; i < layers.length; i++) y = layers[i].apply(y);
+  return { conv, tail: tf.model({inputs: inp, outputs: y}) };
+}
 async function loadModel(){
   const t0 = performance.now();
-  try {
-    if (tf.getBackend && !(await tf.setBackend('webgl'))) await tf.setBackend('cpu');
-  } catch(e){ await tf.setBackend('cpu'); }
+  try { if (!(await tf.setBackend('webgl'))) await tf.setBackend('cpu'); } catch(e){ await tf.setBackend('cpu'); }
   await tf.ready();
-  model = await tf.loadLayersModel('model/model.json');
-  // Grad-CAM plumbing: split the network at the last conv map (out_relu) into "conv" and "tail" sub-models
-  const conv = model.getLayer('out_relu');
-  convModel = tf.model({inputs: model.inputs, outputs: conv.output});
-  camLayerShape = conv.output.shape.slice(1);
-  const tailIn = tf.input({shape: camLayerShape});
-  let y = model.getLayer('gap').apply(tailIn);
-  y = model.getLayer('drop').apply(y);
-  tailModel = tf.model({inputs: tailIn, outputs: [model.getLayer('grade').apply(y), model.getLayer('infection').apply(y)]});
-  // warm up
-  tf.tidy(() => { const z = tf.zeros([1, IMG, IMG, 3]); model.predict(z); });
+  base = await tf.loadLayersModel('model/model.json');
+  const conv = base.getLayer('out_relu');
+  backbone = tf.model({inputs: base.inputs, outputs: conv.output});
+  const tailIn = tf.input({shape: conv.output.shape.slice(1)});
+  let y = base.getLayer('gap').apply(tailIn); y = base.getLayer('drop').apply(y);
+  const tail = tf.model({inputs: tailIn, outputs: [base.getLayer('grade').apply(y), base.getLayer('infection').apply(y)]});
+  const demo = { kind:'demo', name:'Demo model (FUSeg weak labels)', classes:null, conv: backbone, tail, inputRange:'[-1,1]', scheme:'texas' };
+  tf.tidy(() => backbone.predict(tf.zeros([1, IMG, IMG, 3])));
   $('modelPill').textContent = `model: ready · ${tf.getBackend()} · ${((performance.now()-t0)/1000).toFixed(1)}s`;
   $('modelPill').classList.add('ok');
   try {
@@ -355,24 +520,38 @@ async function loadModel(){
     const p = m.validation_on_weak_labels;
     $('mcPerf').textContent = `Depth/severity head: AUC ${p.grade.auc.toFixed(2)}, accuracy ${(p.grade.accuracy*100).toFixed(0)} % (n=${p.grade.n}). Infection head: AUC ${p.infection.auc.toFixed(2)}, accuracy ${(p.infection.accuracy*100).toFixed(0)} % (n=${p.infection.n}). These numbers describe agreement with the weak labels, not clinical accuracy.`;
   } catch(e){ $('mcPerf').textContent = 'metrics.json not found.'; }
+  registry.demo = demo; setActive(demo);
+  await loadSavedHeads();
+  $('trainBtn').disabled = !dataReady();
   if (currentImg) runInference();
+}
+const registry = {};                                  // name -> model entry
+function setActive(entry){
+  active = entry; lastPred = null; camManual = false;   // predictions from the previous model are not comparable
+  $('modelUsed').textContent = '· ' + entry.name;
+  // Grad-CAM target list
+  const sel = $('camTarget'); sel.innerHTML = '';
+  if (entry.kind === 'demo') [['grade:1','explain: severe'],['grade:0','explain: mild'],['infection:1','explain: infection']].forEach(([v,t]) => sel.add(new Option(t, v)));
+  else entry.classes.forEach((c, i) => sel.add(new Option('explain: ' + c, 'cls:' + i)));
+  renderModelList();
+  if (entry.scheme === 'wagner') setScheme('wagner'); else if (entry.scheme === 'texas') setScheme('texas');
+  if (currentImg && backbone) runInference();
 }
 loadModel().catch(e => { $('modelPill').textContent = 'model: failed'; $('statusText').textContent = 'Model failed to load: ' + e.message; console.error(e); });
 
 /* ═══════════════════════════ image intake ═══════════════════════════ */
 function useImage(img, name){
-  currentImg = img; currentName = name; lastPred = null;
+  currentImg = img; currentName = name; lastPred = null; camManual = false;
   $('imgName').textContent = name;
   const c = $('imgCanvas'), ctx = c.getContext('2d');
-  const s = Math.min(img.naturalWidth || img.width, img.naturalHeight || img.height);
-  const sx = ((img.naturalWidth||img.width) - s)/2, sy = ((img.naturalHeight||img.height) - s)/2;
-  ctx.drawImage(img, sx, sy, s, s, 0, 0, c.width, c.height);   // centre square crop
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height, s = Math.min(w, h);
+  ctx.drawImage(img, (w - s)/2, (h - s)/2, s, s, 0, 0, c.width, c.height);   // centre square crop
   $('camCanvas').getContext('2d').clearRect(0,0,448,448);
   setCam(0);
   $('analyse').classList.remove('hidden'); $('truth').classList.remove('hidden');
   $('results').classList.add('hidden'); $('status').classList.remove('hidden');
   $('analyse').scrollIntoView({behavior:'smooth', block:'start'});
-  if (model) runInference(); else $('statusText').textContent = 'Loading model…';
+  if (backbone) runInference(); else $('statusText').textContent = 'Loading model…';
 }
 function fileToImage(file, name){
   const url = URL.createObjectURL(file); const img = new Image();
@@ -386,23 +565,31 @@ document.querySelectorAll('.sample').forEach(b => b.onclick = () => {
 });
 
 /* ═══════════════════════════ inference ═══════════════════════════ */
-function preprocess(){
+function preprocess(src, inputRange){
   return tf.tidy(() => {
-    const t = tf.browser.fromPixels($('imgCanvas')).resizeBilinear([IMG, IMG]).toFloat();
-    return t.div(127.5).sub(1).expandDims(0);           // MobileNetV2 preprocess_input
+    const t = tf.browser.fromPixels(src).resizeBilinear([IMG, IMG]).toFloat();
+    return (inputRange === '0-255' ? t : t.div(127.5).sub(1)).expandDims(0);
   });
 }
 async function runInference(){
   $('statusText').textContent = 'Analysing on device…';
-  await new Promise(r => setTimeout(r, 30));
+  await sleep(30);
   const t0 = performance.now();
   if (lastActs) lastActs.dispose();
-  const x = preprocess();
-  lastActs = convModel.predict(x);                         // [1,7,7,1280] kept for Grad-CAM
-  const [pg, pi] = tf.tidy(() => tailModel.predict(lastActs));
-  const grade = await pg.data(), inf = await pi.data();
-  pg.dispose(); pi.dispose(); x.dispose();
-  lastPred = { grade: Array.from(grade), infection: Array.from(inf), ms: performance.now() - t0 };
+  const x = preprocess($('imgCanvas'), active.inputRange);
+  lastActs = active.conv.predict(x);
+  const out = tf.tidy(() => active.tail.predict(lastActs));
+  x.dispose();
+  if (active.kind === 'demo'){
+    const [pg, pi] = out; lastPred = { grade: Array.from(await pg.data()), infection: Array.from(await pi.data()) }; pg.dispose(); pi.dispose();
+  } else {
+    lastPred = { probs: Array.from(await out.data()) }; out.dispose();
+  }
+  lastPred.ms = performance.now() - t0;
+  if (!camManual){                                  // explain the predicted class unless the user chose a target
+    if (active.kind === 'demo') $('camTarget').value = lastPred.grade[1] >= 0.5 ? 'grade:1' : (lastPred.infection[1] >= 0.5 ? 'infection:1' : 'grade:0');
+    else $('camTarget').value = 'cls:' + lastPred.probs.indexOf(Math.max(...lastPred.probs));
+  }
   showResults();
   await drawGradCam();
 }
@@ -410,54 +597,93 @@ function showResults(){
   const p = lastPred;
   $('timing').textContent = `${p.ms.toFixed(0)} ms on ${tf.getBackend()}`;
   $('status').classList.add('hidden'); $('results').classList.remove('hidden');
-  const infIdx = p.infection[1] >= 0.5 ? 1 : 0, gIdx = p.grade[1] >= 0.5 ? 1 : 0;
-  $('infVal').textContent = INF_LBL[infIdx];
-  $('infSub').textContent = `P(infection) = ${(p.infection[1]*100).toFixed(0)} %` + (Math.max(...p.infection) < 0.65 ? ' · low confidence' : '');
-  const ib = $('infBar'); ib.style.width = (p.infection[1]*100)+'%'; ib.className = p.infection[1]>0.5 ? 'bad' : '';
-  $('gradeVal').textContent = GRADE_LBL[gIdx];
-  $('gradeSub').textContent = `P(severe) = ${(p.grade[1]*100).toFixed(0)} %` + (Math.max(...p.grade) < 0.65 ? ' · low confidence' : '');
-  const gb = $('gradeBar'); gb.style.width = (p.grade[1]*100)+'%'; gb.className = p.grade[1]>0.5 ? 'bad' : '';
-  renderTexas();
+  $('demoHeads').classList.toggle('hidden', active.kind !== 'demo');
+  $('customProbs').classList.toggle('hidden', active.kind === 'demo');
+  if (active.kind === 'demo'){
+    const infIdx = p.infection[1] >= 0.5 ? 1 : 0, gIdx = p.grade[1] >= 0.5 ? 1 : 0;
+    $('infVal').textContent = INF_LBL[infIdx];
+    $('infSub').textContent = `P(infection) = ${(p.infection[1]*100).toFixed(0)} %` + (Math.max(...p.infection) < 0.65 ? ' · low confidence' : '');
+    const ib = $('infBar'); ib.style.width = (p.infection[1]*100)+'%'; ib.className = p.infection[1]>0.5 ? 'bad' : '';
+    $('gradeVal').textContent = GRADE_LBL[gIdx];
+    $('gradeSub').textContent = `P(severe) = ${(p.grade[1]*100).toFixed(0)} %` + (Math.max(...p.grade) < 0.65 ? ' · low confidence' : '');
+    const gb = $('gradeBar'); gb.style.width = (p.grade[1]*100)+'%'; gb.className = p.grade[1]>0.5 ? 'bad' : '';
+  } else {
+    const top = p.probs.indexOf(Math.max(...p.probs));
+    $('customProbs').innerHTML = active.classes.map((c, i) => `<div class="prob ${i===top?'top':''}"><b>${c}</b><span>${(p.probs[i]*100).toFixed(1)} %</span><div class="bar"><i style="width:${p.probs[i]*100}%" class="${i===top&&p.probs[i]<0.6?'warn':''}"></i></div></div>`).join('');
+  }
+  renderClass();
 }
-function texasClass(){
+/* ── classification schemes ── */
+const wagnerOf = name => { const m = String(name).match(/(?:wagner|grade|^w|^g)?[\s_\-]*([0-5])(?![0-9])/i); return m ? m[1] : null; };
+const texasOf = name => { const m = String(name).trim().match(/^([0-3])\s*([A-Da-d])$/); return m ? [m[1], m[2].toUpperCase()] : null; };
+function setScheme(s){ scheme = s; $('schemeToggle').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === s)); if (lastPred) renderClass(); }
+$('schemeToggle').querySelectorAll('button').forEach(b => b.onclick = () => setScheme(b.dataset.v));
+function interpret(){
+  /* returns { texas:{grade,stage,unknownIsch} | null, wagner:{grade, range:[lo,hi]} | null, label, desc } */
   const p = lastPred; if (!p) return null;
-  const grade = p.grade[1] >= 0.5 ? '3' : '1';
-  const infected = p.infection[1] >= 0.5;
-  let stage = infected ? 'B' : 'A';
-  if (isch === '1') stage = infected ? 'D' : 'C';
-  return { grade, stage, unknownIsch: isch === '?' };
+  let texas = null, wagner = null;
+  if (active.kind === 'demo'){
+    const severe = p.grade[1] >= 0.5, infected = p.infection[1] >= 0.5;
+    let stage = infected ? 'B' : 'A'; if (isch === '1') stage = infected ? 'D' : 'C';
+    texas = { grade: severe ? '3' : '1', stage, unknownIsch: isch === '?' };
+    wagner = severe ? { grade: infected ? '3' : '2', range: ['2','3'], note: 'deep or extensive appearance; 3 if abscess or osteomyelitis is confirmed' }
+                    : { grade: '1', range: ['1','1'], note: 'superficial appearance' };
+  } else {
+    const top = active.classes[p.probs.indexOf(Math.max(...p.probs))];
+    const w = wagnerOf(top), t = texasOf(top);
+    if (w !== null) wagner = { grade: w, range: [w, w], note: 'predicted directly by your model' };
+    if (t) { let stage = t[1]; if (isch === '1' && (stage === 'A' || stage === 'B')) stage = stage === 'A' ? 'C' : 'D'; texas = { grade: t[0], stage, unknownIsch: false }; }
+    if (!w && !t) return { label: top, desc: `Predicted class "${top}" (${(Math.max(...p.probs)*100).toFixed(0)} %). Class names are not Texas or Wagner codes, so no grid is shown.` };
+  }
+  return { texas, wagner };
 }
-function renderTexas(){
-  const t = texasClass(); const g = $('tgrid'); g.innerHTML = '';
-  const cell = (cls, txt) => { const d = document.createElement('div'); d.className = cls; d.textContent = txt; g.appendChild(d); };
-  cell('h', 'Stage ⟍ Grade'); ['0','1','2','3'].forEach(x => cell('h', x));
-  ['A','B','C','D'].forEach(st => {
-    cell('rh', `${st}\n${TEXAS_DESC[st]}`);
-    ['0','1','2','3'].forEach(gr => {
-      let c = 'c'; if (gr === '0' || gr === '2') c += ' na';
-      if (t && t.grade === gr && t.stage === st) c += ' hit' + (gr === '3' || st !== 'A' ? ' sev' : '');
-      cell(c, gr + st);
-    });
-  });
-  if (t){
-    $('texasClass').textContent = t.grade + t.stage + (t.unknownIsch ? '?' : '');
-    $('texasDesc').textContent = `Grade ${t.grade}: ${TEXAS_DESC[t.grade]}. Stage ${t.stage}: ${TEXAS_DESC[t.stage]}.` + (t.unknownIsch ? ' Stage provisional until vascular status is assessed (C/D if ischaemic).' : '');
+function renderClass(){
+  const it = interpret(); if (!it) return;
+  const showTexas = scheme === 'texas' && it.texas, showWagner = scheme === 'wagner' && it.wagner;
+  $('texasPanel').classList.toggle('hidden', !showTexas); $('wagnerPanel').classList.toggle('hidden', !showWagner);
+  $('ischField').classList.toggle('hidden', !(it.texas && scheme === 'texas'));
+  if (it.label){ $('classBig').textContent = it.label; $('classDesc').textContent = it.desc; $('caution').textContent = 'AI output is decision support only.'; return; }
+  if (scheme === 'texas' && !it.texas){ $('classBig').textContent = '—'; $('classDesc').textContent = 'This model predicts Wagner grades. Switch to the Wagner scheme.'; $('caution').textContent = ''; return; }
+  if (scheme === 'wagner' && !it.wagner){ $('classBig').textContent = '—'; $('classDesc').textContent = 'This model predicts Texas classes. Switch to the Texas scheme.'; $('caution').textContent = ''; return; }
+  if (showTexas){
+    const t = it.texas, g = $('tgrid'); g.innerHTML = '';
+    const cell = (cls, txt) => { const d = document.createElement('div'); d.className = cls; d.textContent = txt; g.appendChild(d); };
+    cell('h', 'Stage ⟍ Grade'); ['0','1','2','3'].forEach(x => cell('h', x));
+    ['A','B','C','D'].forEach(st => { cell('rh', `${st}\n${TEXAS_DESC[st]}`); ['0','1','2','3'].forEach(gr => {
+      let c = 'c'; if (active.kind === 'demo' && (gr === '0' || gr === '2')) c += ' na';
+      if (t.grade === gr && t.stage === st) c += ' hit' + (gr === '3' || st !== 'A' ? ' sev' : ''); cell(c, gr + st); }); });
+    $('classBig').textContent = t.grade + t.stage + (t.unknownIsch ? '?' : '');
+    $('classDesc').textContent = `Grade ${t.grade}: ${TEXAS_DESC[t.grade]}. Stage ${t.stage}: ${TEXAS_DESC[t.stage]}.` + (t.unknownIsch ? ' Stage provisional until vascular status is assessed (C/D if ischaemic).' : '');
+    $('caution').textContent = active.kind === 'demo'
+      ? 'AI output is decision support only. Grade 0 and Grade 2 are not modelled by the demo model; the depth head separates a superficial (Grade 1‑like) from a deep or extensive (Grade 3‑like) appearance and cannot see tendon, capsule or bone. Confirm depth with probe‑to‑bone and imaging.'
+      : 'AI output is decision support only. Texas depth grades and stages require probe‑to‑bone, vascular assessment and microbiology; the photograph alone cannot establish them.';
+  }
+  if (showWagner){
+    const w = it.wagner, l = $('ladder'); l.innerHTML = '';
+    WAGNER.forEach(([g, d]) => { const r = document.createElement('div'); r.className = 'rung';
+      if (g === w.grade) r.classList.add('hit'); else if (g >= w.range[0] && g <= w.range[1]) r.classList.add('maybe');
+      if (r.classList.contains('hit') && +g >= 3) r.classList.add('sev');
+      r.innerHTML = `<b>${g}</b>${d.split(':')[0].split(',')[0]}`; r.title = d; l.appendChild(r); });
+    $('classBig').textContent = 'W' + w.grade;
+    $('classDesc').textContent = `Wagner ${w.grade}: ${WAGNER[+w.grade][1]} (${w.note}).`;
+    $('caution').textContent = 'Wagner grading is appearance‑based, which suits an image‑only model and a primary‑care triage use (refer at Wagner ≥ 2). It does not separate infection from ischaemia; record both in Step 3.';
   }
 }
 $('ischChips').querySelectorAll('.chip').forEach(b => b.onclick = () => {
-  $('ischChips').querySelectorAll('.chip').forEach(x => x.classList.remove('on')); b.classList.add('on'); isch = b.dataset.v; renderTexas();
+  $('ischChips').querySelectorAll('.chip').forEach(x => x.classList.remove('on')); b.classList.add('on'); isch = b.dataset.v; renderClass();
 });
 
 /* ═══════════════════════════ Grad-CAM ═══════════════════════════ */
 async function drawGradCam(){
   if (!lastActs) return;
-  const [head, cls] = $('camTarget').value.split(':'); const hi = head === 'grade' ? 0 : 1, ci = +cls;
+  const v = $('camTarget').value || ''; let pick;
+  if (active.kind === 'demo'){ const [head, cls] = v.split(':'); const hi = head === 'grade' ? 0 : 1, ci = +cls; pick = a => active.tail.apply(a)[hi].slice([0, ci], [1, 1]).sum(); }
+  else { const ci = +(v.split(':')[1] || 0); pick = a => active.tail.apply(a).slice([0, ci], [1, 1]).sum(); }
   const cam = tf.tidy(() => {
-    const scoreFn = a => tailModel.apply(a)[hi].slice([0, ci], [1, 1]).sum();   // score of the target class
-    const grads = tf.grad(scoreFn)(lastActs);                                     // d score / d conv map
-    const weights = grads.mean([1, 2], true);                                     // global-average-pooled gradients [1,1,1,C]
-    let m = lastActs.mul(weights).sum(-1).relu();                                 // weighted sum of channels, ReLU
-    m = m.sub(m.min()).div(m.max().sub(m.min()).add(1e-6));                       // normalise 0..1
+    const grads = tf.grad(pick)(lastActs);                    // d score / d conv map
+    const weights = grads.mean([1, 2], true);                  // GAP of gradients -> channel weights
+    let m = lastActs.mul(weights).sum(-1).relu();
+    m = m.sub(m.min()).div(m.max().sub(m.min()).add(1e-6));
     return tf.image.resizeBilinear(m.expandDims(-1), [448, 448]).squeeze();
   });
   const data = await cam.data(); cam.dispose();
@@ -468,17 +694,11 @@ async function drawGradCam(){
   }
   ctx.putImageData(img, 0, 0);
 }
-function jet(v){ // 0..1 -> blue..cyan..yellow..red
-  const r = Math.max(0, Math.min(1, 1.5 - Math.abs(4*v - 3))), g = Math.max(0, Math.min(1, 1.5 - Math.abs(4*v - 2))), b = Math.max(0, Math.min(1, 1.5 - Math.abs(4*v - 1)));
-  return [r*255, g*255, b*255];
-}
-function setCam(v){
-  $('camToggle').querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.v === v));
-  $('camCanvas').style.opacity = v ? ($('camAlpha').value/100) : 0;
-}
+function jet(v){ const r = Math.max(0, Math.min(1, 1.5 - Math.abs(4*v - 3))), g = Math.max(0, Math.min(1, 1.5 - Math.abs(4*v - 2))), b = Math.max(0, Math.min(1, 1.5 - Math.abs(4*v - 1))); return [r*255, g*255, b*255]; }
+function setCam(v){ $('camToggle').querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.v === v)); $('camCanvas').style.opacity = v ? ($('camAlpha').value/100) : 0; }
 $('camToggle').querySelectorAll('button').forEach(b => b.onclick = () => setCam(+b.dataset.v));
 $('camAlpha').oninput = () => { if ($('camToggle').querySelector('.on').dataset.v === '1') $('camCanvas').style.opacity = $('camAlpha').value/100; };
-$('camTarget').onchange = async () => { await drawGradCam(); setCam(1); };
+$('camTarget').onchange = async () => { camManual = true; await drawGradCam(); setCam(1); };
 
 /* ═══════════════════════════ ground truth + case log ═══════════════════════════ */
 const LOG_KEY = 'dfu_vision_cases_v1';
@@ -488,12 +708,14 @@ $('orgChips').querySelectorAll('.chip').forEach(b => b.onclick = () => b.classLi
 $('saveCase').onclick = () => {
   if (!lastPred) return toast('Analyse an image first');
   const orgs = [...$('orgChips').querySelectorAll('.chip.on')].map(b => b.dataset.v);
-  const gtStage = $('gtStage').value, gtGrade = $('gtGrade').value;
   const thumb = (() => { const c = document.createElement('canvas'); c.width = c.height = 96; c.getContext('2d').drawImage($('imgCanvas'), 0, 0, 96, 96); return c.toDataURL('image/jpeg', 0.6); })();
-  const t = texasClass();
-  const rec = { id: Date.now(), when: new Date().toISOString(), image: currentName, thumb,
-    ai_grade: t.grade, ai_stage: t.stage, p_severe: +lastPred.grade[1].toFixed(3), p_infection: +lastPred.infection[1].toFixed(3),
-    gt_grade: gtGrade, gt_stage: gtStage, probe_to_bone: $('gtPtb').value, specimen_date: $('gtDate').value,
+  const it = interpret();
+  const ai_label = it.label || (it.texas ? it.texas.grade + it.texas.stage : '') + (it.wagner ? (it.texas ? ' / ' : '') + 'W' + it.wagner.grade : '');
+  const p_inf = active.kind === 'demo' ? +lastPred.infection[1].toFixed(3) : null;
+  const rec = { id: Date.now(), when: new Date().toISOString(), image: currentName, thumb, model: active.name, ai_label,
+    p_severe: active.kind === 'demo' ? +lastPred.grade[1].toFixed(3) : null, p_infection: p_inf,
+    probs: active.kind === 'demo' ? null : Object.fromEntries(active.classes.map((c, i) => [c, +lastPred.probs[i].toFixed(3)])),
+    gt_grade: $('gtGrade').value, gt_stage: $('gtStage').value, gt_wagner: $('gtWagner').value, probe_to_bone: $('gtPtb').value, specimen_date: $('gtDate').value,
     organisms: orgs, sensitivity_notes: $('gtNotes').value.trim(),
     culture_positive: orgs.length ? !(orgs.length === 1 && orgs[0] === 'No growth') : null };
   const log = loadLog(); log.unshift(rec); saveLog(log); renderLog(); toast('Case saved to log');
@@ -501,23 +723,204 @@ $('saveCase').onclick = () => {
 };
 function renderLog(){
   const log = loadLog(); $('kCases').textContent = log.length; $('logEmpty').classList.toggle('hidden', log.length > 0);
-  const withCult = log.filter(r => r.culture_positive !== null);
+  const withCult = log.filter(r => r.culture_positive !== null && r.p_infection !== null);
   const agree = withCult.filter(r => (r.p_infection >= 0.5) === r.culture_positive).length;
   $('kInf').textContent = withCult.length ? `${Math.round(100*agree/withCult.length)} %` : '—';
-  $('kCult').textContent = withCult.length ? `${withCult.filter(r => r.culture_positive).length}/${withCult.length}` : '—';
+  const cult = log.filter(r => r.culture_positive !== null);
+  $('kCult').textContent = cult.length ? `${cult.filter(r => r.culture_positive).length}/${cult.length}` : '—';
   $('logList').innerHTML = log.slice(0, 8).map(r => {
-    const a = r.culture_positive === null ? '' : `<span class="agree ${(r.p_infection>=0.5)===r.culture_positive?'':'no'}">${(r.p_infection>=0.5)===r.culture_positive?'agrees with C&S':'disagrees with C&S'}</span>`;
-    return `<li><img src="${r.thumb}" alt=""><div class="who"><b>AI ${r.ai_grade}${r.ai_stage} · clinician ${r.gt_grade||'?'}${r.gt_stage||'?'}</b><small>${r.image} · ${new Date(r.when).toLocaleString()} · ${r.organisms.join(', ') || 'no C&S yet'}</small></div>${a}</li>`;
+    const a = (r.culture_positive === null || r.p_infection === null) ? '' : `<span class="agree ${(r.p_infection>=0.5)===r.culture_positive?'':'no'}">${(r.p_infection>=0.5)===r.culture_positive?'agrees with C&S':'disagrees with C&S'}</span>`;
+    const gt = [r.gt_grade && r.gt_stage ? r.gt_grade + r.gt_stage : '', r.gt_wagner ? 'W' + r.gt_wagner : ''].filter(Boolean).join(' / ') || '?';
+    return `<li><img src="${r.thumb}" alt=""><div class="who"><b>AI ${r.ai_label || '?'} · clinician ${gt}</b><small>${r.image} · ${new Date(r.when).toLocaleString()} · ${r.organisms.join(', ') || 'no C&S yet'}</small></div>${a}</li>`;
   }).join('');
 }
 $('exportCsv').onclick = () => {
   const log = loadLog(); if (!log.length) return toast('Nothing to export');
-  const cols = ['id','when','image','ai_grade','ai_stage','p_severe','p_infection','gt_grade','gt_stage','probe_to_bone','specimen_date','organisms','sensitivity_notes','culture_positive'];
-  const esc = v => '"' + String(Array.isArray(v) ? v.join('; ') : (v ?? '')).replace(/"/g, '""') + '"';
+  const cols = ['id','when','image','model','ai_label','p_severe','p_infection','probs','gt_grade','gt_stage','gt_wagner','probe_to_bone','specimen_date','organisms','sensitivity_notes','culture_positive'];
+  const esc = v => '"' + String(Array.isArray(v) ? v.join('; ') : (v && typeof v === 'object' ? JSON.stringify(v) : (v ?? ''))).replace(/"/g, '""') + '"';
   const csv = [cols.join(',')].concat(log.map(r => cols.map(c => esc(r[c])).join(','))).join('\n');
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'dfu_vision_cases.csv'; a.click();
 };
 renderLog();
+
+/* ═══════════════════════════ TRAIN: data intake ═══════════════════════════ */
+const data = { classes: new Map() };          // className -> [{file|blob, name, url}]
+const IMG_RE = /\.(jpe?g|png|webp|bmp|heic)$/i;
+function addSamples(cls, items){ if (!data.classes.has(cls)) data.classes.set(cls, []); data.classes.get(cls).push(...items); refreshData(); }
+function dataReady(){ const cs = [...data.classes.values()].filter(v => v.length >= 4); return cs.length >= 2 && !!backbone; }
+function refreshData(){
+  const rows = [...data.classes.entries()].filter(([, v]) => v.length);
+  $('dataSummary').innerHTML = rows.length ? `<b>${rows.reduce((n, [, v]) => n + v.length, 0)} images in ${rows.length} classes:</b> ` + rows.map(([k, v]) => `${k} (${v.length})`).join(' · ') + (rows.some(([, v]) => v.length < 4) ? ' — each class needs at least 4 images.' : '') : '';
+  $('trainBtn').disabled = !dataReady();
+  renderClassRows();
+}
+$('dirInput').onchange = e => {
+  const files = [...e.target.files].filter(f => IMG_RE.test(f.name));
+  const byClass = {};
+  files.forEach(f => { const parts = (f.webkitRelativePath || f.name).split('/'); const cls = parts.length >= 3 ? parts[parts.length - 2] : (parts.length === 2 ? parts[0] : 'unlabelled'); (byClass[cls] = byClass[cls] || []).push({ file: f, name: f.name }); });
+  Object.entries(byClass).forEach(([k, v]) => addSamples(k, v));
+  if (!files.length) toast('No image files found in that folder');
+  else toast(`Loaded ${files.length} images from ${Object.keys(byClass).length} folders`);
+};
+function renderClassRows(){
+  const list = $('classList'); list.innerHTML = '';
+  const names = [...data.classes.keys()]; if (!names.length) names.push('');
+  names.forEach(name => {
+    const row = document.createElement('div'); row.className = 'class-row';
+    const inp = document.createElement('input'); inp.placeholder = 'class name, e.g. wagner_2'; inp.value = name;
+    inp.onchange = () => { const items = data.classes.get(name) || []; data.classes.delete(name); if (inp.value.trim()) addSamples(inp.value.trim(), items); else refreshData(); };
+    const cnt = document.createElement('span'); cnt.className = 'cnt'; cnt.textContent = `${(data.classes.get(name) || []).length} images`;
+    const add = document.createElement('label'); add.className = 'addbtn'; add.textContent = '+ images';
+    const fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*'; fi.multiple = true; fi.hidden = true;
+    fi.onchange = () => { const cls = inp.value.trim(); if (!cls) return toast('Name the class first'); addSamples(cls, [...fi.files].map(f => ({ file: f, name: f.name }))); };
+    add.appendChild(fi);
+    row.append(inp, cnt, add);
+    const th = document.createElement('div'); th.className = 'thumbs';
+    (data.classes.get(name) || []).slice(0, 12).forEach(s => { const im = document.createElement('img'); im.src = s.url || (s.url = URL.createObjectURL(s.file)); th.appendChild(im); });
+    if (th.children.length) row.appendChild(th);
+    list.appendChild(row);
+  });
+}
+$('addClass').onclick = () => { const n = `class_${data.classes.size + 1}`; data.classes.set(n, []); renderClassRows(); };
+renderClassRows();
+
+/* ── Google Drive import (Drive API v3 + Google Identity Services) ── */
+function loadScript(src){ return new Promise((res, rej) => { if (document.querySelector(`script[src="${src}"]`)) return res(); const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('Could not load ' + src)); document.head.appendChild(s); }); }
+$('gConnect').onclick = async () => {
+  const clientId = $('gClientId').value.trim(), folderId = $('gFolderId').value.trim(), max = +$('gMax').value || 200;
+  if (!clientId || !folderId) return toast('Client ID and folder ID are both required');
+  try {
+    await loadScript('https://accounts.google.com/gsi/client');
+    const token = await new Promise((res, rej) => {
+      const tc = google.accounts.oauth2.initTokenClient({ client_id: clientId, scope: 'https://www.googleapis.com/auth/drive.readonly', callback: r => r.access_token ? res(r.access_token) : rej(new Error(r.error || 'no token')) });
+      tc.requestAccessToken();
+    });
+    const api = async (path, params) => { const u = new URL('https://www.googleapis.com/drive/v3/' + path); Object.entries(params || {}).forEach(([k, v]) => u.searchParams.set(k, v)); const r = await fetch(u, { headers: { Authorization: 'Bearer ' + token } }); if (!r.ok) throw new Error(`Drive API ${r.status}: ${await r.text()}`); return r; };
+    const listAll = async q => { let files = [], pageToken; do { const j = await (await api('files', { q, fields: 'nextPageToken,files(id,name,mimeType)', pageSize: 1000, pageToken: pageToken || '', supportsAllDrives: true, includeItemsFromAllDrives: true })).json(); files.push(...j.files); pageToken = j.nextPageToken; } while (pageToken); return files; };
+    const folders = await listAll(`'${folderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+    if (!folders.length) return toast('No subfolders found: each class must be a subfolder');
+    let total = 0;
+    for (const f of folders){
+      const imgs = (await listAll(`'${f.id}' in parents and mimeType contains 'image/' and trashed=false`)).slice(0, max);
+      const items = [];
+      for (const im of imgs){ $('dataSummary').textContent = `Downloading ${f.name}: ${items.length + 1}/${imgs.length}…`; const blob = await (await api(`files/${im.id}`, { alt: 'media', supportsAllDrives: true })).blob(); items.push({ file: blob, name: im.name }); }
+      addSamples(f.name, items); total += items.length;
+    }
+    toast(`Imported ${total} images from ${folders.length} Drive folders`);
+  } catch(e){ console.error(e); toast('Drive import failed: ' + e.message); }
+};
+
+/* ── Colab-exported full model ── */
+$('colabInput').onchange = async e => {
+  const files = [...e.target.files];
+  const json = files.find(f => /model\.json$/i.test(f.name)), bins = files.filter(f => /\.bin$/i.test(f.name)), cls = files.find(f => /classes\.json$/i.test(f.name));
+  if (!json || !bins.length) return $('colabStatus').textContent = 'Need model.json and its .bin shard(s).';
+  try {
+    $('colabStatus').textContent = 'Loading…';
+    const meta = cls ? JSON.parse(await cls.text()) : {};
+    const model = await tf.loadLayersModel(tf.io.browserFiles([json, ...bins]));
+    const classes = meta.classes || Array.from({ length: model.outputs[0].shape[1] }, (_, i) => 'class_' + i);
+    const gradLayer = meta.gradcam_layer || guessGradLayer(model);
+    const { conv, tail } = splitAt(model, gradLayer);
+    const entry = { kind: 'full', name: meta.name || `Colab model (${meta.backbone || 'custom'})`, classes, conv, tail, inputRange: meta.input_range || '0-255', scheme: meta.scheme || guessScheme(classes), metrics: meta.metrics || null, when: new Date().toISOString() };
+    registry[entry.name] = entry; setActive(entry);
+    $('colabStatus').textContent = `Loaded ${entry.name}: ${classes.length} classes (${classes.join(', ')}), Grad-CAM on ${gradLayer}. Now active in Assess.`;
+    toast('Colab model active');
+  } catch(err){ console.error(err); $('colabStatus').textContent = 'Failed: ' + err.message; }
+};
+function guessGradLayer(model){ for (let i = model.layers.length - 1; i >= 0; i--){ const s = model.layers[i].outputShape; if (Array.isArray(s) && s.length === 4) return model.layers[i].name; } throw new Error('no 4-D layer found for Grad-CAM'); }
+function guessScheme(classes){ if (classes.every(c => wagnerOf(c) !== null)) return 'wagner'; if (classes.every(c => texasOf(c))) return 'texas'; return 'custom'; }
+
+/* ═══════════════════════════ TRAIN: embeddings + head ═══════════════════════════ */
+const log = (m, reset) => { const el = $('trainLog'); el.textContent = (reset ? '' : el.textContent + '\n') + m; el.scrollTop = el.scrollHeight; };
+function loadImg(item){ return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = item.url || (item.url = URL.createObjectURL(item.file)); }); }
+async function embed(img, flips){
+  /* returns Float32Array[] of 1280-d embeddings (original + optional flips) */
+  const c = document.createElement('canvas'); c.width = c.height = IMG; const ctx = c.getContext('2d');
+  const w = img.naturalWidth, h = img.naturalHeight, s = Math.min(w, h); ctx.drawImage(img, (w-s)/2, (h-s)/2, s, s, 0, 0, IMG, IMG);
+  const outs = [];
+  const variants = flips ? [[1,1],[-1,1],[1,-1]] : [[1,1]];
+  for (const [sx, sy] of variants){
+    const v = tf.tidy(() => { let t = tf.browser.fromPixels(c).toFloat().div(127.5).sub(1); if (sx < 0) t = t.reverse(1); if (sy < 0) t = t.reverse(0); return backbone.predict(t.expandDims(0)).mean([1, 2]); });
+    outs.push(new Float32Array(await v.data())); v.dispose();
+  }
+  return outs;
+}
+let trained = null;   // { head, classes, metrics, cm }
+$('trainBtn').onclick = async () => {
+  if (!dataReady()) return;
+  $('trainBtn').disabled = true; $('trainResults').classList.add('hidden');
+  const classes = [...data.classes.entries()].filter(([, v]) => v.length >= 4).map(([k]) => k).sort();
+  const epochs = +$('tEpochs').value || 40, hidden = +$('tHidden').value || 128, aug = $('tAug').value === '1';
+  const t0 = performance.now();
+  log(`Classes: ${classes.join(', ')}\nExtracting MobileNetV2 embeddings on ${tf.getBackend()}…`, true);
+  // stratified 80/20 split
+  const trX = [], trY = [], vaX = [], vaY = [];
+  let done = 0; const total = classes.reduce((n, c) => n + data.classes.get(c).length, 0);
+  for (const [ci, c] of classes.entries()){
+    const items = [...data.classes.get(c)]; for (let i = items.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [items[i], items[j]] = [items[j], items[i]]; }
+    const nVal = Math.max(1, Math.round(items.length * 0.2));
+    for (const [k, it] of items.entries()){
+      try { const img = await loadImg(it); const isVal = k < nVal; const embs = await embed(img, aug && !isVal);
+        embs.forEach(e => { (isVal ? vaX : trX).push(e); (isVal ? vaY : trY).push(ci); }); }
+      catch(e){ log(`skipped ${it.name}: ${e.message}`); }
+      done++; $('trainProg').style.width = (done / total * 60) + '%';
+      if (done % 5 === 0){ log(`  ${done}/${total} images embedded`); await sleep(0); }
+    }
+  }
+  log(`Training head on ${trX.length} embeddings (${trY.length ? classes.length : 0} classes), validating on ${vaX.length} held-out images…`);
+  const xs = tf.tensor2d(trX), ys = tf.oneHot(tf.tensor1d(trY, 'int32'), classes.length), xv = tf.tensor2d(vaX), yv = tf.oneHot(tf.tensor1d(vaY, 'int32'), classes.length);
+  // class weights for imbalance
+  const counts = classes.map((_, i) => trY.filter(y => y === i).length), cw = {}; counts.forEach((n, i) => cw[i] = trY.length / (classes.length * n));
+  const head = tf.sequential({ layers: [ tf.layers.dense({ units: hidden, activation: 'relu', inputShape: [EMB], kernelRegularizer: tf.regularizers.l2({ l2: 1e-4 }) }), tf.layers.dropout({ rate: 0.4 }), tf.layers.dense({ units: classes.length, activation: 'softmax' }) ] });
+  head.compile({ optimizer: tf.train.adam(1e-3), loss: 'categoricalCrossentropy', metrics: ['accuracy'] });
+  await head.fit(xs, ys, { epochs, batchSize: 16, shuffle: true, validationData: [xv, yv], classWeight: cw,
+    callbacks: { onEpochEnd: async (ep, l) => { $('trainProg').style.width = (60 + (ep + 1) / epochs * 40) + '%'; if ((ep + 1) % 5 === 0 || ep === epochs - 1) log(`  epoch ${ep + 1}/${epochs}  loss ${l.loss.toFixed(3)}  acc ${(l.acc*100).toFixed(0)} %  val_acc ${(l.val_acc*100).toFixed(0)} %`); await sleep(0); } } });
+  // held-out evaluation
+  const pred = tf.tidy(() => head.predict(xv).argMax(-1)); const yp = Array.from(await pred.data()); pred.dispose();
+  const n = classes.length, cm = Array.from({ length: n }, () => Array(n).fill(0)); vaY.forEach((y, i) => cm[y][yp[i]]++);
+  const per = classes.map((c, i) => { const tp = cm[i][i], fp = cm.reduce((s, r, j) => s + (j !== i ? r[i] : 0), 0), fn = cm[i].reduce((s, v, j) => s + (j !== i ? v : 0), 0); const p = tp / (tp + fp || 1), r = tp / (tp + fn || 1); return { c, p, r, f1: (p + r) ? 2*p*r/(p+r) : 0, n: cm[i].reduce((a, b) => a + b, 0) }; });
+  const acc = yp.filter((p, i) => p === vaY[i]).length / vaY.length, f1 = per.reduce((s, x) => s + x.f1, 0) / n;
+  xs.dispose(); ys.dispose(); xv.dispose(); yv.dispose();
+  trained = { head, classes, metrics: { accuracy: acc, macro_f1: f1, n_val: vaY.length, n_train_images: total - vaY.length, epochs, hidden, aug }, cm, per };
+  $('mAcc').textContent = (acc*100).toFixed(0) + ' %'; $('mF1').textContent = f1.toFixed(2); $('mN').textContent = vaY.length; $('mTime').textContent = ((performance.now() - t0)/1000).toFixed(0) + ' s';
+  $('cmTable').innerHTML = `<tr><th>true ⟍ predicted</th>${classes.map(c => `<th>${c}</th>`).join('')}</tr>` + cm.map((r, i) => `<tr><th>${classes[i]}</th>${r.map((v, j) => `<td class="${i===j?'diag':''}">${v}</td>`).join('')}</tr>`).join('');
+  $('prTable').innerHTML = `<tr><th>class</th><th>n</th><th>precision</th><th>recall</th><th>F1</th></tr>` + per.map(x => `<tr><th>${x.c}</th><td>${x.n}</td><td>${(x.p*100).toFixed(0)} %</td><td>${(x.r*100).toFixed(0)} %</td><td>${x.f1.toFixed(2)}</td></tr>`).join('');
+  $('trainResults').classList.remove('hidden'); $('trainBtn').disabled = false;
+  log(`Done in ${((performance.now() - t0)/1000).toFixed(0)} s. Held-out accuracy ${(acc*100).toFixed(0)} %, macro F1 ${f1.toFixed(2)}.`);
+};
+function headEntry(head, classes, name, metrics, when){
+  const tailIn = tf.input({ shape: [7, 7, EMB] }); let y = tf.layers.globalAveragePooling2d({}).apply(tailIn); y = head.apply(y);
+  return { kind: 'head', name, classes, conv: backbone, tail: tf.model({ inputs: tailIn, outputs: y }), head, inputRange: '[-1,1]', scheme: guessScheme(classes), metrics, when };
+}
+const HEADS_KEY = 'dfu_vision_heads_v1';
+const loadHeadsMeta = () => { try { return JSON.parse(localStorage.getItem(HEADS_KEY) || '[]'); } catch(e){ return []; } };
+$('activateBtn').onclick = async () => {
+  if (!trained) return;
+  const name = `My model ${new Date().toLocaleDateString()} (${trained.classes.length} classes)`; const when = new Date().toISOString();
+  const entry = headEntry(trained.head, trained.classes, name, trained.metrics, when); registry[name] = entry; setActive(entry);
+  try { const key = 'dfu-head-' + Date.now(); await trained.head.save('indexeddb://' + key); const meta = loadHeadsMeta(); meta.unshift({ key, name, classes: trained.classes, metrics: trained.metrics, when }); localStorage.setItem(HEADS_KEY, JSON.stringify(meta.slice(0, 10))); toast('Model active and saved on this device'); }
+  catch(e){ toast('Model active (could not persist: ' + e.message + ')'); }
+  renderModelList(); $('tabAssess').click();
+};
+$('downloadBtn').onclick = async () => {
+  if (!trained) return;
+  try { await trained.head.save('downloads://dfu-custom-head'); const meta = { classes: trained.classes, metrics: trained.metrics, backbone: 'MobileNetV2 out_relu + GAP', scheme: guessScheme(trained.classes) };
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(meta, null, 1)], { type: 'application/json' })); a.download = 'classes.json'; a.click(); }
+  catch(e){ toast('Download blocked in this viewer'); }
+};
+async function loadSavedHeads(){
+  for (const m of loadHeadsMeta()){
+    try { const head = await tf.loadLayersModel('indexeddb://' + m.key); registry[m.name] = headEntry(head, m.classes, m.name, m.metrics, m.when); }
+    catch(e){ console.warn('could not load saved head', m.key, e); }
+  }
+  renderModelList();
+}
+function renderModelList(){
+  const rows = Object.values(registry);
+  $('modelList').innerHTML = rows.map(e => `<div class="model-row"><div class="who"><b>${e.name}</b><small>${e.kind === 'demo' ? 'MobileNetV2 · 2 heads · FUSeg weak labels' : `${e.classes.length} classes: ${e.classes.join(', ')}` + (e.metrics && e.metrics.accuracy !== undefined ? ` · held-out acc ${(e.metrics.accuracy*100).toFixed(0)} %` : '') + (e.when ? ` · ${new Date(e.when).toLocaleDateString()}` : '')}</small></div>${active === e ? '<span class="agree">active</span>' : `<button class="btn btn-ghost btn-sm" data-name="${e.name}">Use</button>`}</div>`).join('') || '<p class="small">No models yet.</p>';
+  $('modelList').querySelectorAll('button[data-name]').forEach(b => b.onclick = () => { setActive(registry[b.dataset.name]); toast(`Active: ${b.dataset.name}`); });
+}
 </script>
 </body>
 </html>

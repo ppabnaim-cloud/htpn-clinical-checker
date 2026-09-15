@@ -82,6 +82,13 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .viewer canvas{position:absolute;inset:0;width:100%;height:100%}
 #camCanvas{transition:opacity .25s}
 .viewer .badge{position:absolute;left:10px;top:10px;font-family:var(--mono);font-size:11px;background:rgba(11,31,58,.75);color:#fff;padding:4px 9px;border-radius:999px;z-index:2}
+#segCanvas,#scaleCanvas{transition:opacity .25s}
+.viewer.picking{cursor:crosshair}
+.measure{display:grid;gap:1px;background:var(--line);border-radius:10px;overflow:hidden;margin:12px 0 8px}
+.mrow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;background:var(--cloud);padding:9px 12px;font-size:13px;color:var(--muted)}
+.mrow b{font-family:var(--mono);font-size:14px;color:var(--navy);font-variant-numeric:tabular-nums}
+.scalebar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
+.scalebar input{width:72px;padding:7px 9px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--mono)}
 .cam-controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;font-size:13px;color:var(--muted)}
 .cam-controls select{padding:6px 8px;border-radius:8px;border:1px solid var(--line)}
 .cam-controls input[type=range]{flex:1;min-width:80px;accent-color:var(--teal)}
@@ -256,17 +263,36 @@ footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 3
   <!-- STEP 2: ANALYSE -->
   <section class="card hidden" id="analyse">
     <div class="step"><span class="n">2</span><h3>AI classification</h3><span class="hint" id="timing"></span></div>
-    <div class="viewer">
+    <div class="viewer" id="viewer">
       <span class="badge" id="imgName">image</span>
       <canvas id="imgCanvas" width="448" height="448"></canvas>
+      <canvas id="segCanvas" width="448" height="448"></canvas>
       <canvas id="camCanvas" width="448" height="448" style="opacity:0"></canvas>
+      <canvas id="scaleCanvas" width="448" height="448"></canvas>
     </div>
     <div class="cam-controls">
-      <div class="seg" id="camToggle"><button data-v="0" class="on">Image</button><button data-v="1">Grad-CAM</button></div>
-      <select id="camTarget"></select>
-      <input type="range" id="camAlpha" min="0" max="100" value="55" title="heatmap opacity">
+      <div class="seg" id="camToggle"><button data-v="0">Photo</button><button data-v="1" class="on">Wound outline</button><button data-v="2">Grad-CAM</button></div>
+      <select id="camTarget" class="hidden"></select>
+      <input type="range" id="camAlpha" min="0" max="100" value="55" title="overlay opacity">
     </div>
-    <div class="status" id="status"><span class="spinner"></span><span id="statusText">Loading model…</span></div>
+    <div class="note hidden" id="caution2"><b>Read the heatmap as a sanity check, not as a wound locator.</b> Grad&#8209;CAM reads a 7&#160;×&#160;7 grid over the input, so each cell covers about 2&#160;% of it. Measured on 190 held&#8209;out FUSeg images, the hottest point of the whole&#8209;photo model's heatmap fell inside the true ulcer in only 13&#160;% of cases. It tells you whether the model is reading the foot or the room. The outline, not the heatmap, is what localises the wound.</div>
+    <div class="status" id="status"><span class="spinner"></span><span id="statusText">Loading models…</span></div>
+
+    <!-- wound measurement, from the segmentation model -->
+    <div id="woundPanel" class="hidden">
+      <div class="measure">
+        <div class="mrow"><span>Wound detected</span><b id="wArea">—</b></div>
+        <div class="mrow"><span>Longest dimension</span><b id="wDiam">—</b></div>
+        <div class="mrow"><span>Segmentation confidence</span><b id="wConf">—</b></div>
+      </div>
+      <div class="scalebar">
+        <button class="btn btn-ghost btn-sm" id="scaleBtn">Set scale with the ruler</button>
+        <input id="scaleCm" type="number" step="0.1" min="0.1" value="1" title="real length in cm">
+        <span class="small">cm — then tap the two ends of that length on the photo</span>
+      </div>
+      <div class="note teal" id="segNote"></div>
+    </div>
+
     <div id="results" class="hidden">
       <div class="cam-controls" style="margin:0 0 10px">
         <span class="small">Classification scheme</span>
@@ -361,8 +387,9 @@ footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 3
   <section class="card">
     <div class="step"><span class="n">i</span><h3>Model card (abridged)</h3></div>
     <dl class="modelcard" id="modelCard">
-      <dt>Approach</dt><dd>Transfer learning: MobileNetV2 pre‑trained on ImageNet (1.4 M images), backbone frozen, two new softmax heads trained on foot‑ulcer photographs, then the top 30 layers fine‑tuned at a low learning rate. Exported to TensorFlow.js and executed entirely in the browser; no image leaves the device.</dd>
-      <dt>Explainability</dt><dd>Grad‑CAM on the final 7×7×1280 convolutional map (<code>out_relu</code>), computed live in the browser for the selected class.</dd>
+      <dt>Approach</dt><dd>Two models run in sequence, both transfer‑learned from ImageNet and both executed in the browser, so no image leaves the device. <b>Segmentation</b>: a MobileNetV2‑UNet trained on the FUSeg expert wound masks outlines the ulcer and measures it. <b>Classification</b>: a MobileNetV2 with two softmax heads, trained on wound crops taken from those masks, then fine‑tuned over its top 30 layers.</dd>
+      <dt>Why segmentation comes first</dt><dd>On the FUSeg validation split the ulcer occupies a median 1.3 % of the photograph. Grad‑CAM reads a 7×7 grid, so no cell resolves finer than about 2 % of the image, and the heatmap's peak fell inside the true ulcer in only 13 % of 190 held‑out images. Cropping to the segmented wound raised severity accuracy from 84 % to 92.5 %. Segmentation answers "where"; classification answers "what".</dd>
+      <dt>Explainability</dt><dd>The wound outline and its measured area are the primary explanation. Grad‑CAM on the final convolutional map (<code>out_relu</code>) is retained as a sanity check on whether the model reads the wound or the room, and is drawn only inside the crop it actually explains.</dd>
       <dt>Training data</dt><dd id="mcData">Loading…</dd>
       <dt>Labels — important caveat</dt><dd>Demonstrator labels are <b>weak labels</b> derived from expert wound masks (wound area for depth/severity) and wound‑bed colour features (slough, eschar for infection). They are not clinician‑adjudicated or culture‑confirmed. Step 3 and the Train tab exist precisely to replace them.</dd>
       <dt>Held‑out performance (against the weak labels)</dt><dd id="mcPerf">Loading…</dd>
@@ -455,7 +482,7 @@ footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 3
 
 <script>
 /* ═══════════════════════════ constants ═══════════════════════════ */
-const IMG = 224, EMB = 1280;
+const IMG = 224, EMB = 1280, SEG = 224, ROI_MARGIN = 0.6;   // ROI_MARGIN matches ml/train_segmentation.py
 const GRADE_LBL = ['Mild (Grade 1‑like)', 'Severe (Grade 3‑like)'];
 const INF_LBL = ['No infection (Stage A)', 'Infection suspected (Stage B)'];
 const TEXAS_DESC = {
@@ -475,6 +502,9 @@ let base = null;                 // demo LayersModel (also supplies the shared M
 let backbone = null;             // tf.model input -> out_relu  (shared by demo + in-browser heads)
 let active = null;               // { kind:'demo'|'head'|'full', name, classes, conv, tail, gradLayer, inputRange, scheme }
 let currentImg = null, currentName = '', lastPred = null, lastActs = null, isch = '0', scheme = 'texas', camManual = false;
+let segModel = null, segMetrics = null, lastSeg = null, lastBox = null;   // lastBox = the crop actually classified
+let pxPerCm = null, picking = false, pickPts = [];                        // optional ruler scale
+const VIEW = 448;                                                          // viewer canvas size
 
 /* ═══════════════════════════ gate + tabs ═══════════════════════════ */
 const gateCheck = () => { $('enter').disabled = !($('ack1').checked && $('ack2').checked); };
@@ -500,30 +530,69 @@ function splitAt(model, layerName){            // generic Grad-CAM split for a l
   let y = inp; for (let i = idx + 1; i < layers.length; i++) y = layers[i].apply(y);
   return { conv, tail: tf.model({inputs: inp, outputs: y}) };
 }
+function twoHeadEntry(model, name, wantsRoi, metrics){
+  /* Both the whole-frame and the wound-crop classifier share this shape: MobileNetV2 → GAP → dropout → two softmax heads. */
+  const conv = model.getLayer('out_relu');
+  const convModel = tf.model({inputs: model.inputs, outputs: conv.output});
+  const tailIn = tf.input({shape: conv.output.shape.slice(1)});
+  let y = model.getLayer('gap').apply(tailIn); y = model.getLayer('drop').apply(y);
+  const tail = tf.model({inputs: tailIn, outputs: [model.getLayer('grade').apply(y), model.getLayer('infection').apply(y)]});
+  return { kind:'demo', name, classes:null, conv: convModel, tail, inputRange:'[-1,1]', scheme:'texas', wantsRoi, metrics };
+}
 async function loadModel(){
   const t0 = performance.now();
   try { if (!(await tf.setBackend('webgl'))) await tf.setBackend('cpu'); } catch(e){ await tf.setBackend('cpu'); }
   await tf.ready();
+
+  // 1 · whole-frame classifier (kept for comparison; this is the model whose Grad-CAM misses the wound)
   base = await tf.loadLayersModel('model/model.json');
-  const conv = base.getLayer('out_relu');
-  backbone = tf.model({inputs: base.inputs, outputs: conv.output});
-  const tailIn = tf.input({shape: conv.output.shape.slice(1)});
-  let y = base.getLayer('gap').apply(tailIn); y = base.getLayer('drop').apply(y);
-  const tail = tf.model({inputs: tailIn, outputs: [base.getLayer('grade').apply(y), base.getLayer('infection').apply(y)]});
-  const demo = { kind:'demo', name:'Demo model (FUSeg weak labels)', classes:null, conv: backbone, tail, inputRange:'[-1,1]', scheme:'texas' };
+  const demo = twoHeadEntry(base, 'Whole-photo model', false);
+  backbone = demo.conv;                       // the Train tab embeds whole photos with this backbone
   tf.tidy(() => backbone.predict(tf.zeros([1, IMG, IMG, 3])));
-  $('modelPill').textContent = `model: ready · ${tf.getBackend()} · ${((performance.now()-t0)/1000).toFixed(1)}s`;
-  $('modelPill').classList.add('ok');
+  registry[demo.name] = demo;
+  let preferred = demo;
+
+  // 2 · wound-crop classifier, trained on segmentation output
   try {
-    const m = await (await fetch('model/metrics.json')).json();
-    $('mcData').textContent = `${m.train_images} training and ${m.val_images} held‑out validation photographs (FUSeg 2021), 224×224 px, augmented with flips, rotation, zoom, brightness and contrast.`;
-    const p = m.validation_on_weak_labels;
-    $('mcPerf').textContent = `Depth/severity head: AUC ${p.grade.auc.toFixed(2)}, accuracy ${(p.grade.accuracy*100).toFixed(0)} % (n=${p.grade.n}). Infection head: AUC ${p.infection.auc.toFixed(2)}, accuracy ${(p.infection.accuracy*100).toFixed(0)} % (n=${p.infection.n}). These numbers describe agreement with the weak labels, not clinical accuracy.`;
-  } catch(e){ $('mcPerf').textContent = 'metrics.json not found.'; }
-  registry.demo = demo; setActive(demo);
+    const roiModel = await tf.loadLayersModel('model-roi/model.json');
+    let m = null;
+    try { m = await (await fetch('model-roi/metrics.json')).json(); } catch(e){ /* metrics are optional */ }
+    const roi = twoHeadEntry(roiModel, 'Wound-crop model', true, m && m.validation_on_weak_labels);
+    registry[roi.name] = roi; preferred = roi;
+  } catch(e){ console.warn('wound-crop model unavailable', e); }
+
+  // 3 · segmentation model — this is what actually localises the ulcer
+  try {
+    segModel = await tf.loadLayersModel('seg/model.json');
+    tf.tidy(() => segModel.predict(tf.zeros([1, SEG, SEG, 3])));
+  } catch(e){ segModel = null; console.warn('segmentation model unavailable', e); }
+  try { segMetrics = await (await fetch('seg/metrics.json')).json(); } catch(e){ segMetrics = null; }
+
+  $('modelPill').textContent = `ready · ${tf.getBackend()} · ${((performance.now()-t0)/1000).toFixed(1)}s`;
+  $('modelPill').classList.add('ok');
+  if (!segModel){
+    preferred = demo;
+    $('camToggle').querySelector('[data-v="1"]').disabled = true;
+    $('segNote').textContent = 'Segmentation model not found; falling back to whole-photo classification.';
+  }
+  fillModelCard();
+  setActive(preferred);
   await loadSavedHeads();
   $('trainBtn').disabled = !dataReady();
   if (currentImg) runInference();
+}
+async function fillModelCard(){
+  try {
+    const m = await (await fetch('model/metrics.json')).json();
+    const p = m.validation_on_weak_labels;
+    $('mcData').textContent = `${m.train_images} training and ${m.val_images} held‑out validation photographs (FUSeg 2021), 224×224 px, augmented with flips, rotation, zoom, brightness and contrast.`;
+    let txt = `Whole-photo classifier — severity AUC ${p.grade.auc.toFixed(2)}, accuracy ${(p.grade.accuracy*100).toFixed(0)} %; infection AUC ${p.infection.auc.toFixed(2)}, accuracy ${(p.infection.accuracy*100).toFixed(0)} %.`;
+    const r = registry['Wound-crop model'];
+    if (r && r.metrics) txt += ` Wound-crop classifier — severity AUC ${r.metrics.grade.auc.toFixed(2)}, accuracy ${(r.metrics.grade.accuracy*100).toFixed(0)} %; infection AUC ${r.metrics.infection.auc.toFixed(2)}, accuracy ${(r.metrics.infection.accuracy*100).toFixed(0)} %. Cropping to the segmented wound is what accounts for the difference.`;
+    if (segMetrics) txt += ` Segmentation — Dice ${segMetrics.held_out.dice.toFixed(2)}, IoU ${segMetrics.held_out.iou.toFixed(2)} on ${segMetrics.held_out.n} held-out images.`;
+    txt += ' All figures describe agreement with the weak labels, not clinical accuracy.';
+    $('mcPerf').textContent = txt;
+  } catch(e){ $('mcPerf').textContent = 'metrics.json not found.'; }
 }
 const registry = {};                                  // name -> model entry
 function setActive(entry){
@@ -546,12 +615,14 @@ function useImage(img, name){
   const c = $('imgCanvas'), ctx = c.getContext('2d');
   const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height, s = Math.min(w, h);
   ctx.drawImage(img, (w - s)/2, (h - s)/2, s, s, 0, 0, c.width, c.height);   // centre square crop
-  $('camCanvas').getContext('2d').clearRect(0,0,448,448);
-  setCam(0);
+  [$('camCanvas'), $('segCanvas'), $('scaleCanvas')].forEach(k => k.getContext('2d').clearRect(0, 0, VIEW, VIEW));
+  lastSeg = null; lastBox = null; pickPts = []; picking = false; $('viewer').classList.remove('picking');
+  pxPerCm = null; $('scaleBtn').textContent = 'Set scale with the ruler';   // a scale belongs to one photograph only
+  setCam(segModel ? 1 : 0);
   $('analyse').classList.remove('hidden'); $('truth').classList.remove('hidden');
-  $('results').classList.add('hidden'); $('status').classList.remove('hidden');
+  $('results').classList.add('hidden'); $('woundPanel').classList.add('hidden'); $('status').classList.remove('hidden');
   $('analyse').scrollIntoView({behavior:'smooth', block:'start'});
-  if (backbone) runInference(); else $('statusText').textContent = 'Loading model…';
+  if (backbone) runInference(); else $('statusText').textContent = 'Loading models…';
 }
 function fileToImage(file, name){
   const url = URL.createObjectURL(file); const img = new Image();
@@ -564,6 +635,91 @@ document.querySelectorAll('.sample').forEach(b => b.onclick = () => {
   const img = new Image(); img.onload = () => useImage(img, b.dataset.name); img.src = b.dataset.src;
 });
 
+/* ═══════════════════════════ segmentation ═══════════════════════════ */
+async function segment(){
+  if (!segModel) return null;
+  const x = tf.tidy(() => tf.browser.fromPixels($('imgCanvas')).resizeBilinear([SEG, SEG]).toFloat().div(127.5).sub(1).expandDims(0));
+  const p = segModel.predict(x); x.dispose();
+  const prob = await p.data(); p.dispose();
+  return largestBlob(prob);
+}
+function largestBlob(prob, thresh = 0.5){
+  /* Threshold, then keep only the largest 4-connected region. Without this the mask picks up
+     speckle on drapes and gloves, and the bounding box then spans the whole photograph. */
+  const N = SEG, lab = new Int32Array(N * N), stack = [];
+  let comp = 0, best = 0, bestSize = 0;
+  for (let s = 0; s < N * N; s++){
+    if (prob[s] <= thresh || lab[s]) continue;
+    comp++; let size = 0; lab[s] = comp; stack.push(s);
+    while (stack.length){
+      const q = stack.pop(); size++;
+      const x = q % N, y = (q - x) / N;
+      if (x > 0     && prob[q-1] > thresh && !lab[q-1]){ lab[q-1] = comp; stack.push(q-1); }
+      if (x < N - 1 && prob[q+1] > thresh && !lab[q+1]){ lab[q+1] = comp; stack.push(q+1); }
+      if (y > 0     && prob[q-N] > thresh && !lab[q-N]){ lab[q-N] = comp; stack.push(q-N); }
+      if (y < N - 1 && prob[q+N] > thresh && !lab[q+N]){ lab[q+N] = comp; stack.push(q+N); }
+    }
+    if (size > bestSize){ bestSize = size; best = comp; }
+  }
+  if (!bestSize) return { found: false, areaFrac: 0, conf: 0 };
+  const mask = new Uint8Array(N * N);
+  let x0 = N, y0 = N, x1 = -1, y1 = -1, psum = 0;
+  for (let i = 0; i < N * N; i++) if (lab[i] === best){
+    mask[i] = 1; psum += prob[i];
+    const x = i % N, y = (i - x) / N;
+    if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  return { found: true, mask, sizePx: bestSize, areaFrac: bestSize / (N * N), conf: psum / bestSize,
+           bbox: [x0, y0, x1 + 1, y1 + 1], diamPx: Math.max(x1 - x0 + 1, y1 - y0 + 1) };
+}
+function roiBox(seg){
+  /* Wound bounding box, squared off and expanded by ROI_MARGIN on each side, in viewer coordinates. */
+  const k = VIEW / SEG, [x0, y0, x1, y1] = seg.bbox.map(v => v * k);
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const s = Math.min(Math.max(x1 - x0, y1 - y0) * (1 + 2 * ROI_MARGIN), VIEW);
+  return { l: Math.max(0, Math.min(cx - s/2, VIEW - s)), t: Math.max(0, Math.min(cy - s/2, VIEW - s)), s };
+}
+function cropCanvas(box){
+  const c = document.createElement('canvas'); c.width = c.height = IMG;
+  c.getContext('2d').drawImage($('imgCanvas'), box.l, box.t, box.s, box.s, 0, 0, IMG, IMG);
+  return c;
+}
+function drawSegOverlay(seg, box){
+  const ctx = $('segCanvas').getContext('2d'); ctx.clearRect(0, 0, VIEW, VIEW);
+  if (!seg || !seg.found) return;
+  const N = SEG, k = VIEW / N, img = ctx.createImageData(VIEW, VIEW), m = seg.mask;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
+    const i = y * N + x; if (!m[i]) continue;
+    const edge = (x === 0 || !m[i-1]) || (x === N-1 || !m[i+1]) || (y === 0 || !m[i-N]) || (y === N-1 || !m[i+N]);
+    const [r, g, b, a] = edge ? [28, 184, 160, 255] : [28, 184, 160, 64];   // teal outline, translucent fill
+    for (let dy = 0; dy < k; dy++) for (let dx = 0; dx < k; dx++){
+      const o = (((y * k + dy) | 0) * VIEW + ((x * k + dx) | 0)) * 4;
+      img.data[o] = r; img.data[o+1] = g; img.data[o+2] = b; img.data[o+3] = a;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  if (box){                                            // show exactly what the classifier was given
+    ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 2; ctx.setLineDash([7, 5]);
+    ctx.strokeRect(box.l, box.t, box.s, box.s); ctx.restore();
+  }
+}
+function showWound(seg){
+  $('woundPanel').classList.toggle('hidden', !segModel);
+  if (!segModel) return;
+  if (!seg || !seg.found){
+    $('wArea').textContent = 'none found'; $('wDiam').textContent = '—'; $('wConf').textContent = '—';
+    $('segNote').textContent = 'No wound was segmented, so the whole photograph was classified instead. Re-shoot closer, with the ulcer filling about a third of the frame.';
+    return;
+  }
+  const k = VIEW / SEG;
+  const areaCm2 = pxPerCm ? seg.sizePx * k * k / (pxPerCm * pxPerCm) : null;
+  const diamCm = pxPerCm ? seg.diamPx * k / pxPerCm : null;
+  $('wArea').textContent = areaCm2 !== null ? `${areaCm2.toFixed(2)} cm² (${(seg.areaFrac*100).toFixed(1)} % of frame)` : `${(seg.areaFrac*100).toFixed(1)} % of frame`;
+  $('wDiam').textContent = diamCm !== null ? `${diamCm.toFixed(1)} cm` : `${seg.diamPx} px — set a scale for cm`;
+  $('wConf').textContent = `${(seg.conf*100).toFixed(0)} %`;
+  $('segNote').textContent = 'The outline comes from a segmentation model trained on expert wound masks, which is what localises the ulcer. The dashed square is the crop passed to the classifier.';
+}
+
 /* ═══════════════════════════ inference ═══════════════════════════ */
 function preprocess(src, inputRange){
   return tf.tidy(() => {
@@ -572,11 +728,16 @@ function preprocess(src, inputRange){
   });
 }
 async function runInference(){
-  $('statusText').textContent = 'Analysing on device…';
-  await sleep(30);
   const t0 = performance.now();
+  $('statusText').textContent = segModel ? 'Segmenting the wound…' : 'Analysing on device…';
+  $('status').classList.remove('hidden');
+  await sleep(30);
+  lastSeg = await segment();
+  lastBox = (active.wantsRoi && lastSeg && lastSeg.found) ? roiBox(lastSeg) : null;
+  drawSegOverlay(lastSeg, lastBox); showWound(lastSeg);
+  $('statusText').textContent = 'Classifying…'; await sleep(20);
   if (lastActs) lastActs.dispose();
-  const x = preprocess($('imgCanvas'), active.inputRange);
+  const x = preprocess(lastBox ? cropCanvas(lastBox) : $('imgCanvas'), active.inputRange);
   lastActs = active.conv.predict(x);
   const out = tf.tidy(() => active.tail.predict(lastActs));
   x.dispose();
@@ -687,18 +848,56 @@ async function drawGradCam(){
     return tf.image.resizeBilinear(m.expandDims(-1), [448, 448]).squeeze();
   });
   const data = await cam.data(); cam.dispose();
-  const c = $('camCanvas'), ctx = c.getContext('2d'), img = ctx.createImageData(448, 448);
+  /* The heatmap explains whatever was fed to the classifier. When that was a wound crop, the map is
+     drawn into the crop rectangle only — painting it over the whole photo would misplace the heat. */
+  const off = document.createElement('canvas'); off.width = off.height = VIEW;
+  const octx = off.getContext('2d'), img = octx.createImageData(VIEW, VIEW);
   for (let i = 0; i < data.length; i++){
     const [r, g, b] = jet(data[i]); const o = i * 4;
     img.data[o] = r; img.data[o+1] = g; img.data[o+2] = b; img.data[o+3] = Math.min(255, Math.max(0, (data[i] - 0.15) * 1.3 * 255));
   }
-  ctx.putImageData(img, 0, 0);
+  octx.putImageData(img, 0, 0);
+  const ctx = $('camCanvas').getContext('2d'); ctx.clearRect(0, 0, VIEW, VIEW);
+  if (lastBox) ctx.drawImage(off, 0, 0, VIEW, VIEW, lastBox.l, lastBox.t, lastBox.s, lastBox.s);
+  else ctx.drawImage(off, 0, 0);
 }
 function jet(v){ const r = Math.max(0, Math.min(1, 1.5 - Math.abs(4*v - 3))), g = Math.max(0, Math.min(1, 1.5 - Math.abs(4*v - 2))), b = Math.max(0, Math.min(1, 1.5 - Math.abs(4*v - 1))); return [r*255, g*255, b*255]; }
-function setCam(v){ $('camToggle').querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.v === v)); $('camCanvas').style.opacity = v ? ($('camAlpha').value/100) : 0; }
+function setCam(v){
+  $('camToggle').querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.v === v));
+  const a = $('camAlpha').value / 100;
+  $('segCanvas').style.opacity = v === 1 ? 1 : 0;
+  $('camCanvas').style.opacity = v === 2 ? a : 0;
+  $('camTarget').classList.toggle('hidden', v !== 2);
+  $('caution2').classList.toggle('hidden', v !== 2);
+}
 $('camToggle').querySelectorAll('button').forEach(b => b.onclick = () => setCam(+b.dataset.v));
-$('camAlpha').oninput = () => { if ($('camToggle').querySelector('.on').dataset.v === '1') $('camCanvas').style.opacity = $('camAlpha').value/100; };
-$('camTarget').onchange = async () => { camManual = true; await drawGradCam(); setCam(1); };
+$('camAlpha').oninput = () => { if (+$('camToggle').querySelector('.on').dataset.v === 2) $('camCanvas').style.opacity = $('camAlpha').value/100; };
+$('camTarget').onchange = async () => { camManual = true; await drawGradCam(); setCam(2); };
+
+/* ═══════════════════════════ ruler scale (optional) ═══════════════════════════ */
+$('scaleBtn').onclick = () => {
+  picking = !picking; pickPts = [];
+  $('viewer').classList.toggle('picking', picking);
+  $('scaleCanvas').getContext('2d').clearRect(0, 0, VIEW, VIEW);
+  $('scaleBtn').textContent = picking ? 'Tap the two ends…' : (pxPerCm ? 'Reset scale' : 'Set scale with the ruler');
+};
+$('viewer').addEventListener('click', e => {
+  if (!picking) return;
+  const r = $('viewer').getBoundingClientRect();
+  pickPts.push([(e.clientX - r.left) / r.width * VIEW, (e.clientY - r.top) / r.height * VIEW]);
+  const ctx = $('scaleCanvas').getContext('2d');
+  ctx.clearRect(0, 0, VIEW, VIEW); ctx.strokeStyle = '#F4A623'; ctx.fillStyle = '#F4A623'; ctx.lineWidth = 3;
+  pickPts.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 5, 0, 7); ctx.fill(); });
+  if (pickPts.length === 2){
+    ctx.beginPath(); ctx.moveTo(...pickPts[0]); ctx.lineTo(...pickPts[1]); ctx.stroke();
+    const d = Math.hypot(pickPts[0][0] - pickPts[1][0], pickPts[0][1] - pickPts[1][1]);
+    const cm = parseFloat($('scaleCm').value) || 1;
+    if (d < 5) { toast('Those points are too close together'); pickPts = []; return; }
+    pxPerCm = d / cm; picking = false; $('viewer').classList.remove('picking');
+    $('scaleBtn').textContent = 'Reset scale';
+    showWound(lastSeg); toast(`Scale set: ${pxPerCm.toFixed(0)} px per cm`);
+  }
+});
 
 /* ═══════════════════════════ ground truth + case log ═══════════════════════════ */
 const LOG_KEY = 'dfu_vision_cases_v1';

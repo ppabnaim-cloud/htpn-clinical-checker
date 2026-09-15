@@ -80,34 +80,77 @@ notebook under an institutional account, or run the notebook on an institutional
 ## How it works
 
 ```
-phone camera / gallery / sample  ─►  centre crop 224×224, scale to [-1,1]
+phone camera / gallery / sample  ─►  centre crop, 224×224
         │
         ▼
-MobileNetV2 (ImageNet weights, TensorFlow.js in the browser)
-        │ out_relu  (7×7×1280 feature map)  ──►  Grad-CAM: gradient of the chosen class score w.r.t. this map
+1 · SEGMENTATION — MobileNetV2-UNet trained on the FUSeg expert masks
+        │  sigmoid mask ─► threshold ─► largest connected region
+        │  outputs: wound outline, area (% of frame, or cm² if a ruler scale is set), longest dimension
         ▼
-global average pool ─► dropout ─► two softmax heads
+2 · CROP — wound bounding box, squared off, expanded 60 % on each side
+        ▼
+3 · CLASSIFICATION — MobileNetV2, two softhead outputs, trained on wound crops
         ├─ grade      : mild (Texas Grade 1-like) vs severe (Texas Grade 3-like)
         └─ infection  : none (Stage A) vs suspected (Stage B)
-        │
+        │  Grad-CAM available as a sanity check, drawn only inside the crop it explains
         ▼
-Texas cell = AI grade × (AI infection + clinician ischaemia) ─► e.g. 3B
-        │
+Texas cell = grade × (infection + clinician ischaemia)   ·   or Wagner grade
         ▼
-ground truth form (clinician grade/stage, probe-to-bone, C&S organisms + sensitivities) ─► local case log ─► CSV export
+ground truth form (clinician grade/stage, probe-to-bone, C&S organisms) ─► case log ─► CSV
 ```
 
-* **Transfer learning, not training from scratch.** MobileNetV2 pre-trained on ImageNet; the backbone is frozen while
-  the two new heads are trained, then the top 30 layers are fine-tuned at a low learning rate (2e-5). Total CPU training
-  time is about five minutes on four cores.
-* **On-device inference.** The exported TensorFlow.js model is 4.5 MB (float16). Inference takes roughly 0.5–1.3 s on
-  WebGL; Grad-CAM adds a fraction of a second. Nothing is uploaded, which matters for patient images.
-* **Explainability.** Grad-CAM (Selvaraju et al., 2017) is computed live in the browser by splitting the network at the
-  last convolutional map and back-propagating the selected class score. The clinician can switch the explanation target
-  between *severe*, *mild* and *infection*.
-* **Texas classification.** Grade 0 and Grade 2 are deliberately greyed out: a photograph cannot see tendon, capsule or
-  bone, so the depth head only separates a superficial from a deep/extensive appearance. Ischaemia (Stage C/D) is a
-  clinician input.
+### Why segmentation comes first
+
+Grad-CAM was the original explainability mechanism, and measurement showed it does not work for this task.
+On the 190 FUSeg validation images that carry expert masks:
+
+| Setup | Median wound size in frame | Heat on wound vs chance | Hottest point inside wound |
+|---|---|---|---|
+| Whole photo | 1.3 % | 2.8× | 13 % of images |
+| Cropped to the wound | 9.0 % | 3.1× | 47 % of images |
+| Retrained on wound crops | 9.0 % | 1.8× | 21 % of images |
+
+The cause is geometric. Grad-CAM reads the final 7×7 convolutional grid, so no cell resolves finer than about
+2 % of the image, and the median ulcer is smaller than a single cell. Cropping improves it but does not fix it,
+and a model retrained on crops legitimately spreads its attention onto the peri-wound skin, where erythema is a
+real infection sign. Saliency maps are known to be unreliable localisers in medical imaging; this dataset
+demonstrates it numerically.
+
+So the app separates the two questions. **Segmentation answers "where"** and produces an outline and a
+measurement a clinician can use serially. **Classification answers "what"**, on the cropped wound. Cropping also
+raised severity accuracy from 84 % to 92.5 % and infection accuracy from 75 % to 81.5 %. Grad-CAM is retained
+only as a check on whether the model is reading the wound or the room, and the app says so on screen.
+
+Reproduce the audit with `ml/audit_gradcam.py`.
+
+### Models shipped
+
+| Path | Task | Size | Held-out performance |
+|---|---|---|---|
+| `model/` | whole-photo classifier (two heads) | 4.5 MB | severity AUC 0.93, infection AUC 0.81 |
+| `model-roi/` | wound-crop classifier (two heads) | 4.5 MB | severity AUC 0.96 / 92.5 %, infection AUC 0.83 / 81.5 % |
+| `seg/` | wound segmentation (MobileNetV2-UNet) | 12 MB | Dice 0.85 mean / 0.89 median, IoU 0.76, predicted centroid inside the true ulcer in 89 % of 190 held-out images |
+
+All three are float16 TensorFlow.js models and run in the browser. Total first load is about 21 MB, cached
+thereafter, and a full pass (segment, crop, classify, Grad-CAM) takes 2.5–4 s in a software renderer. A phone
+GPU is faster. If the payload matters on mobile data, the segmentation decoder is the place to shrink first.
+
+**Localisation, before and after.** Grad-CAM's hottest point landed inside the true ulcer in 13 % of held-out
+images. The segmentation model's predicted centroid lands inside it in 89 %. That is the whole reason for the
+change.
+
+**Where it still fails.** Segmentation under-segments sloughy wounds with indistinct borders: on sample B the
+model traces the upper wound bed and misses the yellow slough below it, reporting roughly a third of the true
+area. Mean Dice of 0.85 means most images are good and some are not, so the outline is a clinician-checkable
+proposal, not a measurement to trust unexamined.
+
+### Wound measurement in centimetres
+
+The segmentation model measures the wound in pixels. To convert to cm², tap **Set scale with the ruler**, enter
+the real length of a segment of the paper ruler in the photograph, then tap its two ends. Area and longest
+dimension are then reported in centimetres. Without a scale the app reports area as a percentage of the frame,
+which is only comparable between photographs taken at the same distance — which is what the acquisition
+protocol is for.
 
 ## Training data and labels — read this before presenting
 
@@ -155,16 +198,22 @@ network can use your machine's IP). Camera capture requires HTTPS or localhost, 
 | Path | Purpose |
 |---|---|
 | `index.html` | The whole app: disclaimer gate, capture, inference, Grad-CAM, Texas grid, ground truth, case log, model card |
-| `model/` | TensorFlow.js layers model (`model.json` + float16 weight shards) and `metrics.json` |
+| `model/` | whole-photo classifier, TensorFlow.js float16 |
+| `model-roi/` | wound-crop classifier, TensorFlow.js float16 |
+| `seg/` | wound segmentation model, TensorFlow.js float16 |
 | `samples/` | Three held-out sample photographs (cropped, de-identified, from FUSeg 2021) |
 | `vendor/tf.min.js` | TensorFlow.js 4.22.0 (Apache-2.0), vendored so the app has no runtime CDN dependency |
 | `demo/` | Recorded walk-through video |
 | `../ml/DFU_finetune_colab.ipynb` | GPU fine-tuning notebook (Drive or zip upload → TF.js export) |
+| `../ml/train_segmentation.py` | trains the wound segmentation model on the FUSeg masks |
+| `../ml/audit_gradcam.py` | reproduces the Grad-CAM localisation audit in the table above |
+| `../docs/protocol-notes.html` | methods companion: sample size, label granularity, split design, labelling form |
 | `../ml/` | Labelling, training/export and video-recording scripts |
 
 ## Roadmap for a real system (what the prototype is *not* yet)
 
-1. Prospective, protocol-compliant image collection with clinician-adjudicated Texas grade/stage and culture results.
-2. Wound segmentation first (the FUSeg masks make this feasible) so that classification runs on the wound, not the room.
-3. Calibration and abstention thresholds; external validation on Malaysian skin tones and camera hardware.
-4. Server-side model registry and audit trail; integration with the clinical information system; MDA regulatory pathway.
+1. Prospective, protocol-compliant image collection with clinician-adjudicated grades and culture results, split
+   by patient rather than by image. See `../docs/protocol-notes.html` for the sample size and endpoint decisions.
+2. Calibration (slope, intercept, Brier score) and an abstention threshold, neither of which the prototype has.
+3. External validation in primary care, on Malaysian skin tones and on the camera hardware actually in clinics.
+4. Server-side model registry and audit trail; integration with the clinical information system; MDA pathway.

@@ -1,0 +1,24 @@
+{
+ "task": "wound segmentation",
+ "architecture": "MobileNetV2-UNet (ImageNet encoder, 4 skip connections)",
+ "input": [
+  224,
+  224,
+  3
+ ],
+ "input_range": "[-1,1]",
+ "output": "single-channel sigmoid mask",
+ "train_images": 787,
+ "val_images": 190,
+ "held_out": {
+  "dice": 0.8478134375474918,
+  "dice_median": 0.894044689924681,
+  "iou": 0.7603342437920007,
+  "centroid_in_wound": 0.8894736842105263,
+  "mean_predicted_area_frac": 0.022555132250268527,
+  "n": 190
+ },
+ "data": "FUSeg 2021 (AZH Wound and Vascular Center); Wang et al., Sci Rep 2020;10:21897",
+ "minutes": 17.6,
+ "note": "Exported without any Lambda layer; TensorFlow.js cannot deserialise one."
+}

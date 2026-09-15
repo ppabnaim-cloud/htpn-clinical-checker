@@ -1,0 +1,41 @@
+{
+ "backbone": "MobileNetV2 (alpha 1.0, 224px, ImageNet weights)",
+ "heads": {
+  "grade": [
+   "mild",
+   "severe"
+  ],
+  "infection": [
+   "none",
+   "suspected"
+  ]
+ },
+ "gradcam_layer": "out_relu",
+ "input_range": "[-1,1]",
+ "trained_on": "wound-ROI crops (segmentation output, wound bounding box + 60 % margin)",
+ "train_images": 717,
+ "val_images": 171,
+ "validation_on_weak_labels": {
+  "grade": {
+   "auc": 0.963,
+   "accuracy": 0.925,
+   "n": 107
+  },
+  "infection": {
+   "auc": 0.834,
+   "accuracy": 0.815,
+   "n": 157
+  }
+ },
+ "compared_with_whole_frame_model": {
+  "grade": {
+   "auc": 0.927,
+   "accuracy": 0.841
+  },
+  "infection": {
+   "auc": 0.805,
+   "accuracy": 0.752
+  }
+ },
+ "label_note": "Weak labels derived from FUSeg masks + colour features (demonstrator only)."
+}

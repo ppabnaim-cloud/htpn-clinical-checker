@@ -1,0 +1,468 @@
+<title>DFU Methods Pack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ground:#FCFCFD; --panel:#FFFFFF; --sunk:#F2F4F7;
+  --ink:#101418; --body:#2C333D; --quiet:#66708A; --hair:#DEE2EA;
+  --indigo:#3B4A6B; --indigo-soft:#EAEDF4;
+  --amber:#8A5300; --amber-soft:#FBF1DF;
+  --crimson:#9F2D3A; --crimson-soft:#FBECEC;
+  --green:#1F6A4D; --green-soft:#E6F2EC;
+  --serif:'Spectral',Georgia,'Times New Roman',serif;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E1116; --panel:#161B22; --sunk:#1B222C;
+    --ink:#EAEEF4; --body:#C3CBD6; --quiet:#8B95A8; --hair:#272E38;
+    --indigo:#9FB3DC; --indigo-soft:#1A2231;
+    --amber:#E6B45F; --amber-soft:#2A2113;
+    --crimson:#EE8F98; --crimson-soft:#2C1618;
+    --green:#74C79F; --green-soft:#12241C;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E1116; --panel:#161B22; --sunk:#1B222C;
+  --ink:#EAEEF4; --body:#C3CBD6; --quiet:#8B95A8; --hair:#272E38;
+  --indigo:#9FB3DC; --indigo-soft:#1A2231;
+  --amber:#E6B45F; --amber-soft:#2A2113;
+  --crimson:#EE8F98; --crimson-soft:#2C1618;
+  --green:#74C79F; --green-soft:#12241C;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--body);font-family:var(--sans);font-size:16px;line-height:1.62;-webkit-font-smoothing:antialiased}
+.wrap{max-width:820px;margin:0 auto;padding-block:clamp(28px,6vw,64px);padding-left:20px;padding-right:20px}
+.prose{max-width:64ch}
+
+/* masthead */
+.mast{border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:8px}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--indigo);margin:0 0 12px}
+h1{font-family:var(--serif);font-weight:600;font-size:clamp(30px,5.4vw,44px);line-height:1.1;letter-spacing:-.015em;color:var(--ink);margin:0 0 12px;text-wrap:balance}
+.standfirst{font-family:var(--serif);font-size:clamp(17px,2.4vw,19.5px);line-height:1.5;color:var(--body);margin:0;max-width:58ch}
+.meta{display:flex;flex-wrap:wrap;gap:6px 22px;font-family:var(--mono);font-size:12px;color:var(--quiet);margin-top:18px}
+
+/* contents */
+nav.toc{margin:34px 0 8px;padding:18px 20px;background:var(--sunk);border-radius:10px}
+nav.toc h2{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--quiet);margin:0 0 10px;font-weight:500}
+nav.toc ol{margin:0;padding-left:20px;columns:2;column-gap:28px}
+@media (max-width:560px){nav.toc ol{columns:1}}
+nav.toc li{margin:3px 0;font-size:14.5px}
+nav.toc a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--hair)}
+nav.toc a:hover{border-bottom-color:var(--indigo);color:var(--indigo)}
+
+/* sections */
+section{margin-top:52px}
+.part{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--indigo);border-top:1px solid var(--hair);padding-top:12px;margin:64px 0 -18px}
+h2{font-family:var(--serif);font-weight:600;font-size:clamp(22px,3.4vw,28px);line-height:1.22;color:var(--ink);margin:0 0 4px;text-wrap:balance}
+h2 .num{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--quiet);display:block;margin-bottom:6px;letter-spacing:.06em}
+h3{font-family:var(--sans);font-weight:600;font-size:15px;color:var(--ink);margin:26px 0 6px;letter-spacing:.005em}
+p{margin:0 0 14px}
+a{color:var(--indigo)}
+strong{color:var(--ink);font-weight:600}
+code{font-family:var(--mono);font-size:.88em;background:var(--sunk);padding:1px 5px;border-radius:4px}
+ul,ol.steps{padding-left:22px;margin:0 0 14px}
+li{margin:5px 0}
+
+/* verdict block: the recommendation that follows from each section */
+.verdict{border-left:3px solid var(--green);background:var(--green-soft);padding:14px 18px;border-radius:0 8px 8px 0;margin:20px 0}
+.verdict .lab{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--green);display:block;margin-bottom:6px}
+.verdict p:last-child{margin-bottom:0}
+.risk{border-left:3px solid var(--crimson);background:var(--crimson-soft);padding:14px 18px;border-radius:0 8px 8px 0;margin:20px 0}
+.risk .lab{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--crimson);display:block;margin-bottom:6px}
+.risk p:last-child{margin-bottom:0}
+.aside{border-left:3px solid var(--amber);background:var(--amber-soft);padding:14px 18px;border-radius:0 8px 8px 0;margin:20px 0;font-size:14.5px}
+.aside .lab{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:6px}
+.aside p:last-child{margin-bottom:0}
+
+/* tables */
+.tw{overflow-x:auto;margin:20px 0;border:1px solid var(--hair);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+caption{caption-side:bottom;text-align:left;font-size:12.5px;color:var(--quiet);padding:10px 14px;line-height:1.5}
+th,td{padding:8px 14px;text-align:right;border-bottom:1px solid var(--hair);white-space:nowrap}
+thead th{background:var(--sunk);color:var(--ink);font-weight:600;font-size:12.5px;letter-spacing:.02em}
+tbody th{text-align:left;font-weight:500;color:var(--ink)}
+th:first-child,td:first-child{text-align:left}
+tbody tr:last-child th,tbody tr:last-child td{border-bottom:none}
+td.num{font-family:var(--mono)}
+tr.mark td,tr.mark th{background:var(--indigo-soft);font-weight:600;color:var(--ink)}
+
+/* case record form */
+.crf{background:var(--panel);border:1px solid var(--hair);border-radius:12px;padding:8px 0;margin-top:26px}
+.crf-head{padding:16px 22px 14px;border-bottom:2px solid var(--ink);display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:flex-end}
+.crf-head h3{margin:0;font-family:var(--serif);font-size:20px;font-weight:600}
+.crf-head span{font-family:var(--mono);font-size:11.5px;color:var(--quiet)}
+fieldset{border:none;border-bottom:1px solid var(--hair);margin:0;padding:16px 22px}
+fieldset:last-of-type{border-bottom:none}
+legend{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--indigo);padding:0;margin-bottom:10px;font-weight:500}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px 18px}
+.f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.f>span{font-size:12.5px;color:var(--quiet)}
+.f .line{border-bottom:1.5px dotted var(--hair);min-height:26px}
+.opts{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13.5px;color:var(--body);padding-top:2px}
+.opts label{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.box{width:13px;height:13px;border:1.5px solid var(--quiet);border-radius:3px;display:inline-block;flex-shrink:0}
+.minline{display:inline-block;width:54px;border-bottom:1.5px dotted var(--hair)}
+.opts em{font-style:normal;color:var(--quiet)}
+.wide{grid-column:1/-1}
+.hint{font-size:12.5px;color:var(--quiet);margin:8px 0 0;line-height:1.5}
+
+footer{margin-top:64px;border-top:1px solid var(--hair);padding-top:20px;font-size:13px;color:var(--quiet)}
+footer ol{padding-left:20px}
+footer li{margin:6px 0}
+
+@media print{
+  body{background:#fff;color:#000;font-size:10.5pt}
+  .wrap{max-width:none;padding:0}
+  nav.toc,.noprint{display:none}
+  section{margin-top:18pt;break-inside:avoid}
+  .part{margin:18pt 0 0}
+  .crf{border:none;padding:0}
+  fieldset{break-inside:avoid;padding:8pt 0}
+  .f .line{border-bottom:1px solid #666}
+  a{color:#000;text-decoration:none}
+}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <p class="eyebrow">Methods companion · DrPH proposal</p>
+  <h1>Six decisions to settle before the first photograph</h1>
+  <p class="standfirst">Sample size, label granularity and split design for the DFU infection classification study — worked through with numbers, plus a labelling form the sites can use.</p>
+  <div class="meta">
+    <span>Dr Naim Bin Abdul Malek</span>
+    <span>Companion to the DrPH brief proposal</span>
+    <span>Prepared 15 September 2026</span>
+  </div>
+</header>
+
+<nav class="toc noprint">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#s1">Split by patient, not by image</a></li>
+    <li><a href="#s2">What 2,000 images actually buys</a></li>
+    <li><a href="#s3">Six Wagner grades are out of reach</a></li>
+    <li><a href="#s4">Wagner 0 is excluded by your own criteria</a></li>
+    <li><a href="#s5">Where you recruit is not where you deploy</a></li>
+    <li><a href="#s6">Calibration, abstention and reporting standards</a></li>
+    <li><a href="#crf">Image labelling case record form</a></li>
+  </ol>
+</nav>
+
+<p class="part">Part A · Methods decisions</p>
+
+<section id="s1">
+  <h2><span class="num">Decision 1</span>Split by patient, not by image</h2>
+  <div class="prose">
+    <p>The proposal specifies “a minimum of 2,000 labelled DFU images” and never mentions how many patients those images come from. That single omission is the most consequential gap in the methods section.</p>
+    <p>A diabetic foot ulcer is photographed at successive visits, and often from more than one angle at a single visit. If a patient contributes six images and a random split scatters them across training, validation and test sets, the test set contains near-duplicates of training images. The model can score well by recognising the patient rather than the pathology, and the reported accuracy is then partly a measure of memorisation. Reviewers of medical imaging papers look for this first, and it is the flaw most often found.</p>
+  </div>
+  <div class="verdict">
+    <span class="lab">What to write instead</span>
+    <p>Randomise at the level of the <strong>patient</strong>, so that every image from one person falls entirely within one split. State the number of patients alongside the number of images at every point in the thesis, and report the mean and range of images per patient. Where a patient is photographed over several visits, decide in advance whether serial images count as independent observations; for the primary analysis they should not.</p>
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="num">Decision 2</span>What 2,000 images actually buys</h2>
+  <div class="prose">
+    <p>The 2,000-image target is justified in the proposal as “consistent with the benchmark established by the DFUC2020 dataset”. That is a dataset-size convention, not a sample size calculation, and an examiner is entitled to ask what precision it delivers. The calculation is straightforward for the binary infection task, because sensitivity and specificity are simple proportions.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <caption>Patients needed <em>per group</em> to estimate sensitivity to a given 95 % confidence half-width. The infected group sizes sensitivity; the non-infected group sizes specificity. Normal approximation, <code>n = 1.96² p(1−p) / d²</code>.</caption>
+      <thead><tr><th>True sensitivity</th><th>± 0.10</th><th>± 0.075</th><th>± 0.05</th><th>± 0.03</th></tr></thead>
+      <tbody>
+        <tr><th>0.75</th><td class="num">73</td><td class="num">129</td><td class="num">289</td><td class="num">801</td></tr>
+        <tr><th>0.80</th><td class="num">62</td><td class="num">110</td><td class="num">246</td><td class="num">683</td></tr>
+        <tr class="mark"><th>0.85</th><td class="num">49</td><td class="num">88</td><td class="num">196</td><td class="num">545</td></tr>
+        <tr><th>0.90</th><td class="num">35</td><td class="num">62</td><td class="num">139</td><td class="num">385</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>Taking 0.85 as the sensitivity worth planning for, roughly 196 infected and 196 non-infected patients give a confidence interval of plus or minus five percentage points on each. Because the proposal cites more than half of ulcers becoming infected, a cohort of around 400 patients reaches that precision without needing to enrich either arm.</p>
+    <p>The number of images then matters only through how many patients they represent.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <caption>2,000 images translated into patients, assuming 55 % of patients are infected. The final column is the 95 % half-width on sensitivity at a true value of 0.85.</caption>
+      <thead><tr><th>Images per patient</th><th>Patients</th><th>Infected</th><th>Precision on sensitivity</th></tr></thead>
+      <tbody>
+        <tr><th>1</th><td class="num">2,000</td><td class="num">1,100</td><td class="num">± 0.021</td></tr>
+        <tr><th>2</th><td class="num">1,000</td><td class="num">550</td><td class="num">± 0.030</td></tr>
+        <tr class="mark"><th>4</th><td class="num">500</td><td class="num">275</td><td class="num">± 0.042</td></tr>
+        <tr><th>6</th><td class="num">333</td><td class="num">183</td><td class="num">± 0.052</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="verdict">
+    <span class="lab">What to write instead</span>
+    <p>Set the recruitment target in <strong>patients</strong>, not images: a minimum of 400, with 500 giving comfortable margin at four images per patient. Justify it on the precision of sensitivity and specificity for the binary infection endpoint, and cite the 2,000-image figure only as a secondary check that the dataset is comparable in scale to DFUC2020.</p>
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="num">Decision 3</span>Six Wagner grades are out of reach</h2>
+  <div class="prose">
+    <p>Grading on the full Meggitt–Wagner scale requires enough examples of every grade, and the rare grades set the recruitment target. Gangrene of the whole foot is perhaps two per cent of ulcers presenting in primary care, and localised gangrene perhaps seven per cent. The arithmetic is unforgiving.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <caption>Patients that must be recruited for the rarest Wagner grade to reach a given count, under an assumed primary-care distribution of 42 % grade 1, 31 % grade 2, 18 % grade 3, 7 % grade 4 and 2 % grade 5.</caption>
+      <thead><tr><th>Target per grade</th><th>Patients required</th><th>Feasible in a DrPH?</th></tr></thead>
+      <tbody>
+        <tr><th>50</th><td class="num">2,500</td><td>No</td></tr>
+        <tr><th>100</th><td class="num">5,000</td><td>No</td></tr>
+        <tr><th>200</th><td class="num">10,000</td><td>No</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="risk">
+    <span class="lab">The risk if left unchanged</span>
+    <p>A six-class model trained on a few hundred patients will have single-figure counts in grades 4 and 5. Per-class recall for those grades will be unreportable, macro-averaged F1 will be dominated by noise, and the examiners will read it as a model that cannot recognise the grades that matter most clinically.</p>
+  </div>
+  <div class="verdict">
+    <span class="lab">What to write instead</span>
+    <p>Make the <strong>primary endpoint the referral decision</strong>, which is binary and is the decision a general practitioner actually faces: manage in primary care, or refer. Operationally that is Wagner 1 against Wagner 2 or above. It needs about 200 patients per arm, which the cohort in Decision 2 already delivers.</p>
+    <p>Then report a three-band model as the secondary analysis — superficial, deep or infected, and gangrenous — and the full six-class model as exploratory only, with per-class counts shown and no claim made about the rare grades. Pre-specify this hierarchy so it cannot be read as selective reporting after the fact.</p>
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="num">Decision 4</span>Wagner 0 is excluded by your own criteria</h2>
+  <div class="prose">
+    <p>Wagner grade 0 describes an intact foot: a pre-ulcerative lesion, a healed ulcer, or deformity without breach of the skin. The inclusion criteria require “presence of an active DFU”. The two cannot both hold, so no patient in the planned cohort can carry a grade 0 label.</p>
+    <p>This matters more than a definitional tidy-up, because the stated purpose is early detection in primary care, and the grade 0 and grade 1 feet are exactly the population early detection is about. As written, the study builds a tool that grades ulcers which have already formed.</p>
+  </div>
+  <div class="aside">
+    <span class="lab">Two distinct claims</span>
+    <p><em>Detecting and grading an existing ulcer</em> and <em>predicting which foot will ulcerate</em> are different tasks with different reference standards, different designs and different evidence requirements. The proposal currently moves between them. Choose one as the thesis and name the other as future work.</p>
+  </div>
+  <div class="verdict">
+    <span class="lab">What to write instead</span>
+    <p>Either drop grade 0 from the label set and state plainly that the model grades established ulceration, which is the cleaner and more defensible thesis; or add a second recruitment arm of at-risk feet without ulceration — previous ulcer, deformity, neuropathy or callus — and accept that this arm has no microbiological reference standard and needs a follow-up outcome instead. The first option is what I would choose for a doctorate with a fixed timetable.</p>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="num">Decision 5</span>Where you recruit is not where you deploy</h2>
+  <div class="prose">
+    <p>The methodology recruits “across hospitals”, while the study output describes scale-up “in primary care settings for early detection”. A model trained in hospital wound clinics and deployed in a Klinik Kesihatan meets a different spectrum of disease: milder and earlier ulcers, a different case mix, different cameras in different hands, and staff with less wound-care specialisation. Accuracy measured in the first setting systematically overstates accuracy in the second. This is spectrum bias, and it is the standard reason diagnostic models disappoint on deployment.</p>
+  </div>
+  <div class="verdict">
+    <span class="lab">What to write instead</span>
+    <p>Recruit at least one primary-care site into the training cohort, so the training distribution reaches the deployment distribution. Then pre-register the prospective feasibility study as <strong>external validation in primary care</strong>, state in advance that performance is expected to fall, and report performance broken down by site and by device. A model that holds up across sites is a stronger finding than a higher number from a single centre.</p>
+  </div>
+</section>
+
+<section id="s6">
+  <h2><span class="num">Decision 6</span>Calibration, abstention and reporting standards</h2>
+  <div class="prose">
+    <p>The evaluation plan lists AUC-ROC, sensitivity, specificity, positive and negative predictive value, F1 and the Matthews correlation coefficient. Every one of those measures discrimination, which is whether the model ranks infected ulcers above uninfected ones. None measures calibration, which is whether the number it prints is believable.</p>
+    <p>The distinction is practical. A model can achieve an AUC of 0.85 and still report a 90 per cent probability of infection for ulcers whose true risk is 50 per cent. Since the output is shown to a clinician as a confidence score, and since the proposal links it to antibiotic decisions, the printed number has to mean what it says.</p>
+    <h3>Add three things to the evaluation plan</h3>
+    <ul>
+      <li><strong>Calibration.</strong> Calibration slope and intercept, a calibration plot against observed frequencies, and the Brier score. TRIPOD+AI requires these for any prediction model.</li>
+      <li><strong>Abstention.</strong> A confidence threshold below which the tool declines to classify and advises referral. Report the proportion of images declined alongside accuracy on those retained. A tool that admits uncertainty is both safer and more acceptable to clinicians, and it disposes of the out-of-distribution problem, which is what happens when the camera is pointed at something that is not a foot.</li>
+      <li><strong>Inter-rater reliability as a ceiling.</strong> The proposal already plans two labellers with consultant adjudication. Report Cohen's or Fleiss' kappa between them, and treat it as the ceiling on achievable model performance. If the two clinicians agree on infection only 80 per cent of the time, a model scoring 85 per cent against their consensus deserves scrutiny, not celebration.</li>
+    </ul>
+    <h3>Commit to the reporting guidelines by name</h3>
+    <p>Naming them in the protocol costs a sentence and signals methodological seriousness: <strong>TRIPOD+AI</strong> for the prediction model, <strong>STARD</strong> for the diagnostic accuracy component, <strong>CLAIM</strong> for the imaging specifics, and <strong>DECIDE-AI</strong> for the prospective feasibility and early implementation stage. Add a completed checklist for each as a thesis appendix.</p>
+  </div>
+  <div class="aside">
+    <span class="lab">A worked example from the prototype</span>
+    <p>The demonstrator built for this project illustrates why the explainability claim needs the same scrutiny. On 190 held-out images from the public FUSeg dataset, the ulcer occupied a median 1.3 % of the photograph, while Grad-CAM resolves nothing finer than about 2 % per cell. The hottest point of the heatmap fell inside the true ulcer in 13 % of images. Adding a segmentation model and classifying the cropped wound raised severity accuracy from 84 % to 92.5 %. Grad-CAM alone is not an explainability strategy; segmentation plus a measured wound area is.</p>
+  </div>
+</section>
+
+<p class="part">Part B · Site documentation</p>
+
+<section id="crf">
+  <h2><span class="num">Form 1</span>Image labelling case record form</h2>
+  <div class="prose">
+    <p>One form per photographed ulcer episode, completed independently by two trained wound-care clinicians, with a third at consultant level adjudicating disagreement. Fields follow the University of Texas and Meggitt–Wagner systems and the 2023 IWGDF/IDSA infection criteria. Print this section for site use.</p>
+  </div>
+
+  <div class="crf">
+    <div class="crf-head">
+      <h3>DFU image labelling form</h3>
+      <span>Version 1.0 &middot; one form per ulcer episode</span>
+    </div>
+
+    <fieldset>
+      <legend>1 &middot; Identifiers and setting</legend>
+      <div class="grid">
+        <div class="f"><span>Study patient ID (no name or IC)</span><div class="line"></div></div>
+        <div class="f"><span>Image ID</span><div class="line"></div></div>
+        <div class="f"><span>Site</span><div class="line"></div></div>
+        <div class="f"><span>Visit number</span><div class="line"></div></div>
+        <div class="f"><span>Date of photograph</span><div class="line"></div></div>
+        <div class="f"><span>Consent form filed</span><div class="opts"><label><span class="box"></span>Yes</label><label><span class="box"></span>No</label></div></div>
+        <div class="f wide"><span>Setting</span><div class="opts">
+          <label><span class="box"></span>Hospital wound clinic</label><label><span class="box"></span>Surgical ward</label>
+          <label><span class="box"></span>Klinik Kesihatan</label><label><span class="box"></span>Other</label></div></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>2 &middot; Image acquisition &mdash; protocol compliance</legend>
+      <div class="grid">
+        <div class="f"><span>Device make and model</span><div class="line"></div></div>
+        <div class="f"><span>Operator initials</span><div class="line"></div></div>
+        <div class="f wide"><span>Confirm each condition met</span><div class="opts">
+          <label><span class="box"></span>Dressing removed, irrigated, blotted dry</label>
+          <label><span class="box"></span>30&ndash;40 cm, perpendicular</label>
+          <label><span class="box"></span>Flash off, diffuse lighting</label>
+          <label><span class="box"></span>Plain background</label>
+          <label><span class="box"></span>Paper ruler beside wound</label>
+          <label><span class="box"></span>Peri-wound margin included</label>
+          <label><span class="box"></span>No identifiers in frame</label></div></div>
+        <div class="f wide"><span>Image quality judged adequate for labelling</span><div class="opts">
+          <label><span class="box"></span>Adequate</label><label><span class="box"></span>Borderline</label>
+          <label><span class="box"></span>Inadequate &mdash; re-shoot</label></div></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>3 &middot; Wound description</legend>
+      <div class="grid">
+        <div class="f wide"><span>Anatomical site</span><div class="opts">
+          <label><span class="box"></span>Hallux</label><label><span class="box"></span>Lesser toe</label>
+          <label><span class="box"></span>Plantar forefoot</label><label><span class="box"></span>Plantar midfoot</label>
+          <label><span class="box"></span>Heel</label><label><span class="box"></span>Dorsum</label>
+          <label><span class="box"></span>Malleolus</label><label><span class="box"></span>Amputation stump</label></div></div>
+        <div class="f"><span>Length (mm)</span><div class="line"></div></div>
+        <div class="f"><span>Width (mm)</span><div class="line"></div></div>
+        <div class="f"><span>Depth (mm)</span><div class="line"></div></div>
+        <div class="f"><span>Duration of ulcer (weeks)</span><div class="line"></div></div>
+        <div class="f wide"><span>Wound bed &mdash; approximate percentages, totalling 100</span><div class="opts">
+          <label>Granulation <span class="minline"></span> %</label>
+          <label>Slough <span class="minline"></span> %</label>
+          <label>Eschar <span class="minline"></span> %</label>
+          <label>Epithelialising <span class="minline"></span> %</label></div></div>
+        <div class="f wide"><span>Exudate</span><div class="opts">
+          <label><span class="box"></span>None</label><label><span class="box"></span>Serous</label>
+          <label><span class="box"></span>Serosanguineous</label><label><span class="box"></span>Purulent</label>
+          <label><span class="box"></span>Malodorous</label></div></div>
+        <div class="f wide"><span>Peri-wound skin</span><div class="opts">
+          <label><span class="box"></span>Erythema</label><label><span class="box"></span>Oedema</label>
+          <label><span class="box"></span>Warmth</label><label><span class="box"></span>Induration</label>
+          <label><span class="box"></span>Tenderness</label><label><span class="box"></span>Callus</label>
+          <label><span class="box"></span>Maceration</label><label><span class="box"></span>None of these</label></div></div>
+        <div class="f"><span>Erythema beyond wound edge (mm)</span><div class="line"></div></div>
+        <div class="f"><span>Probe-to-bone</span><div class="opts">
+          <label><span class="box"></span>Positive</label><label><span class="box"></span>Negative</label>
+          <label><span class="box"></span>Not done</label></div></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>4 &middot; Classification</legend>
+      <div class="grid">
+        <div class="f wide"><span>Meggitt&ndash;Wagner grade</span><div class="opts">
+          <label><span class="box"></span>0 intact skin, pre-ulcerative</label><label><span class="box"></span>1 superficial</label>
+          <label><span class="box"></span>2 deep to tendon, capsule or bone</label><label><span class="box"></span>3 abscess, osteomyelitis or joint sepsis</label>
+          <label><span class="box"></span>4 localised gangrene</label><label><span class="box"></span>5 extensive gangrene</label></div></div>
+        <div class="f wide"><span>University of Texas grade</span><div class="opts">
+          <label><span class="box"></span>0 pre- or post-ulcerative</label><label><span class="box"></span>1 superficial</label>
+          <label><span class="box"></span>2 to tendon or capsule</label><label><span class="box"></span>3 to bone or joint</label></div></div>
+        <div class="f wide"><span>University of Texas stage</span><div class="opts">
+          <label><span class="box"></span>A clean</label><label><span class="box"></span>B infected</label>
+          <label><span class="box"></span>C ischaemic</label><label><span class="box"></span>D infected and ischaemic</label></div></div>
+        <div class="f wide"><span>Referral decision this ulcer warrants <em>(the primary study endpoint)</em></span><div class="opts">
+          <label><span class="box"></span>Manage in primary care</label><label><span class="box"></span>Refer &mdash; urgent</label>
+          <label><span class="box"></span>Refer &mdash; emergency</label></div></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>5 &middot; Infection severity &mdash; IWGDF / IDSA 2023</legend>
+      <div class="grid">
+        <div class="f wide"><span>Clinical classification</span><div class="opts">
+          <label><span class="box"></span>Uninfected</label><label><span class="box"></span>Mild</label>
+          <label><span class="box"></span>Moderate</label><label><span class="box"></span>Severe</label></div></div>
+        <div class="f wide"><span>Systemic features present</span><div class="opts">
+          <label><span class="box"></span>Temperature &gt; 38 &deg;C or &lt; 36 &deg;C</label><label><span class="box"></span>Pulse &gt; 90</label>
+          <label><span class="box"></span>Respiratory rate &gt; 20</label><label><span class="box"></span>White cells &gt; 12 or &lt; 4 &times;10<sup>9</sup>/L</label>
+          <label><span class="box"></span>None</label></div></div>
+        <div class="f"><span>CRP (mg/L)</span><div class="line"></div></div>
+        <div class="f"><span>ESR (mm/hr)</span><div class="line"></div></div>
+        <div class="f"><span>HbA1c (%)</span><div class="line"></div></div>
+        <div class="f wide"><span>Osteomyelitis suspected</span><div class="opts">
+          <label><span class="box"></span>No</label><label><span class="box"></span>Clinically</label>
+          <label><span class="box"></span>Radiograph</label><label><span class="box"></span>MRI</label>
+          <label><span class="box"></span>Bone biopsy confirmed</label></div></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>6 &middot; Vascular and neurological assessment</legend>
+      <div class="grid">
+        <div class="f"><span>Dorsalis pedis</span><div class="opts">
+          <label><span class="box"></span>Present</label><label><span class="box"></span>Absent</label></div></div>
+        <div class="f"><span>Posterior tibial</span><div class="opts">
+          <label><span class="box"></span>Present</label><label><span class="box"></span>Absent</label></div></div>
+        <div class="f"><span>ABPI</span><div class="line"></div></div>
+        <div class="f"><span>Toe pressure (mmHg)</span><div class="line"></div></div>
+        <div class="f"><span>Peripheral artery disease</span><div class="opts">
+          <label><span class="box"></span>Yes</label><label><span class="box"></span>No</label></div></div>
+        <div class="f"><span>10 g monofilament (sites felt of 10)</span><div class="line"></div></div>
+        <div class="f"><span>Vibration sense</span><div class="opts">
+          <label><span class="box"></span>Intact</label><label><span class="box"></span>Reduced</label>
+          <label><span class="box"></span>Absent</label></div></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>7 &middot; Microbiology &mdash; the reference standard</legend>
+      <div class="grid">
+        <div class="f wide"><span>Specimen type <em>(deep tissue biopsy preferred over swab)</em></span><div class="opts">
+          <label><span class="box"></span>Deep tissue biopsy</label><label><span class="box"></span>Curettage</label>
+          <label><span class="box"></span>Pus or fluid aspirate</label><label><span class="box"></span>Wound swab</label>
+          <label><span class="box"></span>Bone biopsy</label><label><span class="box"></span>Blood culture</label>
+          <label><span class="box"></span>Not taken</label></div></div>
+        <div class="f"><span>Date specimen taken</span><div class="line"></div></div>
+        <div class="f"><span>Antibiotics in preceding 14 days</span><div class="opts">
+          <label><span class="box"></span>Yes</label><label><span class="box"></span>No</label></div></div>
+        <div class="f wide"><span>Organisms isolated, with colony counts where reported</span><div class="line"></div><div class="line"></div></div>
+        <div class="f wide"><span>Sensitivity pattern and resistance flags (MRSA, ESBL, carbapenem resistance)</span><div class="line"></div><div class="line"></div></div>
+        <div class="f wide"><span>Adjudicated interpretation <em>(this distinction underpins label validity)</em></span><div class="opts">
+          <label><span class="box"></span>No growth</label><label><span class="box"></span>Colonisation</label>
+          <label><span class="box"></span>True infection</label><label><span class="box"></span>Contaminant</label>
+          <label><span class="box"></span>Indeterminate</label></div></div>
+      </div>
+      <p class="hint">Record the reasoning where clinical and microbiological findings disagree. An ulcer with organisms cultured but no clinical signs of infection is colonisation, not infection, and labelling it otherwise corrupts both the model and the antibiotic stewardship message.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>8 &middot; Labelling and adjudication</legend>
+      <div class="grid">
+        <div class="f"><span>Rater 1 initials and date</span><div class="line"></div></div>
+        <div class="f"><span>Rater 2 initials and date</span><div class="line"></div></div>
+        <div class="f"><span>Raters agreed</span><div class="opts">
+          <label><span class="box"></span>Yes</label><label><span class="box"></span>No</label></div></div>
+        <div class="f"><span>Adjudicator initials and date</span><div class="line"></div></div>
+        <div class="f wide"><span>Fields requiring adjudication, and the final decision</span><div class="line"></div><div class="line"></div></div>
+        <div class="f wide"><span>Free-text notes</span><div class="line"></div><div class="line"></div></div>
+      </div>
+    </fieldset>
+  </div>
+</section>
+
+<footer>
+  <p><strong>Basis for the figures.</strong> Precision calculations use the normal approximation for a single proportion and the Hanley–McNeil approximation for the standard error of an AUC. The primary-care Wagner distribution is an assumption stated for planning and should be replaced with local audit data from the participating sites before the protocol is submitted. Prototype measurements come from the public FUSeg 2021 validation split.</p>
+  <ol>
+    <li>Wang C. et al. Fully automatic wound segmentation with deep convolutional neural networks. <em>Scientific Reports</em> 2020;10:21897.</li>
+    <li>Senneville É. et al. IWGDF/IDSA guidelines on the diagnosis and treatment of diabetes-related foot infections. <em>Diabetes/Metabolism Research and Reviews</em> 2024;40(3):e3687.</li>
+    <li>Collins G.S. et al. TRIPOD+AI statement: updated guidance for reporting clinical prediction models that use regression or machine learning methods. <em>BMJ</em> 2024;385:e078378.</li>
+    <li>Hanley J.A., McNeil B.J. The meaning and use of the area under a receiver operating characteristic curve. <em>Radiology</em> 1982;143:29–36.</li>
+    <li>Gallardo-Alburqueque L.A. et al. External validation of the Meggitt-Wagner, Texas University, SINBAD and Saint Elian classifications for predicting major amputation. <em>PLOS ONE</em> 2026;21(1):e0327601.</li>
+  </ol>
+  <p>Prepared as a working companion to the DrPH brief proposal. The assumptions marked above are for planning and require confirmation against local data.</p>
+</footer>
+
+</div>

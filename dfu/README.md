@@ -144,6 +144,19 @@ model traces the upper wound bed and misses the yellow slough below it, reportin
 area. Mean Dice of 0.85 means most images are good and some are not, so the outline is a clinician-checkable
 proposal, not a measurement to trust unexamined.
 
+### Dataset readiness dashboard
+
+The Train tab counts every image you load, per class, against a target you choose: 100 per class as the
+minimum at which a held-out split is still meaningful, 250 for a pilot, 400 for thesis-grade figures. Each class
+gets a bar, a tick at the target, and a status in words as well as colour. Four tiles summarise total images,
+class count, the smallest class and the imbalance ratio, and a verdict states plainly whether the set is
+trainable, trainable-but-not-defensible, skewed, or ready.
+
+Two deliberate framings. The verdict counts **images** but says so, and reminds you that the precision
+calculations in `../docs/protocol-notes.html` are in **patients** — four photographs of one ulcer are not four
+independent cases. And where a class falls below the minimum it suggests merging rather than collecting
+forever, because Wagner 4 and 5 will not reach 100 each in a primary-care cohort.
+
 ### On-screen interpretation
 
 Every view carries two labelled sentences, because a heatmap or an outline that nobody can read is not
@@ -217,6 +230,7 @@ network can use your machine's IP). Camera capture requires HTTPS or localhost, 
 | `../ml/train_segmentation.py` | trains the wound segmentation model on the FUSeg masks |
 | `../ml/audit_gradcam.py` | reproduces the Grad-CAM localisation audit in the table above |
 | `../docs/protocol-notes.html` | methods companion: sample size, label granularity, split design, labelling form |
+| `../docs/how-it-works.html` | technical walk-through of the pipeline with diagrams |
 | `../ml/` | Labelling, training/export and video-recording scripts |
 
 ## Roadmap for a real system (what the prototype is *not* yet)

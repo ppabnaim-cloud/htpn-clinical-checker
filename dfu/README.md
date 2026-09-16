@@ -144,6 +144,15 @@ model traces the upper wound bed and misses the yellow slough below it, reportin
 area. Mean Dice of 0.85 means most images are good and some are not, so the outline is a clinician-checkable
 proposal, not a measurement to trust unexamined.
 
+### On-screen interpretation
+
+Every view carries two labelled sentences, because a heatmap or an outline that nobody can read is not
+explainability. **How to read this** says what the pixels mean; **What this shows** gives the held-out figure
+for that view. The Grad-CAM view also carries a colour legend, since the most common misreading is to take red
+as a clinical sign. It is not: colour is the model's attention, so red means "this area counted most towards
+the selected class", never infection, bleeding or erythema. The classification figures update when you switch
+between the whole-photo and wound-crop models, so the stated error rate always belongs to the model in use.
+
 ### Wound measurement in centimetres
 
 The segmentation model measures the wound in pixels. To convert to cm², tap **Set scale with the ruler**, enter

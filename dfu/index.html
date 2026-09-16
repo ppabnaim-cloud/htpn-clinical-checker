@@ -58,7 +58,7 @@ header small{display:block;font-size:11.5px;opacity:.7;margin-top:1px}
 .tabs button.on{color:#fff;border-bottom-color:var(--teal)}
 main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:18px;margin-bottom:14px}
-.step{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.step{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .step .n{width:26px;height:26px;border-radius:50%;background:var(--navy);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .step h3{font-size:16px;font-weight:600;color:var(--navy)}
 .step .hint{margin-left:auto;font-size:12px;color:var(--faint)}
@@ -168,9 +168,34 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .modelcard{font-size:12.5px;color:var(--muted)}
 .modelcard dt{font-weight:600;color:var(--navy);margin-top:8px}
 .modelcard dd{margin:0}
-footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 30px;max-width:600px;margin:0 auto}
+footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 30px;max-width:600px;margin:0 auto;line-height:1.7}
+footer b{color:var(--muted)}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:999px;font-size:13px;box-shadow:var(--shadow-lg);z-index:999;opacity:0;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.show{opacity:1}
+
+/* dataset readiness — status encoding, not categorical: fixed good/warning/critical steps,
+   always paired with a text label so colour never carries the meaning alone */
+.viz-root{--st-good:#0ca30c;--st-warn:#fab219;--st-crit:#d03b3b;--track:#dde6f0;--tick:#5A7290}
+body.dark .viz-root,.viz-root{--track:#dde6f0}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+@media (max-width:460px){.tiles{grid-template-columns:repeat(2,1fr)}}
+.tile{background:var(--cloud);border-radius:10px;padding:10px 8px;text-align:center}
+.tile b{display:block;font-family:var(--serif);font-size:22px;color:var(--navy);line-height:1.1;font-variant-numeric:tabular-nums}
+.tile span{font-size:11px;color:var(--muted)}
+.rrow{display:grid;grid-template-columns:1fr auto;gap:3px 10px;align-items:baseline;padding:9px 0;border-top:1px solid var(--line)}
+.rrow:first-child{border-top:none}
+.rname{font-family:var(--mono);font-size:13px;color:var(--navy);overflow:hidden;text-overflow:ellipsis}
+.rnum{font-family:var(--mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rtrack{grid-column:1/3;position:relative;height:10px;border-radius:999px;background:var(--track);overflow:visible}
+.rfill{height:10px;border-radius:2px 5px 5px 2px;transition:width .4s ease}
+.rtick{position:absolute;top:-3px;width:2px;height:16px;background:var(--tick);opacity:.75;border-radius:1px}
+.rstatus{grid-column:1/3;display:flex;align-items:center;gap:5px;font-size:11.5px;margin-top:2px}
+.rstatus .ico{font-family:var(--mono);font-weight:700}
+.verdict{border-radius:10px;padding:12px 14px;margin-top:14px;font-size:13px;line-height:1.5}
+.verdict.ok{background:rgba(12,163,12,.10);color:#0a6b0a;border-left:3px solid #0ca30c}
+.verdict.warn{background:rgba(250,178,25,.14);color:#7a5200;border-left:3px solid #fab219}
+.verdict.crit{background:rgba(208,59,59,.10);color:#9c2626;border-left:3px solid #d03b3b}
+body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.dark .verdict.crit{color:#f09b9b}
 
 /* training */
 .src-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
@@ -206,6 +231,7 @@ footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 3
   <div class="gate-box">
     <span class="tag">Research prototype · Not a medical device</span>
     <h2>DFU Vision — before you take a photograph</h2>
+    <p style="font-family:var(--mono);font-size:12px;color:var(--faint);margin-bottom:12px">A prototype by Dr Naim Bin Abdul Malek</p>
     <p>This demonstrator classifies diabetic foot ulcer photographs with a deep learning model. It is for education and Centre of Excellence demonstration only. It does <b>not</b> replace clinical assessment, probe-to-bone testing, vascular assessment or microbiology, and must not be used to make treatment decisions.</p>
     <p>A model is only as good as its inputs. Photographs taken under different distances, lighting and angles are the single biggest source of error in wound image AI. Please follow the standardised image acquisition protocol:</p>
     <div class="protocol">
@@ -229,7 +255,7 @@ footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 3
   <div class="wrap">
     <div>
       <h1>DFU <span>Vision</span></h1>
-      <small>Deep Learning Healthcare Centre of Excellence · prototype v0.2</small>
+      <small>Dr Naim Bin Abdul Malek · Deep Learning Healthcare Centre of Excellence</small>
     </div>
     <span class="pill" id="modelPill">model: loading…</span>
   </div>
@@ -414,6 +440,8 @@ footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 3
       <dt>Labels — important caveat</dt><dd>Demonstrator labels are <b>weak labels</b> derived from expert wound masks (wound area for depth/severity) and wound‑bed colour features (slough, eschar for infection). They are not clinician‑adjudicated or culture‑confirmed. Step 3 and the Train tab exist precisely to replace them.</dd>
       <dt>Held‑out performance (against the weak labels)</dt><dd id="mcPerf">Loading…</dd>
       <dt>Data source</dt><dd>FUSeg 2021 / AZH Wound and Vascular Center dataset, Wang C. et al., <i>Sci Rep</i> 2020;10:21897, github.com/uwm-bigdata/wound-segmentation.</dd>
+      <dt>Author</dt><dd>Dr Naim Bin Abdul Malek. Built as a demonstrator for the Deep Learning Healthcare Centre of Excellence and as the technical pilot for a DrPH study on DFU infection classification.</dd>
+      <dt>Patient data</dt><dd>No patient image may be loaded into this tool until NMRR registration and MREC ethical approval are in place, and every image must be de&#8209;identified and consented under the Personal Data Protection Act 2010. Images processed here stay in this browser, which reduces the transmission risk but does not substitute for approval.</dd>
     </dl>
   </section>
 </div>
@@ -463,6 +491,26 @@ footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 3
     <div class="small" id="dataSummary" style="margin-top:12px"></div>
   </section>
 
+  <!-- dataset readiness: counts per class against a target -->
+  <section class="card viz-root" id="readiness">
+    <div class="step"><span class="n">&#9679;</span><h3>Dataset readiness</h3>
+      <select id="targetPreset" style="margin-left:auto;padding:6px 8px;border-radius:8px;border:1px solid var(--line);font-size:12.5px;max-width:100%">
+        <option value="100">min &middot; 100 per class</option>
+        <option value="250" selected>pilot &middot; 250 per class</option>
+        <option value="400">thesis &middot; 400 per class</option>
+      </select>
+    </div>
+    <div class="tiles">
+      <div class="tile"><b id="rTotal">0</b><span>images</span></div>
+      <div class="tile"><b id="rClasses">0</b><span>classes</span></div>
+      <div class="tile"><b id="rSmallest">&mdash;</b><span>smallest class</span></div>
+      <div class="tile"><b id="rBalance">&mdash;</b><span>imbalance ratio</span></div>
+    </div>
+    <div id="rBars"></div>
+    <div class="verdict" id="rVerdict"></div>
+    <div class="note" id="rNote">Counts are of images. Your protocol's precision calculations are in <b>patients</b>, so record how many patients these images come from &mdash; four images of one ulcer are not four independent cases.</div>
+  </section>
+
   <section class="card">
     <div class="step"><span class="n">B</span><h3>Transfer learning on this device</h3><span class="hint">frozen backbone · new head</span></div>
     <p class="small" style="margin-bottom:8px">Every image is passed once through the ImageNet‑pre‑trained MobileNetV2 backbone to obtain a 1,280‑number embedding. A new classification head is then trained on those embeddings, here in the browser. A stratified 20 % of images is held out to estimate performance. Fine‑tuning the backbone itself needs a GPU: use the Colab notebook.</p>
@@ -497,7 +545,11 @@ footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 3
   </section>
 </div>
 </main>
-<footer>DFU Vision prototype · Deep Learning Healthcare Centre of Excellence · For demonstration only</footer>
+<footer>
+  <b>DFU Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
+  Deep Learning Healthcare Centre of Excellence &middot; prototype v0.5<br>
+  Research prototype. Not a medical device, not validated, not for clinical decision-making.
+</footer>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1007,7 +1059,66 @@ function refreshData(){
   $('dataSummary').innerHTML = rows.length ? `<b>${rows.reduce((n, [, v]) => n + v.length, 0)} images in ${rows.length} classes:</b> ` + rows.map(([k, v]) => `${k} (${v.length})`).join(' · ') + (rows.some(([, v]) => v.length < 4) ? ' — each class needs at least 4 images.' : '') : '';
   $('trainBtn').disabled = !dataReady();
   renderClassRows();
+  renderReadiness();
 }
+/* ── dataset readiness ──
+   One bar per class against a per-class target, coloured by status and labelled in words.
+   Status colour is never the only signal: every row carries an icon and a text verdict. */
+const MIN_PER_CLASS = 100;
+function renderReadiness(){
+  const target = +$('targetPreset').value || 250;
+  const rows = [...data.classes.entries()].filter(([, v]) => v.length).sort((a, b) => b[1].length - a[1].length);
+  const counts = rows.map(([, v]) => v.length);
+  const total = counts.reduce((a, b) => a + b, 0);
+  const smallest = counts.length ? Math.min(...counts) : 0;
+  const largest = counts.length ? Math.max(...counts) : 0;
+  $('rTotal').textContent = total.toLocaleString();
+  $('rClasses').textContent = rows.length;
+  $('rSmallest').textContent = counts.length ? smallest.toLocaleString() : '—';
+  $('rBalance').textContent = smallest ? (largest / smallest).toFixed(1) + '×' : '—';
+
+  if (!rows.length){
+    $('rBars').innerHTML = '<p class="small">No images loaded yet. Add them above and this will count them per class against your target.</p>';
+    $('rVerdict').className = 'verdict warn';
+    $('rVerdict').textContent = 'Nothing to assess yet.';
+    return;
+  }
+  const scale = Math.max(largest, target) * 1.08;                 // leave headroom so the target tick is never clipped
+  const st = c => c >= target ? ['ok', 'var(--st-good)', '✓', 'at target']
+                : c >= MIN_PER_CLASS ? ['warn', 'var(--st-warn)', '!', `${target - c} short of target`]
+                : ['crit', 'var(--st-crit)', '✗', `below the ${MIN_PER_CLASS}-image minimum`];
+  $('rBars').innerHTML = rows.map(([name, v]) => {
+    const c = v.length, [, colour, ico, words] = st(c);
+    return `<div class="rrow">
+      <span class="rname">${name}</span>
+      <span class="rnum">${c.toLocaleString()} / ${target}</span>
+      <div class="rtrack" title="${name}: ${c} images, target ${target}">
+        <div class="rfill" style="width:${Math.min(100, c / scale * 100)}%;background:${colour}"></div>
+        <div class="rtick" style="left:${target / scale * 100}%" title="target ${target}"></div>
+      </div>
+      <span class="rstatus" style="color:${colour}"><span class="ico">${ico}</span>${words}</span>
+    </div>`;
+  }).join('');
+
+  const below = counts.filter(c => c < MIN_PER_CLASS).length;
+  const short = counts.filter(c => c >= MIN_PER_CLASS && c < target).length;
+  const imbalance = smallest ? largest / smallest : Infinity;
+  const v = $('rVerdict');
+  if (below){
+    v.className = 'verdict crit';
+    v.innerHTML = `<b>Not ready to train.</b> ${below} of ${rows.length} ${below === 1 ? 'class has' : 'classes have'} fewer than ${MIN_PER_CLASS} images. Below that a held-out split leaves single figures per class, so the reported accuracy would carry no usable confidence interval. Collect the rare classes first, or merge them &mdash; Wagner 4 and 5 are usually better combined into one "gangrene" class than reported separately.`;
+  } else if (short){
+    v.className = 'verdict warn';
+    v.innerHTML = `<b>Trainable, not yet defensible.</b> Every class clears the ${MIN_PER_CLASS}-image minimum, so the model will learn something, but ${short} ${short === 1 ? 'class is' : 'classes are'} short of your ${target}-image target. Treat results at this size as a smoke test.`;
+  } else if (imbalance > 3){
+    v.className = 'verdict warn';
+    v.innerHTML = `<b>Counts met, but skewed ${imbalance.toFixed(1)}×.</b> All classes are at target, yet the largest is ${imbalance.toFixed(1)} times the smallest. Class weighting is applied during training, which helps; also report per-class recall rather than overall accuracy, because accuracy will flatter the majority class.`;
+  } else {
+    v.className = 'verdict ok';
+    v.innerHTML = `<b>Ready.</b> All ${rows.length} classes are at or above ${target} images and balanced within ${imbalance.toFixed(1)}×. Train here for a quick check, then fine-tune the full backbone on a GPU with the Colab notebook for the figures you would publish.`;
+  }
+}
+$('targetPreset').onchange = renderReadiness;
 $('dirInput').onchange = e => {
   const files = [...e.target.files].filter(f => IMG_RE.test(f.name));
   const byClass = {};
@@ -1036,7 +1147,7 @@ function renderClassRows(){
   });
 }
 $('addClass').onclick = () => { const n = `class_${data.classes.size + 1}`; data.classes.set(n, []); renderClassRows(); };
-renderClassRows();
+renderClassRows(); renderReadiness();
 
 /* ── Google Drive import (Drive API v3 + Google Identity Services) ── */
 function loadScript(src){ return new Promise((res, rej) => { if (document.querySelector(`script[src="${src}"]`)) return res(); const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('Could not load ' + src)); document.head.appendChild(s); }); }

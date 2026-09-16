@@ -1,0 +1,408 @@
+<title>DFU Vision Pipeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F6F7F9; --panel:#FFFFFF; --sunk:#ECEFF3;
+  --ink:#14181F; --body:#39414E; --quiet:#737E8F; --rule:#DDE1E8;
+  --hinge:#C2410C; --hinge-soft:#FBEDE5;
+  --human:#1D4ED8; --human-soft:#E8EEFC;
+  --slab:'Zilla Slab',Georgia,serif;
+  --sans:'Source Sans 3',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1217; --panel:#171B22; --sunk:#1C2129;
+    --ink:#E9EDF3; --body:#BFC7D2; --quiet:#8A94A3; --rule:#272D37;
+    --hinge:#FB923C; --hinge-soft:#2A1B10;
+    --human:#8AB0FF; --human-soft:#141D31;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1217; --panel:#171B22; --sunk:#1C2129;
+  --ink:#E9EDF3; --body:#BFC7D2; --quiet:#8A94A3; --rule:#272D37;
+  --hinge:#FB923C; --hinge-soft:#2A1B10;
+  --human:#8AB0FF; --human-soft:#141D31;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--body);font-family:var(--sans);font-size:16px;line-height:1.62}
+.wrap{max-width:860px;margin:0 auto;padding-block:clamp(28px,6vw,60px);padding-left:20px;padding-right:20px}
+.prose{max-width:66ch}
+
+header{border-bottom:2px solid var(--ink);padding-bottom:20px}
+.kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--hinge);margin:0 0 12px}
+h1{font-family:var(--slab);font-weight:600;font-size:clamp(29px,5.2vw,42px);line-height:1.12;letter-spacing:-.01em;color:var(--ink);margin:0 0 12px;text-wrap:balance}
+.stand{font-size:clamp(16.5px,2.2vw,18.5px);line-height:1.52;max-width:58ch;margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:6px 20px;font-family:var(--mono);font-size:11.5px;color:var(--quiet);margin-top:16px}
+
+h2{font-family:var(--slab);font-weight:600;font-size:clamp(21px,3.2vw,26px);line-height:1.2;color:var(--ink);margin:0 0 3px;text-wrap:balance}
+.stage{margin-top:48px}
+.stage .no{font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--hinge);display:block;margin-bottom:7px}
+.shape{font-family:var(--mono);font-size:12.5px;color:var(--quiet);background:var(--sunk);display:inline-block;padding:4px 10px;border-radius:6px;margin:8px 0 14px}
+h3{font-family:var(--sans);font-weight:600;font-size:15px;color:var(--ink);margin:22px 0 5px}
+p{margin:0 0 13px}
+a{color:var(--hinge)}
+strong{color:var(--ink);font-weight:600}
+code{font-family:var(--mono);font-size:.87em;background:var(--sunk);padding:1px 5px;border-radius:4px;color:var(--ink)}
+ul{padding-left:20px;margin:0 0 13px}
+li{margin:5px 0}
+ol.num{padding-left:20px;margin:0 0 13px}
+
+figure{margin:26px 0;background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:20px 18px 14px}
+figure svg{display:block;max-width:100%;height:auto;margin:0 auto;color:var(--ink)}
+figcaption{font-size:13px;color:var(--quiet);line-height:1.5;margin-top:14px;padding-top:12px;border-top:1px solid var(--rule)}
+figcaption b{color:var(--ink);font-weight:600}
+.dlabel{font-family:var(--mono);font-size:11px}
+.dtitle{font-family:var(--sans);font-size:12.5px;font-weight:600}
+
+.callout{border-left:3px solid var(--hinge);background:var(--hinge-soft);padding:13px 16px;border-radius:0 8px 8px 0;margin:18px 0}
+.callout .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--hinge);display:block;margin-bottom:5px}
+.callout p:last-child{margin-bottom:0}
+.human-note{border-left:3px solid var(--human);background:var(--human-soft);padding:13px 16px;border-radius:0 8px 8px 0;margin:18px 0}
+.human-note .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--human);display:block;margin-bottom:5px}
+.human-note p:last-child{margin-bottom:0}
+
+.tw{overflow-x:auto;margin:18px 0;border:1px solid var(--rule);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 13px;text-align:right;border-bottom:1px solid var(--rule);white-space:nowrap}
+thead th{background:var(--sunk);color:var(--ink);font-weight:600;font-size:12px}
+tbody th{text-align:left;font-weight:400;color:var(--ink)}
+th:first-child,td:first-child{text-align:left}
+tbody tr:last-child th,tbody tr:last-child td{border-bottom:none}
+td.m{font-family:var(--mono)}
+caption{caption-side:bottom;text-align:left;font-size:12.5px;color:var(--quiet);padding:10px 13px;line-height:1.5}
+
+footer{margin-top:56px;border-top:1px solid var(--rule);padding-top:18px;font-size:13px;color:var(--quiet)}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="kicker">DFU Vision &middot; technical walk-through</p>
+  <h1>Two networks, and the crop between them</h1>
+  <p class="stand">What actually happens to a photograph between the shutter and the Texas code on screen, with the tensor shapes and the reason the pipeline is shaped this way.</p>
+  <div class="meta">
+    <span>Segmentation: 5,933,177 parameters</span>
+    <span>Classification: 2,263,108 parameters</span>
+    <span>Both run in the browser</span>
+  </div>
+</header>
+
+<section class="stage prose" style="margin-top:36px">
+  <p>The short version: a photograph is passed through a <strong>segmentation</strong> network that outlines the ulcer, the outline is turned into a square crop, and that crop is passed through a <strong>classification</strong> network with two outputs. Nothing about the wound's position is inferred by the classifier. That division of labour is the whole design, and it exists because the earlier single-network version could not find the wound.</p>
+</section>
+
+<figure>
+<svg viewBox="0 0 700 748" role="img" aria-label="The pipeline: photograph, segmentation network, threshold and largest region, crop, classification network, two softmax heads, then the Texas or Wagner code, with Grad-CAM as a side branch and clinician ischaemia entering from the right.">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+    </marker>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#C2410C"/>
+    </marker>
+    <marker id="am" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="currentColor" opacity=".55"/>
+    </marker>
+    <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1D4ED8"/>
+    </marker>
+  </defs>
+
+  <!-- stage boxes, main column x 40..360 -->
+  <rect x="40" y="20" width="320" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="200" y="43" text-anchor="middle" class="dtitle" fill="currentColor">Photograph</text>
+  <text x="200" y="60" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".6">camera, gallery or sample</text>
+
+  <line x1="200" y1="72" x2="200" y2="104" stroke="currentColor" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="212" y="94" class="dlabel" fill="currentColor" opacity=".7">centre-crop &#183; 224&#215;224&#215;3</text>
+
+  <rect x="40" y="110" width="320" height="72" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="200" y="136" text-anchor="middle" class="dtitle" fill="currentColor">1 &#183; Segmentation network</text>
+  <text x="200" y="154" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".6">MobileNetV2-UNet</text>
+  <text x="200" y="170" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".6">5.9 M parameters</text>
+
+  <line x1="200" y1="182" x2="200" y2="214" stroke="currentColor" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="212" y="204" class="dlabel" fill="currentColor" opacity=".7">224&#215;224&#215;1 probability map</text>
+
+  <rect x="40" y="220" width="320" height="72" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="200" y="246" text-anchor="middle" class="dtitle" fill="currentColor">2 &#183; Post-processing</text>
+  <text x="200" y="264" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".6">threshold 0.5, largest connected</text>
+  <text x="200" y="280" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".6">region, bounding box</text>
+
+  <line x1="200" y1="292" x2="200" y2="324" stroke="#C2410C" stroke-width="1.5" marker-end="url(#ah)"/>
+  <text x="212" y="314" class="dlabel" fill="#C2410C">wound box</text>
+
+  <rect x="40" y="330" width="320" height="72" rx="8" fill="#FBEDE5" stroke="#C2410C" stroke-width="2"/>
+  <text x="200" y="356" text-anchor="middle" class="dtitle" fill="#C2410C">3 &#183; Crop to the wound</text>
+  <text x="200" y="374" text-anchor="middle" class="dlabel" fill="#C2410C">square box &#215; 2.2, resized</text>
+  <text x="200" y="390" text-anchor="middle" class="dlabel" fill="#C2410C">back to 224&#215;224&#215;3</text>
+
+  <line x1="200" y1="402" x2="200" y2="434" stroke="#C2410C" stroke-width="1.5" marker-end="url(#ah)"/>
+  <text x="212" y="424" class="dlabel" fill="#C2410C">wound fills ~9 % of frame</text>
+
+  <rect x="40" y="440" width="320" height="72" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="200" y="466" text-anchor="middle" class="dtitle" fill="currentColor">4 &#183; Classification network</text>
+  <text x="200" y="484" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".6">MobileNetV2 &#8594; 7&#215;7&#215;1280</text>
+  <text x="200" y="500" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".6">&#8594; average pool &#8594; 1280</text>
+
+  <!-- split to two heads -->
+  <polyline points="200,512 200,530 116,530 116,550" fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#a)"/>
+  <polyline points="200,512 200,530 284,530 284,550" fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <rect x="40" y="556" width="152" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="116" y="580" text-anchor="middle" class="dtitle" fill="currentColor">severity head</text>
+  <text x="116" y="598" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".6">softmax, 2 classes</text>
+
+  <rect x="208" y="556" width="152" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="284" y="580" text-anchor="middle" class="dtitle" fill="currentColor">infection head</text>
+  <text x="284" y="598" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".6">softmax, 2 classes</text>
+
+  <polyline points="116,616 116,640 200,640" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <polyline points="284,616 284,640 200,640" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <line x1="200" y1="640" x2="200" y2="662" stroke="currentColor" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <rect x="40" y="668" width="320" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="2"/>
+  <text x="200" y="692" text-anchor="middle" class="dtitle" fill="currentColor">5 &#183; Texas cell, or Wagner grade</text>
+  <text x="200" y="710" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".6">e.g. 3B &#183; W3</text>
+
+  <!-- Grad-CAM side branch -->
+  <line x1="360" y1="476" x2="416" y2="476" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#am)" opacity=".7"/>
+  <rect x="422" y="440" width="248" height="72" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="5 4" opacity=".7"/>
+  <text x="546" y="466" text-anchor="middle" class="dtitle" fill="currentColor" opacity=".8">Grad-CAM</text>
+  <text x="546" y="484" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".55">diagnostic only &#183; see figure 3</text>
+  <text x="546" y="500" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".55">does not feed the output</text>
+
+  <!-- clinician input -->
+  <rect x="422" y="556" width="248" height="60" rx="8" fill="#E8EEFC" stroke="#1D4ED8" stroke-width="1.8"/>
+  <text x="546" y="580" text-anchor="middle" class="dtitle" fill="#1D4ED8">clinician: ischaemia</text>
+  <text x="546" y="598" text-anchor="middle" class="dlabel" fill="#1D4ED8">ABPI, pulses, toe pressure</text>
+  <polyline points="422,598 392,598 392,698 366,698" fill="none" stroke="#1D4ED8" stroke-width="1.8" marker-end="url(#ab)"/>
+</svg>
+<figcaption><b>Figure 1 &mdash; the pipeline.</b> Two networks in sequence. The crop at stage 3, marked in orange, is the hinge: it lifts the ulcer from a median 1.3 % of the frame to roughly 9 %, which is what makes the classifier work. Ischaemia enters from the clinician in blue, because a photograph cannot show perfusion. Grad-CAM branches off the classifier and feeds nothing downstream.</figcaption>
+</figure>
+
+<section class="stage prose">
+  <span class="no">Stage 1</span>
+  <h2>Segmentation: find the wound</h2>
+  <div class="shape">224&#215;224&#215;3 &nbsp;&#8594;&nbsp; 224&#215;224&#215;1</div>
+  <p>The photograph is centre-cropped to a square and resized to 224 by 224 pixels, then each channel is rescaled from the 0&ndash;255 range to &minus;1 to +1, which is what the ImageNet-pretrained weights expect.</p>
+  <p>The network is a U-Net built on a MobileNetV2 encoder. The encoder halves the resolution five times, from 224 down to 7 pixels, while deepening the representation from 3 channels to 1,280. That gives it semantic understanding &mdash; "this texture is granulation tissue" &mdash; but it has thrown away the precise location. The decoder climbs back up, and at each step it <em>concatenates</em> the matching-resolution tensor from the encoder before convolving. Those skip connections are what restore spatial precision: the deep layers say what a region is, the shallow ones say exactly where its edge falls.</p>
+</section>
+
+<figure>
+<svg viewBox="0 0 640 404" role="img" aria-label="The U-Net: an encoder descending from 224 to 7 pixels on the left, a decoder climbing back to 224 on the right, and four concatenate connections joining tensors of matching resolution.">
+  <defs>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+    </marker>
+    <marker id="bh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#C2410C"/>
+    </marker>
+  </defs>
+  <text x="140" y="16" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".65">ENCODER &#183; pretrained</text>
+  <text x="500" y="16" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".65">DECODER &#183; trained here</text>
+
+  <!-- encoder boxes -->
+  <rect x="60" y="28" width="160" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="140" y="50" text-anchor="middle" class="dlabel" fill="currentColor">224&#215;224&#215;3</text>
+  <rect x="60" y="90" width="160" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="140" y="112" text-anchor="middle" class="dlabel" fill="currentColor">112&#215;112&#215;96</text>
+  <rect x="60" y="152" width="160" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="140" y="174" text-anchor="middle" class="dlabel" fill="currentColor">56&#215;56&#215;144</text>
+  <rect x="60" y="214" width="160" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="140" y="236" text-anchor="middle" class="dlabel" fill="currentColor">28&#215;28&#215;192</text>
+  <rect x="60" y="276" width="160" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="140" y="298" text-anchor="middle" class="dlabel" fill="currentColor">14&#215;14&#215;576</text>
+  <rect x="60" y="338" width="160" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="140" y="360" text-anchor="middle" class="dlabel" fill="currentColor">7&#215;7&#215;1280</text>
+
+  <!-- encoder down arrows -->
+  <line x1="140" y1="62" x2="140" y2="86" stroke="currentColor" stroke-width="1.3" marker-end="url(#b)"/>
+  <line x1="140" y1="124" x2="140" y2="148" stroke="currentColor" stroke-width="1.3" marker-end="url(#b)"/>
+  <line x1="140" y1="186" x2="140" y2="210" stroke="currentColor" stroke-width="1.3" marker-end="url(#b)"/>
+  <line x1="140" y1="248" x2="140" y2="272" stroke="currentColor" stroke-width="1.3" marker-end="url(#b)"/>
+  <line x1="140" y1="310" x2="140" y2="334" stroke="currentColor" stroke-width="1.3" marker-end="url(#b)"/>
+
+  <!-- decoder boxes -->
+  <rect x="420" y="28" width="160" height="34" rx="6" fill="#FBEDE5" stroke="#C2410C" stroke-width="1.8"/>
+  <text x="500" y="50" text-anchor="middle" class="dlabel" fill="#C2410C">224&#215;224&#215;1 mask</text>
+  <rect x="420" y="90" width="160" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="500" y="112" text-anchor="middle" class="dlabel" fill="currentColor">112&#215;112&#215;24</text>
+  <rect x="420" y="152" width="160" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="500" y="174" text-anchor="middle" class="dlabel" fill="currentColor">56&#215;56&#215;48</text>
+  <rect x="420" y="214" width="160" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="500" y="236" text-anchor="middle" class="dlabel" fill="currentColor">28&#215;28&#215;96</text>
+  <rect x="420" y="276" width="160" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="500" y="298" text-anchor="middle" class="dlabel" fill="currentColor">14&#215;14&#215;192</text>
+
+  <!-- decoder up arrows -->
+  <line x1="500" y1="276" x2="500" y2="252" stroke="currentColor" stroke-width="1.3" marker-end="url(#b)"/>
+  <line x1="500" y1="214" x2="500" y2="190" stroke="currentColor" stroke-width="1.3" marker-end="url(#b)"/>
+  <line x1="500" y1="152" x2="500" y2="128" stroke="currentColor" stroke-width="1.3" marker-end="url(#b)"/>
+  <line x1="500" y1="90" x2="500" y2="66" stroke="#C2410C" stroke-width="1.5" marker-end="url(#bh)"/>
+
+  <!-- bottleneck hand-off, routed under the decoder so it does not collide with the 14x14 skip -->
+  <polyline points="220,355 500,355 500,314" fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#b)"/>
+  <text x="360" y="348" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".7">upsample</text>
+
+  <!-- concatenate arrows -->
+  <line x1="220" y1="293" x2="416" y2="293" stroke="currentColor" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#b)" opacity=".75"/>
+  <line x1="220" y1="107" x2="416" y2="107" stroke="currentColor" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#b)" opacity=".75"/>
+  <line x1="220" y1="169" x2="416" y2="169" stroke="currentColor" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#b)" opacity=".75"/>
+  <line x1="220" y1="231" x2="416" y2="231" stroke="currentColor" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#b)" opacity=".75"/>
+  <text x="318" y="102" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".7">concatenate</text>
+  <text x="318" y="164" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".7">concatenate</text>
+  <text x="318" y="226" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".7">concatenate</text>
+  <text x="318" y="288" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".7">concatenate</text>
+
+  <text x="320" y="392" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".6">skip connections carry location; the bottleneck carries meaning</text>
+</svg>
+<figcaption><b>Figure 2 &mdash; inside the segmentation network.</b> The encoder is MobileNetV2 with ImageNet weights, frozen at first and then fine-tuned over its top 30 layers. The decoder is trained from scratch. Each dashed line concatenates an encoder tensor onto the decoder at matching resolution, which is how a network that compressed the image to 7 pixels can still draw an edge accurate to a few pixels.</figcaption>
+</figure>
+
+<section class="stage prose">
+  <h3>How it was trained</h3>
+  <p>The target is the expert-drawn wound mask from the public FUSeg 2021 dataset: 787 usable training images and 190 for validation. The loss adds <strong>Dice</strong> to ordinary binary cross-entropy. That matters because the wound is about 2 per cent of the pixels, so a network that predicted "background everywhere" would already be 98 per cent accurate by cross-entropy alone. Dice measures overlap between the predicted and true regions, so it is not fooled by that.</p>
+  <p>Augmentation applies the same rotations and flips to the image and the mask together, while brightness, contrast and saturation jitter apply to the image only. Getting that wrong &mdash; rotating the photograph but not its mask &mdash; is the classic way to train a segmentation model on nonsense.</p>
+  <div class="tw">
+    <table>
+      <caption>Held-out performance on 190 FUSeg validation images. Dice and IoU both measure overlap with the expert mask; the centroid test asks whether the predicted centre falls inside the true ulcer at all.</caption>
+      <thead><tr><th>Measure</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><th>Dice, mean</th><td class="m">0.85</td></tr>
+        <tr><th>Dice, median</th><td class="m">0.89</td></tr>
+        <tr><th>Intersection over union</th><td class="m">0.76</td></tr>
+        <tr><th>Predicted centroid inside the true ulcer</th><td class="m">89 %</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="stage prose">
+  <span class="no">Stage 2</span>
+  <h2>Post-processing: one wound, not forty</h2>
+  <div class="shape">224&#215;224&#215;1 probabilities &nbsp;&#8594;&nbsp; one bounding box</div>
+  <p>The network outputs a probability per pixel, not a decision. Three steps turn it into a usable region:</p>
+  <ol class="num">
+    <li><strong>Threshold at 0.5.</strong> Every pixel above it becomes wound.</li>
+    <li><strong>Keep the largest connected region.</strong> A flood fill over four-connected neighbours labels each separate blob, and all but the biggest are discarded. Without this step, speckle on a drape or a glove joins the mask and the bounding box stretches across the whole photograph &mdash; which defeats the entire point of cropping.</li>
+    <li><strong>Take the bounding box</strong> of what survives, and record the pixel count and mean probability for the on-screen area and confidence figures.</li>
+  </ol>
+</section>
+
+<section class="stage prose">
+  <span class="no">Stage 3</span>
+  <h2>The crop: the step that makes it work</h2>
+  <div class="shape">bounding box &nbsp;&#8594;&nbsp; square &#215; 2.2 &nbsp;&#8594;&nbsp; 224&#215;224&#215;3</div>
+  <p>The bounding box is squared off around its centre, then expanded by 60 per cent on each side, giving a box 2.2 times the wound's longest dimension. It is clamped to stay inside the photograph, and the region is resampled from the full-resolution image rather than from the 224-pixel copy, so the crop gains real detail rather than upscaled blur.</p>
+  <p>The margin is deliberate. A crop tight to the wound edge would discard the peri-wound skin, and erythema spreading beyond the wound margin is a genuine sign of infection. The 60 per cent figure keeps that ring in frame.</p>
+  <div class="callout">
+    <span class="lab">Why this is the hinge</span>
+    <p>In the FUSeg validation images the ulcer occupies a median 1.3 per cent of the photograph. After cropping it occupies about 9 per cent. Retraining the classifier on those crops raised severity accuracy from 84.1 to 92.5 per cent and infection accuracy from 75.2 to 81.5 per cent. The architecture of the classifier did not change; only what it was shown.</p>
+  </div>
+</section>
+
+<section class="stage prose">
+  <span class="no">Stage 4</span>
+  <h2>Classification: two questions, one backbone</h2>
+  <div class="shape">224&#215;224&#215;3 &nbsp;&#8594;&nbsp; 7&#215;7&#215;1280 &nbsp;&#8594;&nbsp; 1280 &nbsp;&#8594;&nbsp; 2 &#215; softmax</div>
+  <p>MobileNetV2 again, ImageNet weights again, and again the same two-phase recipe: train the new output layers with the backbone frozen, then unfreeze its top 30 convolutional layers and fine-tune at a learning rate fifty times lower. Batch-normalisation layers stay frozen throughout, because their running statistics were estimated on a million ImageNet images and a few hundred wound photographs would only add noise to them.</p>
+  <p>The backbone ends at a 7 by 7 grid of 1,280 numbers. Global average pooling collapses each of those 1,280 channels to a single value, discarding position entirely and leaving a 1,280-number description of the crop. Two independent output layers read that same description:</p>
+  <ul>
+    <li><strong>Severity head</strong> &mdash; mild, meaning a superficial Texas Grade 1 appearance, against severe, meaning deep or extensive, a Grade 3 appearance.</li>
+    <li><strong>Infection head</strong> &mdash; no infection against infection suspected, which maps onto Texas Stage A and Stage B.</li>
+  </ul>
+  <p>Sharing the backbone between the two heads is the point of transfer learning: the features that describe a wound bed are useful for both questions, and only 5,124 of the model's 2.26 million parameters belong to the heads themselves. Each head is weighted so the minority class is not ignored, and images whose weak label is ambiguous contribute zero weight to that head's loss while still training the other.</p>
+</section>
+
+<section class="stage prose">
+  <span class="no">Stage 5</span>
+  <h2>From probabilities to a classification</h2>
+  <p>Neither head predicts a Texas code. The code is assembled by rule:</p>
+  <div class="tw">
+    <table>
+      <caption>How the two probabilities and one clinician input become a Texas cell. Grades 0 and 2 are greyed out in the app because a photograph cannot establish them.</caption>
+      <thead><tr><th>Component</th><th>Source</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><th>Texas grade</th><td>severity head</td><td>1 if mild, 3 if severe</td></tr>
+        <tr><th>Texas stage, no ischaemia</th><td>infection head</td><td>A if clean, B if infected</td></tr>
+        <tr><th>Texas stage, ischaemia present</th><td>infection head + clinician</td><td>C if clean, D if infected</td></tr>
+        <tr><th>Wagner grade</th><td>both heads</td><td>1 if mild; 2 if severe; 3 if severe and infected</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="human-note">
+    <span class="lab">The blue box in figure 1</span>
+    <p>Ischaemia is not predicted, it is entered. Perfusion cannot be read off a photograph, and Texas stages C and D exist precisely to record it, so the app asks for pedal pulses, ABPI or toe pressure and refuses to guess. Where a model trained on Wagner-named folders is loaded instead, the Wagner grade comes straight from that model rather than from this mapping.</p>
+  </div>
+</section>
+
+<section class="stage prose">
+  <h2>Grad-CAM, and why it is a side branch</h2>
+  <p>Grad-CAM asks how much each region of the input contributed to one chosen class score. The computation, done live in the browser, is four steps:</p>
+  <ol class="num">
+    <li>Run the crop forward and keep the 7&#215;7&#215;1280 activations from the last convolutional layer.</li>
+    <li>Take the score for the selected class and compute its gradient with respect to those activations.</li>
+    <li>Average each channel's gradient over the 7 by 7 grid, giving 1,280 importance weights, then form the weighted sum of the activation channels and clip the negatives away.</li>
+    <li>Normalise the resulting 7 by 7 map to 0&ndash;1 and resize it up for display.</li>
+  </ol>
+  <p>The colour is therefore a measure of the model's attention. Red means "this area counted most towards the class in the dropdown". It is not a clinical colour: it does not mean infection, bleeding or erythema, and a red patch on healthy skin is a warning about the model rather than an observation about the foot.</p>
+  <p>Its resolution is fixed by that 7 by 7 grid, and this is the whole problem.</p>
+</section>
+
+<figure>
+<svg viewBox="0 0 640 296" role="img" aria-label="A 224 pixel square divided into a 7 by 7 grid of 32 pixel cells, with one cell tinted and a 26 pixel ulcer drawn inside it, showing that the median ulcer is smaller than a single Grad-CAM cell.">
+  <!-- the image square with a 7x7 grid -->
+  <rect x="26" y="36" width="224" height="224" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <g stroke="currentColor" stroke-width="0.6" opacity=".45">
+    <line x1="58" y1="36" x2="58" y2="260"/><line x1="90" y1="36" x2="90" y2="260"/>
+    <line x1="122" y1="36" x2="122" y2="260"/><line x1="154" y1="36" x2="154" y2="260"/>
+    <line x1="186" y1="36" x2="186" y2="260"/><line x1="218" y1="36" x2="218" y2="260"/>
+    <line x1="26" y1="68" x2="250" y2="68"/><line x1="26" y1="100" x2="250" y2="100"/>
+    <line x1="26" y1="132" x2="250" y2="132"/><line x1="26" y1="164" x2="250" y2="164"/>
+    <line x1="26" y1="196" x2="250" y2="196"/><line x1="26" y1="228" x2="250" y2="228"/>
+  </g>
+  <!-- one cell, tinted -->
+  <rect x="122" y="132" width="32" height="32" fill="#C2410C" opacity=".16"/>
+  <rect x="122" y="132" width="32" height="32" fill="none" stroke="#C2410C" stroke-width="1.6"/>
+  <!-- the median ulcer, 26 px -->
+  <rect x="125" y="135" width="26" height="26" rx="5" fill="#C2410C" opacity=".85"/>
+  <text x="138" y="24" text-anchor="middle" class="dlabel" fill="currentColor" opacity=".65">224 &#215; 224 input</text>
+
+  <!-- annotations -->
+  <line x1="154" y1="148" x2="300" y2="112" stroke="#C2410C" stroke-width="1.2"/>
+  <circle cx="300" cy="112" r="2.5" fill="#C2410C"/>
+  <text x="312" y="102" class="dlabel" fill="#C2410C">one Grad-CAM cell</text>
+  <text x="312" y="118" class="dlabel" fill="#C2410C">32 &#215; 32 px = 2.04 % of the image</text>
+
+  <line x1="140" y1="161" x2="300" y2="196" stroke="currentColor" stroke-width="1.2"/>
+  <circle cx="300" cy="196" r="2.5" fill="currentColor"/>
+  <text x="312" y="186" class="dlabel" fill="currentColor">the median FUSeg ulcer</text>
+  <text x="312" y="202" class="dlabel" fill="currentColor">26 &#215; 26 px = 1.3 % of the image</text>
+
+  <text x="312" y="242" class="dlabel" fill="currentColor" opacity=".7">The wound is smaller than the</text>
+  <text x="312" y="258" class="dlabel" fill="currentColor" opacity=".7">smallest thing the heatmap can</text>
+  <text x="312" y="274" class="dlabel" fill="currentColor" opacity=".7">resolve, so it cannot point at it.</text>
+</svg>
+<figcaption><b>Figure 3 &mdash; why Grad-CAM cannot localise this.</b> Grad-CAM reads the last convolutional layer, a 7 by 7 grid over the 224-pixel input, so each cell covers 32 by 32 pixels, or 2.04 per cent of the image. The median ulcer in the validation set is a 26-pixel square. Measured over 190 images, the heatmap's hottest point fell inside the true ulcer in 13 per cent of cases. Cropping first raises that to 47 per cent and the segmentation centroid reaches 89 per cent, which is why the outline, not the heatmap, is what the app uses to localise.</figcaption>
+</figure>
+
+<section class="stage prose">
+  <h2>What runs where</h2>
+  <p>Both models are converted to TensorFlow.js at half precision and execute in the browser on WebGL, so no photograph is uploaded anywhere. The trade is size and speed: about 21 MB on first load, cached afterwards, and roughly two and a half to four seconds for a full pass in a software renderer. A real phone GPU is quicker.</p>
+  <p>Inside the app, Grad-CAM needs the network split in two &mdash; one model from the input to the 7&#215;7&#215;1280 layer, another from there to the outputs &mdash; so the activations can be held and differentiated. The heatmap is drawn only inside the crop rectangle it actually explains, because painting it over the whole photograph would put the heat in the wrong place.</p>
+  <div class="callout">
+    <span class="lab">The caveat that governs every number here</span>
+    <p>The segmentation targets are genuine expert masks. The classification labels are not: they are weak labels derived by rule from wound area and wound-bed colour, because the public dataset carries no Texas grades and no culture results. Every classifier figure on this page therefore describes agreement with a proxy, not clinical accuracy. Replacing those proxies with adjudicated grades and culture-confirmed infection status is what the ground-truth form in the app exists to do.</p>
+  </div>
+</section>
+
+<footer>
+  <p>Data: FUSeg 2021 / AZH Wound and Vascular Center &mdash; Wang C. et al., <em>Fully automatic wound segmentation with deep convolutional neural networks</em>, Scientific Reports 2020;10:21897. Method: Selvaraju R.R. et al., <em>Grad-CAM: visual explanations from deep networks via gradient-based localization</em>, ICCV 2017. Backbone: Sandler M. et al., <em>MobileNetV2: inverted residuals and linear bottlenecks</em>, CVPR 2018.</p>
+  <p>Research prototype. Not a medical device, not validated, not for clinical decision-making.</p>
+</footer>
+
+</div>

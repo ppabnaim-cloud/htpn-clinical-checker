@@ -34,10 +34,17 @@ async def main():
         await page.check("#ack1"); await wait(500); await page.check("#ack2"); await wait(600); await page.click("#enter"); await wait(1200)
         # 2 · capture: tap the sloughy sample (stands in for a photo taken in clinic)
         await page.hover(".sample >> nth=1"); await wait(400); await page.click(".sample >> nth=1")
-        await page.wait_for_selector("#results:not(.hidden)", timeout=60000); await wait(2200)
+        await page.wait_for_function(
+            "() => document.getElementById('status').classList.contains('hidden')"
+            " && document.getElementById('timing').textContent.trim() !== ''", timeout=180000)
+        await wait(1800)
         # 3 · Grad-CAM
-        await page.click('#camToggle button[data-v="1"]'); await wait(1800)
-        await page.select_option("#camTarget", "infection:1"); await wait(1800)
+        # overlay modes are 0 = photo, 1 = wound outline, 2 = Grad-CAM
+        await page.click('#camToggle button[data-v="1"]'); await wait(2000)      # the wound outline
+        await page.evaluate("document.getElementById('woundPanel').scrollIntoView({behavior:'smooth',block:'center'})")
+        await wait(1800)
+        await page.click('#camToggle button[data-v="2"]'); await wait(2000)      # Grad-CAM, with its legend
+        await page.click('#camToggle button[data-v="1"]'); await wait(700)
         # 4 · results + Texas grid
         await page.evaluate("document.querySelector('.texas').scrollIntoView({behavior:'smooth',block:'center'})"); await wait(1800)
         await page.click('#ischChips .chip[data-v="1"]'); await wait(1300)
@@ -48,7 +55,11 @@ async def main():
         await page.select_option("#gtPtb", "Positive"); await wait(300); await page.fill("#gtDate", "2026-09-08"); await wait(400)
         await page.click('#orgChips .chip[data-v="MRSA"]'); await wait(350); await page.click('#orgChips .chip[data-v="Pseudomonas"]'); await wait(500)
         await page.fill("#gtNotes", "MRSA: sensitive to vancomycin, doxycycline. Pseudomonas: sensitive to piperacillin-tazobactam."); await wait(700)
-        await page.click("#saveCase"); await wait(2200)
+        await page.click("#saveCase"); await wait(2000)
+        # 6 · the dataset readiness dashboard on the Train tab
+        await page.click("#tabTrain"); await wait(900)
+        await page.evaluate("document.getElementById('readiness').scrollIntoView({behavior:'smooth',block:'start'})")
+        await wait(2200)
         await ctx.close(); await b.close()
     webm = sorted(glob.glob(os.path.join(OUT, "*.webm")), key=os.path.getmtime)[-1]
 

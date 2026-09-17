@@ -1,0 +1,30 @@
+{
+ "tta_views": 4,
+ "tta_note": "Identity plus horizontal, vertical and both flips, probabilities averaged. Infection AUC 0.834 -> 0.863; severity 0.963 -> 0.965.",
+ "calibration": {
+  "severity": {
+   "apply": true,
+   "scale": 0.7554,
+   "shift": -0.3016,
+   "n_fit": 107,
+   "reason": "Platt scaling lifts the calibration slope from 0.78 to 0.97 with no accuracy cost (mean of 20 disjoint half-splits)."
+  },
+  "infection": {
+   "apply": false,
+   "scale": 0.9559,
+   "shift": -0.5724,
+   "n_fit": 157,
+   "reason": "4-view TTA already brings the slope to 0.96. Adding Platt scaling gave no Brier gain and cost accuracy (0.835 -> 0.809 over 20 splits), so it is recorded but not applied."
+  }
+ },
+ "abstention": {
+  "confidence_threshold": 0.7,
+  "measured_on_infection_head": {
+   "kept_fraction": 0.66,
+   "accuracy_on_kept": 0.89,
+   "accuracy_on_all": 0.83
+  }
+ },
+ "formula": "p_cal = sigmoid(scale * logit(p_raw) + shift)",
+ "caveat": "Fitted on the FUSeg validation split against WEAK labels. Refit on clinician-adjudicated, culture-confirmed data before any clinical claim."
+}

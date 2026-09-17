@@ -47,6 +47,15 @@ stratified 70/15/15 split, class weights, early stopping, and reports AUC, sensi
 on the held-out test set. It exports a float16 TensorFlow.js model plus `classes.json` (class names, Grad-CAM layer,
 input range, scheme, metrics) that the app loads directly.
 
+The notebook has two label modes. `single` puts one softmax over the class folders, which suits Wagner grades, Texas
+cells or infected/not. `dfu_multilabel` builds **two independent binary heads, infection and ischaemia**, and is the
+mode for DFUC, whose four folders are really two co-occurring labels: 621 of its training images carry both. A four-way
+softmax models that wrongly, treating "both" as unrelated to either. The two heads also span the Texas **stage** axis
+exactly — neither is A, infection is B, ischaemia is C, both is D — so the notebook additionally reports exact-match
+accuracy on the full stage. The Assess tab currently loads two-head models named grade and infection, so an
+infection+ischaemia export needs the app's head names generalised before it will display; the metrics and the Grad-CAM
+check in the notebook are valid regardless.
+
 **Wagner as well as Texas.** The scheme toggle in the Assess tab shows either the Texas grid or the Meggitt–Wagner
 ladder. For the demo model, Wagner is a mapping (superficial → 1, deep/extensive → 2, or 3 when infection is also
 predicted). For a model trained on Wagner-named folders, the ladder shows the predicted grade directly. Wagner is
@@ -156,6 +165,32 @@ Two deliberate framings. The verdict counts **images** but says so, and reminds 
 calculations in `../docs/protocol-notes.html` are in **patients** — four photographs of one ulcer are not four
 independent cases. And where a class falls below the minimum it suggests merging rather than collecting
 forever, because Wagner 4 and 5 will not reach 100 each in a primary-care cohort.
+
+### Three measured model improvements
+
+Each was decided by measurement on the FUSeg validation split, not by assumption. Reproduce with
+`ml/audit_improvements.py`; the coefficients ship in `model-roi/calibration.json`.
+
+| Change | Effect |
+|---|---|
+| Test-time augmentation, 4 flipped views averaged | infection AUC 0.834 → 0.863, calibration slope 0.75 → 0.96 |
+| Platt recalibration, depth head only | depth calibration slope 0.78 → 0.97, accuracy unchanged |
+| Abstention below 70 % confidence | declining the least confident third raises accuracy on the rest from 83 % to 89 % |
+
+**Why the depth head is recalibrated and the infection head is not.** Both heads were overconfident:
+calibration slopes of 0.78 and 0.75 where 1.0 is ideal. Test-time augmentation alone fixed the
+infection head, taking it to 0.96. Adding Platt scaling on top then cost accuracy, 0.835 down to
+0.809 averaged over 20 disjoint half-splits, for no gain in Brier score, so the infection
+coefficients are recorded in the file but deliberately left unapplied. A single half-split had
+suggested the opposite; the 20-split average is the number to trust.
+
+**Abstention is the safety change.** Before it, a photograph of a desk produced a confident Texas
+code. Now the segmentation finds no wound, both heads land near 56 % confidence, and the app prints
+"Declines to classify" with a referral prompt instead of a number. In a triage setting the fallback
+of referring is safe, which is what makes declining preferable to guessing.
+
+The cost is time: four classifier passes instead of one take a full pass to roughly 3.5–5 s in a
+software renderer. A phone GPU is faster.
 
 ### On-screen interpretation
 

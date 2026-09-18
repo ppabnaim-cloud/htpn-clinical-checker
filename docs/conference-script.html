@@ -1,0 +1,384 @@
+<title>DFU Vision Talk Script</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Karla:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ground:#F7F7F8; --card:#FFFFFF; --sunk:#EEEFF2;
+  --ink:#15171C; --body:#343943; --quiet:#6C7482; --rule:#E0E2E8;
+  --maroon:#99304A; --maroon-soft:#FAEEF1;
+  --slate:#3D5166; --slate-soft:#EDF1F6;
+  --moss:#2A6A4A; --moss-soft:#E8F2EC;
+  --display:'Newsreader',Georgia,serif;
+  --sans:'Karla',system-ui,-apple-system,sans-serif;
+  --mono:'Roboto Mono',ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#101216; --card:#181B21; --sunk:#1E222A;
+    --ink:#ECEEF2; --body:#C6CBD4; --quiet:#8C96A4; --rule:#282D36;
+    --maroon:#EC9AAC; --maroon-soft:#2A1419;
+    --slate:#9DB6D0; --slate-soft:#161D26;
+    --moss:#7ECBA2; --moss-soft:#11231A;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#101216; --card:#181B21; --sunk:#1E222A;
+  --ink:#ECEEF2; --body:#C6CBD4; --quiet:#8C96A4; --rule:#282D36;
+  --maroon:#EC9AAC; --maroon-soft:#2A1419;
+  --slate:#9DB6D0; --slate-soft:#161D26;
+  --moss:#7ECBA2; --moss-soft:#11231A;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--body);font-family:var(--sans);font-size:16.5px;line-height:1.6}
+.wrap{max-width:880px;margin:0 auto;padding-block:clamp(26px,5vw,56px);padding-left:20px;padding-right:20px}
+
+header{border-bottom:3px solid var(--maroon);padding-bottom:22px}
+.kick{font-family:var(--mono);font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--maroon);margin:0 0 12px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(31px,5.6vw,46px);line-height:1.08;letter-spacing:-.015em;color:var(--ink);margin:0 0 14px;text-wrap:balance}
+.stand{font-size:clamp(17px,2.3vw,19px);line-height:1.5;max-width:56ch;margin:0}
+.facts{display:flex;flex-wrap:wrap;gap:6px 24px;font-family:var(--mono);font-size:12px;color:var(--quiet);margin-top:18px}
+
+.howto{background:var(--slate-soft);border-left:3px solid var(--slate);border-radius:0 10px 10px 0;padding:15px 18px;margin:30px 0 8px}
+.howto h2{font-family:var(--mono);font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--slate);margin:0 0 8px;font-weight:500}
+.howto p{margin:0 0 9px;font-size:15px}
+.howto p:last-child{margin:0}
+
+.band{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--maroon);border-top:1px solid var(--rule);padding-top:13px;margin:52px 0 0}
+
+.slide{background:var(--card);border:1px solid var(--rule);border-radius:13px;padding:20px 22px;margin-top:18px}
+.slide.core{border-left:4px solid var(--maroon)}
+.shead{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;margin-bottom:4px}
+.snum{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--maroon);letter-spacing:.05em}
+.stime{font-family:var(--mono);font-size:11.5px;color:var(--quiet);margin-left:auto}
+.slide h3{font-family:var(--display);font-weight:600;font-size:clamp(20px,3vw,25px);line-height:1.22;color:var(--ink);margin:0 0 14px;text-wrap:balance;width:100%}
+.lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--quiet);display:block;margin:16px 0 6px}
+.lab:first-of-type{margin-top:0}
+.onslide{background:var(--sunk);border-radius:9px;padding:12px 15px;font-size:14.5px}
+.onslide ul{margin:0;padding-left:19px}
+.onslide li{margin:4px 0}
+.say{font-size:17px;line-height:1.62;color:var(--ink)}
+.say p{margin:0 0 11px}
+.say p:last-child{margin:0}
+.say em{font-style:normal;background:var(--moss-soft);color:var(--moss);padding:0 4px;margin:0 -3px;border-radius:3px;font-weight:500;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.aside{border-left:3px solid var(--moss);background:var(--moss-soft);border-radius:0 9px 9px 0;padding:11px 15px;margin-top:15px;font-size:14.5px}
+.aside b{color:var(--moss);font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;display:block;margin-bottom:5px;font-weight:500}
+
+.qa{background:var(--card);border:1px solid var(--rule);border-radius:13px;padding:6px 0;margin-top:20px}
+.q{border-top:1px solid var(--rule);padding:15px 22px}
+.q:first-child{border-top:none}
+.q h4{font-family:var(--sans);font-weight:700;font-size:15.5px;color:var(--ink);margin:0 0 7px}
+.q p{margin:0;font-size:15.5px}
+
+.tw{overflow-x:auto;margin:18px 0;border:1px solid var(--rule);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{padding:9px 14px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+thead th{background:var(--sunk);color:var(--ink);font-weight:700;font-size:12.5px;font-family:var(--mono);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+td:first-child{color:var(--quiet);white-space:nowrap}
+td strong{color:var(--ink)}
+
+/* At phone width two columns cannot both be read, so each pair stacks:
+   quiet label above, the phrase to actually say below. */
+@media (max-width:620px){
+  .tw{overflow-x:visible}
+  thead{display:none}
+  table,tbody,tr,td{display:block;width:auto}
+  tr{border-bottom:1px solid var(--rule);padding:8px 0}
+  tbody tr:last-child{border-bottom:none}
+  td{border-bottom:none;padding:2px 14px}
+  td:first-child{white-space:normal;font-family:var(--mono);font-size:11.5px;letter-spacing:.03em;text-transform:uppercase}
+  td:last-child::before{content:"\2192\00a0";color:var(--quiet)}
+}
+
+footer{margin-top:52px;border-top:1px solid var(--rule);padding-top:18px;font-size:14px;color:var(--quiet)}
+
+@media print{
+  body{background:#fff;color:#000;font-size:10.5pt}
+  .wrap{max-width:none;padding:0}
+  .slide,.qa{break-inside:avoid;border:none;border-top:1px solid #999;border-radius:0;padding:8pt 0}
+  .slide.core{border-left:none}
+  .onslide,.aside,.howto{background:#f2f2f2;border-radius:0}
+  .say{font-size:11pt}
+  .band{margin:14pt 0 0}
+}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="kick">Conference talk &middot; presenter's script</p>
+  <h1>Teaching a phone to look at a diabetic foot</h1>
+  <p class="stand">Fifteen slides, roughly seventeen minutes, written to be read aloud to an audience with no background in computing.</p>
+  <div class="facts">
+    <span>Dr Naim Bin Abdul Malek</span>
+    <span>Hospital Tengku Permaisuri Norashikin</span>
+    <span>15 slides &middot; ~17 min + questions</span>
+  </div>
+</header>
+
+<div class="howto">
+  <h2>How to use this script</h2>
+  <p><b>Slides marked with a maroon bar are the core.</b> If you are cut to ten minutes, keep those and drop the rest. The pipeline section is the heart of the talk; do not cut into it.</p>
+  <p>Under each slide, <b>On the slide</b> is what to put on screen, and <b>What you say</b> is a script you can read more or less verbatim. Green highlights mark the numbers worth landing slowly.</p>
+  <p>Read the whole thing aloud once with a timer. Talks always run long, and the pipeline is where you will want the spare minute.</p>
+</div>
+
+<p class="band">Part 1 &middot; Why anyone should care</p>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 1</span><span class="stime">30 sec</span>
+    <h3>Title</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">Title, your name and hospital, and one photograph of a foot ulcer with the app's outline drawn on it. No bullet points.</div>
+  <span class="lab">What you say</span>
+  <div class="say"><p>Good morning. I am going to show you something my phone can do that it could not do a year ago. It can look at a photograph of a diabetic foot ulcer and tell you two things: how deep the wound looks, and whether it looks infected. I will show you exactly how it works, what it gets right, and rather more interestingly, what it gets wrong.</p></div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 2</span><span class="stime">90 sec</span>
+    <h3>Why a foot ulcer is a life-or-death problem</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">Four numbers, large, one per quadrant. No paragraphs.
+    <ul><li>15.6 % of Malaysian adults have diabetes</li><li>1 in 3 will develop a foot ulcer</li><li>30.5 % die within five years of getting one</li><li>56.6 % die within five years of a major amputation</li></ul></div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>Let me start with why this matters, because the numbers are worse than most people assume.</p>
+    <p>In Malaysia, the proportion of adults with diabetes rose from eleven per cent in 2011 to <em>fifteen point six per cent in 2023</em>. A substantial share of them will develop a foot ulcer at some point.</p>
+    <p>Here is the part that surprises clinicians outside this field. Once a patient has a diabetic foot ulcer, their chance of dying within five years is <em>thirty per cent</em>. If they lose part of the limb, it is <em>fifty-seven per cent</em>. That is worse than many cancers we treat far more aggressively.</p>
+    <p>And in our own setting, roughly <em>eighteen per cent</em> of Malaysian patients with a diabetic foot ulcer eventually undergo an amputation.</p>
+  </div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 3</span><span class="stime">60 sec</span>
+    <h3>Infection is the thing that decides</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">A simple two-arrow diagram: ulcer &rarr; infected &rarr; amputation, and ulcer &rarr; not infected &rarr; healing. One caption: "more than half become infected".</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>What turns an ulcer into an amputation is usually infection. More than half of all foot ulcers become infected, and <em>seventeen per cent of infected ulcers</em> end in amputation.</p>
+    <p>So the single most valuable thing you can do early is recognise infection and refer. That is a decision made in a clinic, often by a medical officer who sees a foot ulcer a few times a month, not by a specialist who sees them daily.</p>
+    <p>That gap is what I have been working on.</p>
+  </div>
+</section>
+
+<p class="band">Part 2 &middot; The pipeline, from photograph to answer</p>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 4</span><span class="stime">45 sec</span>
+    <h3>What we built, in one sentence</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">A phone held in a hand, showing the app with a wound outlined. One line of text: "A web page that runs on any phone. Nothing is uploaded."</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>It is a web page. You open it on a phone browser, photograph the wound, and it answers. There is no app to install and no account to create.</p>
+    <p>The important detail is this: <em>the photograph never leaves the phone</em>. All the computing happens inside the browser, on the handset in your pocket. That matters for patient privacy, and it means it works when the clinic's internet does not.</p>
+  </div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 5</span><span class="stime">45 sec</span>
+    <h3>Step 1 &mdash; take the photograph properly</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">The six-point acquisition protocol, with a good photo and a bad photo side by side.</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>Step one has nothing to do with computers. Before the app does anything, it makes you agree to a photography protocol. Dressing off, wound irrigated and blotted dry. Camera thirty to forty centimetres away, straight on. Flash off. Plain sheet behind the foot. A paper ruler beside the wound, never on it. And no faces or name bands in the frame.</p>
+    <p>I put this first deliberately, because in wound photography the camera is the biggest source of error, not the computer. Two photographs of the same ulcer taken at different distances and under different lights can look like different wounds. If we do not standardise this, nothing downstream can be trusted.</p>
+  </div>
+  <div class="aside"><b>If you have time</b>Hold up your own phone and mime the distance. The audience remembers gestures better than bullet points.</div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 6</span><span class="stime">75 sec</span>
+    <h3>Step 2 &mdash; the computer traces round the wound</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">One photograph, before and after, with the teal outline drawn. Two numbers beneath: "agreement with experts 0.85" and "centre lands inside the real wound in 89 % of photographs".</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>The first thing the computer does is draw round the wound edge.</p>
+    <p>If you have ever traced a wound onto a transparency sheet to measure how it is healing, this is exactly the same idea, done automatically in about a second.</p>
+    <p>We taught it using roughly a thousand photographs where wound specialists had already drawn the outline by hand. It now agrees closely with those experts. The overlap score is <em>zero point eight five</em>, where one point zero would be a perfect match. And the centre of its outline falls inside the real wound in <em>eighty-nine out of a hundred</em> photographs.</p>
+    <p>Because it has the outline, it can also measure the wound. Tap the two ends of the paper ruler, tell it how long that is, and it reports the area in square centimetres. That gives you a number to compare at the next visit, instead of "looks a bit smaller".</p>
+  </div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 7</span><span class="stime">60 sec</span>
+    <h3>Step 3 &mdash; it steps closer</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">The same photo with a dashed square around the wound, then the cropped close-up beside it. Caption: "1.3 % of the photo &rarr; 9 %". Below: "accuracy 84 % &rarr; 92 %".</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>This step sounds trivial and it is the most important thing in the whole design.</p>
+    <p>In our photographs, a typical ulcer takes up only <em>one point three per cent</em> of the picture. The rest is foot, bed sheet, gloves, and the clinic floor. Asking a computer to judge infection from that is like asking you to assess a wound from a photograph of the whole ward.</p>
+    <p>So once it knows where the wound is, it crops in around it, keeping a margin of surrounding skin because redness spreading beyond the wound edge is itself a sign of infection. The wound now fills about <em>nine per cent</em> of what the computer sees.</p>
+    <p>That one change lifted accuracy from <em>eighty-four per cent to ninety-two per cent</em>. We did not build a cleverer computer. We just stood it closer.</p>
+  </div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 8</span><span class="stime">60 sec</span>
+    <h3>Step 4 &mdash; it answers two questions</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">Two gauges: "How deep does it look?" and "Does it look infected?", each with a percentage. Nothing else.</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>Now it looks at the close-up and answers two separate questions.</p>
+    <p>First, how deep does this look: superficial, or deep and extensive. Second, does this look infected.</p>
+    <p>Each answer comes with a percentage, and I want to be precise about what that percentage means. It is the computer's confidence in that one label. It is not a severity score. Eighty per cent does not mean a worse wound than sixty per cent; it means the computer is more sure of its answer.</p>
+    <p>And when it is not sure, it says so. Below <em>seventy per cent confidence</em> it refuses to answer and tells you to refer. I will come back to why that refusal matters.</p>
+  </div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 9</span><span class="stime">60 sec</span>
+    <h3>Step 5 &mdash; the clinician supplies what a photograph cannot</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">The Texas grid with one cell highlighted, and a blue box off to the side labelled "you: pulses, ABPI, toe pressure".</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>The two answers then map onto the classification systems you already use. The app shows both the University of Texas grid and the Wagner grades.</p>
+    <p>But notice what it does not do. The Texas system also asks whether the foot is ischaemic. <em>No photograph can show blood supply.</em> So the app asks you. You enter whether the pulses are present, or the ABPI, or the toe pressure, and only then does it complete the classification.</p>
+    <p>I think this is the right instinct for clinical AI generally. The tool should do the part it can genuinely do, and ask you for the part it cannot, rather than guessing to look clever.</p>
+  </div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 10</span><span class="stime">60 sec</span>
+    <h3>Step 6 &mdash; the loop that makes it better</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">A circle: photograph &rarr; AI answer &rarr; clinician's own grade and the culture result &rarr; better training data &rarr; back to the start.</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>The last step is the one that turns a demonstration into a research tool.</p>
+    <p>After the app gives its answer, the clinician records the truth: their own grading, whether the probe reached bone, and when it comes back, the tissue culture and sensitivity result. The app keeps a log of AI answer against real answer, and can export it as a spreadsheet.</p>
+    <p>So every patient seen makes the next version better. And it means we can state plainly how often the tool agrees with a culture result, rather than how often it agrees with somebody's impression.</p>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="shead"><span class="snum">Slide 11</span><span class="stime">90 sec</span>
+    <h3>Watch it run</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">The thirty-five second screen recording. Have it as a video file on the machine, not streaming from the internet.</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>Let me show you. This is a real recording, not a mock-up.</p>
+    <p>Protocol first. Photograph. The outline appears, and the measurement. It answers the two questions, places it on the Texas grid, and then the clinician fills in the culture result and saves the case.</p>
+    <p>That whole sequence takes about four seconds of computing on an ordinary phone.</p>
+  </div>
+  <div class="aside"><b>Rehearse this</b>Play the video at least twice before the talk and know where to pause. If the room's audio-visual set-up fails, you can still walk the audience through slides 6 to 10 as stills. Never rely on live internet for a demo.</div>
+</section>
+
+<p class="band">Part 3 &middot; How it learned, and where it fails</p>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 12</span><span class="stime">75 sec</span>
+    <h3>We did not teach it from nothing</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">Two panels. Left: a grid of everyday photographs (cats, cars, chairs) labelled "already learned to see, 1.4 million pictures". Right: foot ulcers labelled "then learned wounds, about 800 pictures".</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>People imagine that building this needs a supercomputer and a million wound photographs. It does not, because of one idea.</p>
+    <p>We started with a program that had already looked at <em>one point four million everyday photographs</em> — cats, cars, chairs. From those it had already learned the general business of seeing: edges, colours, textures, shapes.</p>
+    <p>We then showed it about <em>eight hundred</em> foot ulcer photographs and let it adjust what it already knew. It is the difference between hiring an experienced photographer and teaching them wound photography, versus teaching a newborn to see.</p>
+    <p>That is why this took about five minutes of training on an ordinary laptop, and why a district hospital can do this. The specialists call it transfer learning. You can call it standing on someone else's shoulders.</p>
+  </div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 13</span><span class="stime">2 min</span>
+    <h3>The thing that surprised me</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">One large picture: a 7 &times; 7 grid over a photograph, with one square shaded and a tiny ulcer inside it. Two labels: "one square = 2 % of the picture" and "a typical ulcer = 1.3 %".</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>If you remember one thing from this talk, let it be this slide.</p>
+    <p>There is a very popular technique for explaining what these systems are doing, called a heat map. It colours the picture to show which parts the computer leaned on. Every paper shows one. It looks convincing. I had it in my own first version, and I presented it as our explainability feature.</p>
+    <p>Then we measured whether it actually points at the ulcer. It does not. The hottest spot landed inside the real ulcer in only <em>thirteen out of a hundred</em> photographs.</p>
+    <p>The reason is simple once you see this picture. The heat map can only see the photograph as a grid of forty-nine squares. Each square covers about <em>two per cent</em> of the image. A typical ulcer in our data covers <em>one point three per cent</em>. The wound is smaller than the smallest thing the heat map is able to see. It was never going to work, and no amount of tuning would have fixed it.</p>
+    <p>So we stopped using it to locate the wound and used the tracing instead, which lands correctly <em>eighty-nine per cent</em> of the time. The heat map is still in the app, but labelled honestly: it tells you whether the computer is looking at the foot or at the curtains. Nothing more.</p>
+    <p>The general lesson is not about foot ulcers. If somebody shows you a heat map as evidence that their AI is trustworthy, ask them whether they measured it.</p>
+  </div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 14</span><span class="stime">90 sec</span>
+    <h3>What it gets wrong</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">Three short headings only: "Our labels are guesses", "It misses sloughy edges", "It has never seen a Malaysian foot". Beside the second, show the under-traced example.</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>Three weaknesses, stated plainly, because a tool whose limits you cannot describe is a tool nobody should use.</p>
+    <p><b>First, our labels are guesses.</b> The public photographs we trained on came with no culture results and no clinical grades. So we inferred infection from visual clues: how much yellow slough, how much black tissue. That is a proxy, not a diagnosis. Every accuracy figure I have quoted measures agreement with our guesses, not with the truth.</p>
+    <p><b>Second, it under-traces sloughy wounds.</b> On one of my own examples it outlined the top third and missed the yellow slough below it, reporting about a third of the true area. The average is good; individual cases are not always.</p>
+    <p><b>Third, it has never seen a Malaysian foot.</b> Every photograph came from clinics in the United States and the United Kingdom. Different skin tones, different cameras, different lighting. There is no reason to assume the numbers I have shown you will hold in a Klinik Kesihatan, and good reason to assume they will drop.</p>
+  </div>
+  <div class="aside"><b>Why this slide wins the room</b>Most AI talks skip it. Presenting your failures with measurements makes the rest of your numbers believable, and it is the slide senior clinicians will remember you for.</div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 15</span><span class="stime">75 sec</span>
+    <h3>What it is not, and what comes next</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">Two columns. "Not yet": not a medical device, not validated, not for treatment decisions. "Next": 400 patients, culture-confirmed labels, ethics submitted, primary care validation.</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>Let me be clear about what this is not. It is a research prototype. It is not a medical device, it is not validated, and nobody should make a treatment decision with it. The app says so on its own opening screen and will not let you past until you agree.</p>
+    <p>What comes next is the part that actually matters. I am registering a study to collect around <em>four hundred patients</em> with proper consent, where each ulcer is graded independently by two wound clinicians, disagreements are settled by a consultant, and infection is confirmed by tissue culture rather than by how it looks.</p>
+    <p>Then the question stops being "can a computer do this" and becomes "does it help a medical officer in Kajang refer the right patient sooner". That is a harder question and a more useful one.</p>
+    <p>Thank you. I am happy to take questions.</p>
+  </div>
+</section>
+
+<p class="band">Backup &middot; questions you should expect</p>
+
+<div class="qa">
+  <div class="q"><h4>Is this going to replace clinicians?</h4>
+    <p>No, and the design says so. It refuses to answer when it is unsure, and it asks the clinician for the vascular assessment it cannot do. It is a second opinion for someone who sees a foot ulcer twice a month, not a substitute for someone who sees them daily.</p></div>
+  <div class="q"><h4>How accurate is it, really?</h4>
+    <p>On our held-out photographs, about ninety-two per cent for depth and eighty-two per cent for infection. But those are measured against our own visual guesses, not against culture results, so treat them as an engineering check rather than clinical accuracy. That is exactly what the next study is for.</p></div>
+  <div class="q"><h4>What about patient confidentiality?</h4>
+    <p>The photograph never leaves the phone. All the computing happens in the browser. Nothing is uploaded to any server. And no patient image goes anywhere near it until ethics approval is in place.</p></div>
+  <div class="q"><h4>How much did this cost?</h4>
+    <p>Nothing so far but time. The photographs are public research datasets, the training ran on a free graphics card in a web browser, and the app is hosted free. That is the point worth making to a ministry: the barrier here is data and governance, not money.</p></div>
+  <div class="q"><h4>Why not just use one of the commercial wound apps?</h4>
+    <p>Several exist and they are good at measuring wounds. None of them classify infection, which is the decision that drives amputation. And none were built or validated on Malaysian patients.</p></div>
+  <div class="q"><h4>Could it work for pressure ulcers or venous ulcers?</h4>
+    <p>Probably, with retraining, because the underlying method is not specific to feet. But I would not claim it until it had been tested, and the grading systems are different.</p></div>
+  <div class="q"><h4>What happens if somebody photographs the wrong thing?</h4>
+    <p>We tested that. Point it at a desk and it finds no wound, both answers fall below the confidence threshold, and it declines to classify and advises referral. It used to produce a confident answer for a photograph of a desk. Fixing that was one of the more useful afternoons of the project.</p></div>
+  <div class="q"><h4>Who owns it?</h4>
+    <p>The code is mine and openly available. The public photographs remain the property of the research groups that released them, and their licences forbid clinical use, which is one reason the deployed version must be trained on our own data.</p></div>
+</div>
+
+<p class="band">Reference &middot; say this, not that</p>
+
+<div class="tw">
+  <table>
+    <thead><tr><th>Avoid</th><th>Say instead</th></tr></thead>
+    <tbody>
+      <tr><td>Convolutional neural network</td><td><strong>the computer</strong>, or <strong>the program</strong></td></tr>
+      <tr><td>Transfer learning</td><td><strong>it already knew how to see, we taught it wounds</strong></td></tr>
+      <tr><td>Segmentation</td><td><strong>drawing round the wound</strong>, or <strong>tracing the edge</strong></td></tr>
+      <tr><td>Classification</td><td><strong>answering a question about it</strong></td></tr>
+      <tr><td>Grad-CAM / saliency map</td><td><strong>a heat map showing where it looked</strong></td></tr>
+      <tr><td>Training and validation split</td><td><strong>photographs it learned from, and photographs it had never seen</strong></td></tr>
+      <tr><td>AUC 0.86</td><td><strong>right about eight times in ten</strong> (and say which number you mean)</td></tr>
+      <tr><td>Dice coefficient 0.85</td><td><strong>its outline and the expert's outline mostly overlap</strong></td></tr>
+      <tr><td>Weak labels</td><td><strong>we inferred the answer from how the wound looked, rather than from a culture result</strong></td></tr>
+      <tr><td>Calibration</td><td><strong>when it says eighty per cent sure, is it right eighty per cent of the time</strong></td></tr>
+      <tr><td>Abstention threshold</td><td><strong>it refuses to answer when it is not sure</strong></td></tr>
+      <tr><td>Inference runs client-side</td><td><strong>the photograph never leaves the phone</strong></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<footer>
+  <p><strong>Timing.</strong> Fifteen slides at the times given comes to about seventeen minutes, leaving room for questions in a twenty-five minute slot. For a ten-minute slot, keep slides 1, 2, 4, 6, 7, 8, 13 and 15, and show the video only if the audio-visual set-up has already been tested.</p>
+  <p><strong>Sources for the epidemiology.</strong> National Health and Morbidity Survey 2023 (Mat Rifin et al., <em>Scientific Reports</em> 2025); Armstrong et al., <em>Journal of Foot and Ankle Research</em> 2020, for five-year mortality; Rosedi et al., <em>IJERPH</em> 2022, for Malaysian amputation rates. Model figures are from the project's own held-out measurements and are reproducible with the audit scripts in the repository.</p>
+</footer>
+
+</div>

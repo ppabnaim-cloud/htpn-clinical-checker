@@ -72,7 +72,8 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .capture-btn:active{background:var(--teal-glow)}
 .samples{margin-top:12px}
 .samples p{font-size:12px;color:var(--muted);margin-bottom:8px}
-.sample-row{display:flex;gap:8px}
+.sample-row{display:flex;gap:8px;flex-wrap:wrap}
+.sample{flex:1 1 118px;min-width:108px;max-width:190px}
 .sample{flex:1;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;padding:0;text-align:left}
 .sample img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
 .sample span{display:block;font-size:11.5px;font-weight:600;padding:6px 8px;color:var(--navy)}
@@ -317,12 +318,16 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <div class="samples">
       <p id="sampleNote"></p>
       <div class="sample-row" id="sampleRow">
-        <button class="sample" data-src="samples/small_leg_ulcer.jpg" data-name="Sample A"><img src="samples/small_leg_ulcer.jpg" alt="Sample A: a small ulcer on the lower leg"><span>A · small leg ulcer <i>Dice 0.77</i></span></button>
-        <button class="sample" data-src="samples/sloughy_heel_ulcer.jpg" data-name="Sample B"><img src="samples/sloughy_heel_ulcer.jpg" alt="Sample B: a heel cavity ringed with yellow slough"><span>B · sloughy heel cavity <i>Dice 0.70</i></span></button>
-        <button class="sample" data-src="samples/large_ankle_ulcer.jpg" data-name="Sample C"><img src="samples/large_ankle_ulcer.jpg" alt="Sample C: a large ulcer over the ankle with dark tissue"><span>C · large ankle ulcer <i>Dice 0.94</i></span></button>
-        <button class="sample" data-src="samples/landscape_offcentre.jpg" data-name="Sample D (landscape)"><img src="samples/landscape_offcentre.jpg" alt="Sample D: sample C placed off-centre in a 4:3 landscape frame"><span>D · landscape, off-centre</span></button>
-        <button class="sample" data-src="samples/portrait_phone.jpg" data-name="Sample E (portrait)"><img src="samples/portrait_phone.jpg" alt="Sample E: sample B in a 9:16 portrait phone frame"><span>E · portrait, phone shape</span></button>
-    </div>
+        <button class="sample" data-dis="dfu" data-src="samples/small_leg_ulcer.jpg" data-name="Sample A"><img src="samples/small_leg_ulcer.jpg" alt="A small ulcer on the lower leg"><span>A · small leg ulcer <i>Dice 0.77</i></span></button>
+        <button class="sample" data-dis="dfu" data-src="samples/sloughy_heel_ulcer.jpg" data-name="Sample B"><img src="samples/sloughy_heel_ulcer.jpg" alt="A heel cavity ringed with yellow slough"><span>B · sloughy heel cavity <i>Dice 0.70</i></span></button>
+        <button class="sample" data-dis="dfu" data-src="samples/large_ankle_ulcer.jpg" data-name="Sample C"><img src="samples/large_ankle_ulcer.jpg" alt="A large ulcer over the ankle"><span>C · large ankle ulcer <i>Dice 0.94</i></span></button>
+        <button class="sample" data-dis="dfu" data-src="samples/necrotic_forefoot_ulcer.jpg" data-name="Sample D"><img src="samples/necrotic_forefoot_ulcer.jpg" alt="A forefoot ulcer with dark necrotic tissue"><span>D · necrotic forefoot <i>Dice 0.90</i></span></button>
+        <button class="sample" data-dis="dfu" data-src="samples/plantar_eschar_ulcer.jpg" data-name="Sample E"><img src="samples/plantar_eschar_ulcer.jpg" alt="A plantar ulcer with black eschar"><span>E · plantar eschar <i>Dice 0.96</i></span></button>
+        <button class="sample" data-dis="dfu" data-src="samples/landscape_offcentre.jpg" data-name="Sample F (landscape)"><img src="samples/landscape_offcentre.jpg" alt="Sample C off-centre in a 4:3 landscape frame"><span>F · landscape, off-centre</span></button>
+        <button class="sample" data-dis="dfu" data-src="samples/portrait_phone.jpg" data-name="Sample G (portrait)"><img src="samples/portrait_phone.jpg" alt="Sample B in a 9:16 portrait phone frame"><span>G · portrait, phone shape</span></button>
+        <button class="sample" data-dis="pi" data-src="samples/pi_sloughy.jpg" data-name="PI 1 (slough and eschar)"><img src="samples/pi_sloughy.jpg" alt="A pressure injury whose depth is obscured by slough and eschar"><span>1 · depth obscured <i>HTPN · consented</i></span></button>
+        <button class="sample" data-dis="pi" data-src="samples/pi_granulating.jpg" data-name="PI 2 (granulating)"><img src="samples/pi_granulating.jpg" alt="A full-thickness pressure injury with a granulating bed"><span>2 · granulating bed <i>HTPN · consented</i></span></button>
+        <button class="sample" data-dis="pi" data-src="samples/pi_cavity.jpg" data-name="PI 3 (cavity)"><img src="samples/pi_cavity.jpg" alt="A deep pressure injury cavity with necrotic edging"><span>3 · deep cavity <i>HTPN · consented</i></span></button>
   </section>
 
   <!-- STEP 2: ANALYSE -->
@@ -1322,12 +1327,12 @@ function setDisease(d){
   $('npiapPanel').classList.toggle('hidden', !pi);
   $('gtDfu').classList.toggle('hidden', pi);
   $('gtPi').classList.toggle('hidden', !pi);
-  /* No foot ulcer tiles in pressure injury mode. Offering them under a note saying they are the
-     wrong wound type is worse than offering nothing: the tiles are what people click. */
-  $('sampleRow').classList.toggle('hidden', pi);
+  /* Each tile declares the wound type it belongs to; a foot ulcer must not be offered to someone
+     assessing a sacral sore, and vice versa. */
+  document.querySelectorAll('.sample').forEach(b => b.classList.toggle('hidden', b.dataset.dis !== (pi ? 'pi' : 'dfu')));
   $('sampleNote').innerHTML = pi
-    ? '<b>No pressure injury sample is provided.</b> There is no openly licensed, consented pressure injury photograph in this project, and a foot ulcer is not a substitute for a sacral sore &mdash; so nothing is offered here rather than something misleading. Use <b>Take photo</b> or <b>Upload from gallery</b> with a de-identified image, cropping out any strip carrying a name or identity card number first.'
-    : 'Samples A to C are images 0068, 0046 and 0729 of the FUSeg 2021 <b>validation</b> split, so the models were never trained on them. Each carries an expert-drawn mask, and the Dice shown is how closely this model\u2019s outline matches that mask on that image &mdash; 0.70 is included deliberately, because a demo that only shows its best cases is an advertisement. D and E are C and B re-framed into camera and phone shapes, to show that nothing at the edge of the frame is discarded.';
+    ? 'Three pressure injuries from the <b>HTPN wound unit</b>, used with patient consent for teaching and de-identified before upload &mdash; no ruler, no name, no identity card number, no metadata. They carry no expert mask, so no outline score is shown for them; only the foot ulcer samples have one. Remember that no pressure injury classifier exists, so the app will outline and measure these but leave the staging to you.'
+    : 'Samples A to E are images 0068, 0046, 0729, 0136 and 0971 of the FUSeg 2021 <b>validation</b> split, so the models were never trained on them. Each carries an expert-drawn mask, and the Dice shown is how closely this model\u2019s outline matches that mask on that image &mdash; 0.70 is kept deliberately, because a demo that only shows its best cases is an advertisement. F and G are C and B re-framed into camera and phone shapes, to show that nothing at the edge of the frame is discarded.';
   $('truthIntro').textContent = pi
     ? 'Record the stage you assigned, the blanching test and the deepest structure you could see or palpate. Outcome at follow-up is the reference standard here, not a swab.'
     : "Record the clinician's classification and the tissue culture & sensitivity result. Logged cases become the labelled dataset for the next training cycle.";

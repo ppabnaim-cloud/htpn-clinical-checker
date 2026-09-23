@@ -595,6 +595,7 @@ let active = null;               // { kind:'demo'|'head'|'full', name, classes, 
 let currentImg = null, currentName = '', lastPred = null, lastActs = null, isch = '0', scheme = 'texas', camManual = false;
 let segModel = null, segMetrics = null, lastSeg = null, lastBox = null;   // lastBox = the crop actually classified
 let lastTissue = null;                                                     // wound-bed colour composition
+let fit = null;            // how the photograph was letterboxed into the square view
 let pxPerCm = null, picking = false, pickPts = [];                        // optional ruler scale
 const VIEW = 448;                                                          // viewer canvas size
 
@@ -709,8 +710,19 @@ function useImage(img, name){
   currentImg = img; currentName = name; lastPred = null; camManual = false;
   $('imgName').textContent = name;
   const c = $('imgCanvas'), ctx = c.getContext('2d');
-  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height, s = Math.min(w, h);
-  ctx.drawImage(img, (w - s)/2, (h - s)/2, s, s, 0, 0, c.width, c.height);   // centre square crop
+  /* Letterbox, never centre-crop. A centre crop of a 4:3 camera frame discards a quarter of its
+     width and of a 9:16 phone frame nearly half its height, which silently threw away wound —
+     a gangrenous toe at the edge of a landscape photograph disappeared entirely. Padding is black
+     because FUSeg's own images are zero-padded to square, so the segmentation model was trained
+     with exactly this kind of border. */
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  const sc = Math.min(c.width / w, c.height / h);
+  const dw = Math.round(w * sc), dh = Math.round(h * sc);
+  const ox = Math.round((c.width - dw) / 2), oy = Math.round((c.height - dh) / 2);
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, c.width, c.height);
+  ctx.drawImage(img, 0, 0, w, h, ox, oy, dw, dh);
+  fit = { ox, oy, dw, dh, scale: sc, srcW: w, srcH: h,
+          frac: (dw * dh) / (c.width * c.height) };   // share of the square that is real photograph
   [$('camCanvas'), $('segCanvas'), $('tissueCanvas'), $('scaleCanvas')].forEach(k => k.getContext('2d').clearRect(0, 0, VIEW, VIEW));
   lastSeg = null; lastBox = null; lastTissue = null; pickPts = []; picking = false; $('viewer').classList.remove('picking');
   pxPerCm = null; $('scaleBtn').textContent = 'Set scale with the ruler';   // a scale belongs to one photograph only
@@ -720,10 +732,19 @@ function useImage(img, name){
   $('analyse').scrollIntoView({behavior:'smooth', block:'start'});
   if (backbone) runInference(); else $('statusText').textContent = 'Loading models…';
 }
-function fileToImage(file, name){
-  const url = URL.createObjectURL(file); const img = new Image();
-  img.onload = () => { useImage(img, name); URL.revokeObjectURL(url); };
-  img.src = url;
+async function fileToImage(file, name){
+  /* Phones store portrait shots rotated with an EXIF orientation tag. Drawing such a file to a
+     canvas without honouring that tag feeds the model a sideways wound, silently. createImageBitmap
+     applies it; the <img> fallback is for browsers that lack the option. */
+  try {
+    const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    useImage(bmp, name); return;
+  } catch (e) {
+    const url = URL.createObjectURL(file); const img = new Image();
+    img.onload = () => { useImage(img, name); URL.revokeObjectURL(url); };
+    img.onerror = () => { URL.revokeObjectURL(url); toast('That file could not be read as an image'); };
+    img.src = url;
+  }
 }
 $('camInput').onchange = e => e.target.files[0] && fileToImage(e.target.files[0], 'camera capture');
 $('fileInput').onchange = e => e.target.files[0] && fileToImage(e.target.files[0], e.target.files[0].name);
@@ -772,8 +793,12 @@ function roiBox(seg){
   /* Wound bounding box, squared off and expanded by ROI_MARGIN on each side, in viewer coordinates. */
   const k = VIEW / SEG, [x0, y0, x1, y1] = seg.bbox.map(v => v * k);
   const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-  const s = Math.min(Math.max(x1 - x0, y1 - y0) * (1 + 2 * ROI_MARGIN), VIEW);
-  return { l: Math.max(0, Math.min(cx - s/2, VIEW - s)), t: Math.max(0, Math.min(cy - s/2, VIEW - s)), s };
+  const want = Math.max(x1 - x0, y1 - y0) * (1 + 2 * ROI_MARGIN);
+  const s = Math.min(want, VIEW);
+  /* A wound filling the frame cannot be given the full margin, so the crop no longer matches the
+     geometry the classifier was trained on. Flag it rather than quietly degrading. */
+  return { l: Math.max(0, Math.min(cx - s/2, VIEW - s)), t: Math.max(0, Math.min(cy - s/2, VIEW - s)), s,
+           marginTruncated: want > VIEW * 1.02 };
 }
 function cropCanvas(box){
   const c = document.createElement('canvas'); c.width = c.height = IMG;
@@ -811,13 +836,16 @@ function showWound(seg){
   const k = VIEW / SEG;
   const areaCm2 = pxPerCm ? seg.sizePx * k * k / (pxPerCm * pxPerCm) : null;
   const diamCm = pxPerCm ? seg.diamPx * k / pxPerCm : null;
-  $('wArea').textContent = areaCm2 !== null ? `${areaCm2.toFixed(2)} cm² (${(seg.areaFrac*100).toFixed(1)} % of frame)` : `${(seg.areaFrac*100).toFixed(1)} % of frame`;
+  // areaFrac counts the padded square, so divide by the share of it that is actually photograph
+  const inFrame = seg.areaFrac / ((fit && fit.frac) || 1);
+  $('wArea').textContent = areaCm2 !== null ? `${areaCm2.toFixed(2)} cm² (${(inFrame*100).toFixed(1)} % of frame)` : `${(inFrame*100).toFixed(1)} % of frame`;
   $('wDiam').textContent = diamCm !== null ? `${diamCm.toFixed(1)} cm` : `${seg.diamPx} px — set a scale for cm`;
   $('wConf').textContent = `${(seg.conf*100).toFixed(0)} %`;
   $('howMeasure').textContent = pxPerCm
     ? 'Area and longest dimension are in centimetres using the ruler scale you set on this photograph, and confidence is the segmentation model’s mean probability across the outlined pixels.'
     : 'Area is a percentage of the photograph until you set a ruler scale, so it is comparable only between images shot at the same distance; confidence is the model’s mean probability across the outlined pixels.';
-  $('whatMeasure').textContent = `The model outlined this ulcer at ${(seg.conf*100).toFixed(0)} % mean confidence, and on 190 held-out images outlines like it reached a mean Dice of 0.85 against expert masks — good enough to crop and measure from, not good enough to accept without looking.`;
+  $('whatMeasure').textContent = `The model outlined this ulcer at ${(seg.conf*100).toFixed(0)} % mean confidence, and on 190 held-out images outlines like it reached a mean Dice of 0.85 against expert masks — good enough to crop and measure from, not good enough to accept without looking.`
+    + (lastBox && lastBox.marginTruncated ? ' This wound fills so much of the photograph that the classifier could not be given its usual margin of surrounding skin, so read the classification below with more caution than the figures above and re-shoot from further back if you can.' : '');
 }
 
 /* ═══════════════════════════ inference ═══════════════════════════ */
@@ -1424,7 +1452,11 @@ function loadImg(item){ return new Promise((res, rej) => { const im = new Image(
 async function embed(img, flips){
   /* returns Float32Array[] of 1280-d embeddings (original + optional flips) */
   const c = document.createElement('canvas'); c.width = c.height = IMG; const ctx = c.getContext('2d');
-  const w = img.naturalWidth, h = img.naturalHeight, s = Math.min(w, h); ctx.drawImage(img, (w-s)/2, (h-s)/2, s, s, 0, 0, IMG, IMG);
+  // letterboxed exactly as useImage() does, so training and inference see the same geometry
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  const sc = Math.min(IMG / w, IMG / h), dw = Math.round(w * sc), dh = Math.round(h * sc);
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, IMG, IMG);
+  ctx.drawImage(img, 0, 0, w, h, Math.round((IMG-dw)/2), Math.round((IMG-dh)/2), dw, dh);
   const outs = [];
   const variants = flips ? [[1,1],[-1,1],[1,-1]] : [[1,1]];
   for (const [sx, sy] of variants){

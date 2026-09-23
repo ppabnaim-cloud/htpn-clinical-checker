@@ -309,7 +309,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     </div>
     <div class="samples">
       <p id="sampleNote"></p>
-      <div class="sample-row">
+      <div class="sample-row" id="sampleRow">
         <button class="sample" data-src="samples/small_leg_ulcer.jpg" data-name="Sample A"><img src="samples/small_leg_ulcer.jpg" alt="Sample A: a small ulcer on the lower leg"><span>A · small leg ulcer <i>Dice 0.77</i></span></button>
         <button class="sample" data-src="samples/sloughy_heel_ulcer.jpg" data-name="Sample B"><img src="samples/sloughy_heel_ulcer.jpg" alt="Sample B: a heel cavity ringed with yellow slough"><span>B · sloughy heel cavity <i>Dice 0.70</i></span></button>
         <button class="sample" data-src="samples/large_ankle_ulcer.jpg" data-name="Sample C"><img src="samples/large_ankle_ulcer.jpg" alt="Sample C: a large ulcer over the ankle with dark tissue"><span>C · large ankle ulcer <i>Dice 0.94</i></span></button>
@@ -1301,8 +1301,11 @@ function setDisease(d){
   $('npiapPanel').classList.toggle('hidden', !pi);
   $('gtDfu').classList.toggle('hidden', pi);
   $('gtPi').classList.toggle('hidden', !pi);
+  /* No foot ulcer tiles in pressure injury mode. Offering them under a note saying they are the
+     wrong wound type is worse than offering nothing: the tiles are what people click. */
+  $('sampleRow').classList.toggle('hidden', pi);
   $('sampleNote').innerHTML = pi
-    ? 'There is <b>no pressure injury sample here</b>. The samples below are diabetic foot ulcers, and a foot ulcer is not a sacral sore &mdash; do not read anything about pressure injuries from them. A demonstration image needs a documented source and licence, which clinical photographs taken off a web search do not have. Load your own de-identified image instead, with any identifier strip cropped out first.'
+    ? '<b>No pressure injury sample is provided.</b> There is no openly licensed, consented pressure injury photograph in this project, and a foot ulcer is not a substitute for a sacral sore &mdash; so nothing is offered here rather than something misleading. Use <b>Take photo</b> or <b>Upload from gallery</b> with a de-identified image, cropping out any strip carrying a name or identity card number first.'
     : 'Samples A to C are images 0068, 0046 and 0729 of the FUSeg 2021 <b>validation</b> split, so the models were never trained on them. Each carries an expert-drawn mask, and the Dice shown is how closely this model\u2019s outline matches that mask on that image &mdash; 0.70 is included deliberately, because a demo that only shows its best cases is an advertisement. D and E are C and B re-framed into camera and phone shapes, to show that nothing at the edge of the frame is discarded.';
   $('truthIntro').textContent = pi
     ? 'Record the stage you assigned, the blanching test and the deepest structure you could see or palpate. Outcome at follow-up is the reference standard here, not a swab.'

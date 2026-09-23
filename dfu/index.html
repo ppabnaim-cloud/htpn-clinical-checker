@@ -223,7 +223,14 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 .src-tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
 .class-list{display:flex;flex-direction:column;gap:8px}
 .class-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:var(--cloud);border-radius:10px;padding:8px 10px}
-.class-row input{padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:#fff;min-width:0}
+.class-row input,.class-row select{padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:#fff;min-width:0;width:100%;font-size:13px}
+/* At phone width the class name, its count and the add button cannot share one line, so the
+   row stacks and the select keeps its own. */
+@media(max-width:560px){
+  .class-row{grid-template-columns:1fr auto}
+  .class-row select,.class-row input{grid-column:1/3}
+  .thumbs{grid-column:1/3}
+}
 .class-row .cnt{font-family:var(--mono);font-size:12px;color:var(--muted);min-width:64px;text-align:right}
 .class-row .addbtn{border:1.5px solid var(--teal);color:var(--teal-dim);background:#fff;border-radius:8px;padding:7px 10px;font-size:12.5px;font-weight:600;cursor:pointer}
 .thumbs{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;grid-column:1/4}
@@ -527,6 +534,20 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       <p class="small" style="margin-top:6px">Folder upload works on desktop browsers and most Android browsers. On iPhone use "Add per class".</p>
     </div>
     <div id="src-classes" class="hidden">
+      <div class="row2" style="margin-bottom:8px">
+        <div class="field"><label>Label set</label>
+          <select id="labelScheme">
+            <option value="wagner">Meggitt–Wagner grade (0–5)</option>
+            <option value="npiap">NPIAP pressure injury stage</option>
+            <option value="texasGrade">Texas grade (depth, 0–3)</option>
+            <option value="texasStage">Texas stage (infection / ischaemia, A–D)</option>
+            <option value="tissue">Wound-bed feature</option>
+            <option value="custom">Custom names</option>
+          </select></div>
+        <div class="field" style="display:flex;align-items:flex-end">
+          <button class="btn btn-ghost btn-sm" id="seedClasses" style="width:100%">Create a row for every class</button></div>
+      </div>
+      <div class="note" id="labelNote" style="margin:0 0 10px"></div>
       <div class="class-list" id="classList"></div>
       <button class="btn btn-ghost btn-sm" id="addClass" style="margin-top:8px">+ Add class</button>
     </div>
@@ -1715,17 +1736,81 @@ $('dirInput').onchange = e => {
   if (!files.length) toast('No image files found in that folder');
   else toast(`Loaded ${files.length} images from ${Object.keys(byClass).length} folders`);
 };
+/* ═══════════════════════════ label vocabularies ═══════════════════════════
+   Typing folder names by hand produces wagner2, Wagner_2 and "wagner 2" as three different
+   classes, and no amount of training survives that. Picking from a fixed list makes the
+   taxonomy explicit and the counts comparable between people.
+
+   Every set here is single-label: one image, one class, because that is what the browser
+   trainer's softmax head can learn. Wound-bed features are genuinely multi-label — a wound
+   can be sloughy AND have pus — so that set is offered as present/absent pairs, which is a
+   set of honest binary tasks rather than a dishonest multi-class one. */
+const LABEL_SETS = {
+  wagner: { name: 'Meggitt–Wagner grade',
+    note: 'One grade per image, assigned by the clinician before upload. Grade 0 is intact skin at risk, so those photographs contain no wound to segment and train a different task from the rest — keep them out unless you mean to build a risk model.',
+    items: [['wagner_0','0 · intact skin, at risk'],['wagner_1','1 · superficial ulcer'],['wagner_2','2 · deep to tendon or capsule'],
+            ['wagner_3','3 · deep with abscess or osteomyelitis'],['wagner_4','4 · localised gangrene'],['wagner_5','5 · extensive gangrene']] },
+  npiap: { name: 'NPIAP pressure injury stage',
+    note: 'Stage 1 and deep tissue injury cannot be established from a photograph — they need the blanching test — so a model trained on them is learning your examination, not the image. Collect them if you wish, but expect them to perform worst, and worst of all on darker skin.',
+    items: [['npiap_1','1 · non-blanchable erythema, intact skin'],['npiap_2','2 · partial thickness, exposed dermis'],
+            ['npiap_3','3 · full thickness, adipose visible'],['npiap_4','4 · muscle, tendon or bone exposed'],
+            ['npiap_unstageable','Unstageable · obscured by slough or eschar'],['npiap_dtpi','Deep tissue injury']] },
+  texasGrade: { name: 'University of Texas grade',
+    note: 'Depth only. Grade 3 turns on probing to bone or joint, which is an examination finding rather than an image one.',
+    items: [['texas_g0','0 · epithelialised, pre or post-ulcerative'],['texas_g1','1 · superficial, not to tendon or bone'],
+            ['texas_g2','2 · penetrates to tendon or capsule'],['texas_g3','3 · penetrates to bone or joint']] },
+  texasStage: { name: 'University of Texas stage',
+    note: 'Ischaemia is not visible in a photograph, so stages C and D are labelled from the vascular assessment, not the image. A model trained on them will be predicting some correlate of ischaemia, which is worth knowing before you believe it.',
+    items: [['texas_a','A · clean, no infection or ischaemia'],['texas_b','B · infected'],['texas_c','C · ischaemic'],['texas_d','D · infected and ischaemic']] },
+  tissue: { name: 'Wound-bed feature',
+    note: 'These are not mutually exclusive — one wound can be sloughy and have pus — so each is offered as a present/absent pair, giving several honest binary models rather than one dishonest multi-class one. Train one pair at a time. Note also that your own acquisition protocol irrigates and blots the wound dry, which removes pus before the photograph; collect a before-cleaning image too if you want that class to exist.',
+    items: [['granulation_yes','Granulation present'],['granulation_no','Granulation absent'],
+            ['slough_yes','Slough present'],['slough_no','Slough absent'],
+            ['necrosis_yes','Necrosis present'],['necrosis_no','Necrosis absent'],
+            ['epithelialising_yes','Epithelialising present'],['epithelialising_no','Epithelialising absent'],
+            ['periwound_erythema_yes','Peri-wound erythema present'],['periwound_erythema_no','Peri-wound erythema absent'],
+            ['dry_gangrene_yes','Dry gangrene present'],['dry_gangrene_no','Dry gangrene absent'],
+            ['bleeding_yes','Bleeding present'],['bleeding_no','Bleeding absent'],
+            ['abscess_yes','Abscess present'],['abscess_no','Abscess absent'],
+            ['pus_yes','Pus present'],['pus_no','Pus absent']] },
+  custom: { name: 'Custom names', note: 'Type your own class names. Keep them consistent: wagner_2 and Wagner 2 are two different classes to the trainer.', items: null }
+};
+const labelSet = () => LABEL_SETS[$('labelScheme').value] || LABEL_SETS.custom;
+
+$('labelScheme').onchange = () => { $('labelNote').textContent = labelSet().note; renderClassRows(); };
+$('seedClasses').onclick = () => {
+  const set = labelSet();
+  if (!set.items) return toast('Custom names have no fixed list — use “+ Add class”');
+  let added = 0;
+  set.items.forEach(([id]) => { if (!data.classes.has(id)){ data.classes.set(id, []); added++; } });
+  refreshData();
+  toast(added ? `${added} class rows ready — add images to each` : 'Those rows already exist');
+};
+
 function renderClassRows(){
   const list = $('classList'); list.innerHTML = '';
   const names = [...data.classes.keys()]; if (!names.length) names.push('');
+  const set = labelSet();
   names.forEach(name => {
     const row = document.createElement('div'); row.className = 'class-row';
-    const inp = document.createElement('input'); inp.placeholder = 'class name, e.g. wagner_2'; inp.value = name;
-    inp.onchange = () => { const items = data.classes.get(name) || []; data.classes.delete(name); if (inp.value.trim()) addSamples(inp.value.trim(), items); else refreshData(); };
+    let inp;
+    const rename = v => { const items = data.classes.get(name) || []; data.classes.delete(name);
+                          if (v && v.trim()) addSamples(v.trim(), items); else refreshData(); };
+    if (set.items){
+      inp = document.createElement('select');
+      inp.innerHTML = '<option value="">choose a class…</option>'
+        + set.items.map(([id, lbl]) => `<option value="${id}">${lbl}</option>`).join('')
+        + (set.items.some(([id]) => id === name) || !name ? '' : `<option value="${name}" selected>${name} (not in this set)</option>`);
+      inp.value = name || '';
+      inp.onchange = () => rename(inp.value);
+    } else {
+      inp = document.createElement('input'); inp.placeholder = 'class name, e.g. wagner_2'; inp.value = name;
+      inp.onchange = () => rename(inp.value);
+    }
     const cnt = document.createElement('span'); cnt.className = 'cnt'; cnt.textContent = `${(data.classes.get(name) || []).length} images`;
     const add = document.createElement('label'); add.className = 'addbtn'; add.textContent = '+ images';
     const fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*'; fi.multiple = true; fi.hidden = true;
-    fi.onchange = () => { const cls = inp.value.trim(); if (!cls) return toast('Name the class first'); addSamples(cls, [...fi.files].map(f => ({ file: f, name: f.name }))); };
+    fi.onchange = () => { const cls = (inp.value || '').trim(); if (!cls) return toast('Choose the class first'); addSamples(cls, [...fi.files].map(f => ({ file: f, name: f.name }))); };
     add.appendChild(fi);
     row.append(inp, cnt, add);
     const th = document.createElement('div'); th.className = 'thumbs';
@@ -1735,6 +1820,7 @@ function renderClassRows(){
   });
 }
 $('addClass').onclick = () => { const n = `class_${data.classes.size + 1}`; data.classes.set(n, []); renderClassRows(); };
+$('labelNote').textContent = LABEL_SETS.wagner.note;
 renderClassRows(); renderReadiness();
 
 /* ── Google Drive import (Drive API v3 + Google Identity Services) ── */

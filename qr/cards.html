@@ -1,0 +1,76 @@
+<title>DFU Scan Cards A4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Karla:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FFFFFF; --ink:#15171C; --body:#343943; --quiet:#6C7482; --rule:#D7DAE1;
+  --maroon:#99304A; --slate:#3D5166;
+  --display:'Newsreader',Georgia,serif;
+  --sans:'Karla',system-ui,-apple-system,sans-serif;
+  --mono:'Roboto Mono',ui-monospace,Consolas,monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:#F2F3F5;color:var(--body);font-family:var(--sans);padding-block:24px;padding-left:16px;padding-right:16px}
+.hint{max-width:210mm;margin:0 auto 18px;font-size:14.5px;color:var(--quiet);background:#fff;border:1px solid var(--rule);border-left:3px solid var(--slate);border-radius:0 9px 9px 0;padding:12px 15px}
+.hint b{color:var(--ink)}
+.sheet{width:210mm;max-width:100%;margin:0 auto;background:var(--paper);padding:12mm 10mm;
+  display:grid;grid-template-columns:1fr 1fr;gap:0}
+.cut{border:1px dashed var(--rule);padding:9mm 7mm;display:flex;flex-direction:column;align-items:center;text-align:center;gap:4mm;break-inside:avoid}
+.cut p{margin:0}
+.t{font-family:var(--display);font-weight:600;font-size:15pt;line-height:1.15;color:var(--ink);text-wrap:balance}
+.k{font-family:var(--mono);font-size:7.5pt;letter-spacing:.14em;text-transform:uppercase;color:var(--maroon)}
+.qr{display:block;image-rendering:pixelated;width:44mm;height:auto}
+.u{font-family:var(--mono);font-size:8.6pt;color:var(--ink);word-break:break-all}
+.d{font-size:8pt;color:var(--quiet);line-height:1.35}
+.d b{color:var(--maroon)}
+@media (max-width:620px){ .sheet{grid-template-columns:1fr;padding:6mm} .qr{width:52mm} }
+@media print{
+  @page{size:A4;margin:0}
+  body{background:#fff;padding:0}
+  .hint{display:none}
+  .sheet{width:210mm;height:297mm;margin:0;padding:10mm}
+}
+</style>
+
+<p class="hint"><b>Print this on A4</b> at 100 % scale (no &ldquo;fit to page&rdquo;), then cut along the dashed lines.
+Four cards for the front tables, the registration desk, or to hand to anyone who asks afterwards.</p>
+
+<div class="sheet">
+  <div class="cut">
+    <p class="k">Scan to try it</p>
+    <p class="t">Diabetic foot ulcer<br>wound tracing &amp; triage</p>
+    <img class="qr" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUgAAAFIAQMAAAAI2vVwAAAABlBMVEUVFxz///8+za9AAAABj0lEQVR42u2aQY7EMAgEW/P/P7OzsqFJ9hKT41ZGIyUypxLQbWzF00dEEkkkkUTeI7We3w9pf661XPk+Hz19/nOkjD9fF9j13VbgecAzs3O9r5y9rMBzwnO/Kssenq94KrMzUcLzVf/MvHT3pH+OeJa+//mh7wOeN/+UjK8r8HzOs96l6Fm7i5/8PNYjG/kUpKVHCvRoUO9q+Vjivv5bn+B5Vu8lQVHbJJUdhefQf0Z1zCSZ5Q7PI/+ZTdONdFd7KT08z/Lz7p88aSI/z/tneELn7pnqBM/j/VHYJ1Wdd8zwPPXz0ecgNcDDfw79fM5BdpWHTJP+OZgvlaArR6C1+6R/jvx8b5vh/in65zA/LydIauIOz4Gfb96pwcV/jvWo+qfa2M6c4TnZv6uZp2JKvR/qURkllbrby+M/5+dHIc/pQu3EE56H+h51QBw+iQ9fvoHnpH+quXnv5snPIU9LuuSRHf3zxf2QLPSciQb7zVf3Q1zopfnwHOp73mZoIzuf0cHz2H9y65hIIokk8nHkD2tgP0j4Cx7vAAAAAElFTkSuQmCC" width="328" height="328" alt="QR code linking to https://htpn-clinical-checker.vercel.app/dfu/">
+    <p class="u">htpn-clinical-checker.vercel.app/dfu/</p>
+    <p class="d"><b>Research prototype.</b> Not a medical device, not validated,
+      not for treatment decisions. Photographs stay on your own phone.<br>
+      Dr Naim Bin Abdul Malek &middot; HTPN</p>
+  </div>
+  <div class="cut">
+    <p class="k">Scan to try it</p>
+    <p class="t">Diabetic foot ulcer<br>wound tracing &amp; triage</p>
+    <img class="qr" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUgAAAFIAQMAAAAI2vVwAAAABlBMVEUVFxz///8+za9AAAABj0lEQVR42u2aQY7EMAgEW/P/P7OzsqFJ9hKT41ZGIyUypxLQbWzF00dEEkkkkUTeI7We3w9pf661XPk+Hz19/nOkjD9fF9j13VbgecAzs3O9r5y9rMBzwnO/Kssenq94KrMzUcLzVf/MvHT3pH+OeJa+//mh7wOeN/+UjK8r8HzOs96l6Fm7i5/8PNYjG/kUpKVHCvRoUO9q+Vjivv5bn+B5Vu8lQVHbJJUdhefQf0Z1zCSZ5Q7PI/+ZTdONdFd7KT08z/Lz7p88aSI/z/tneELn7pnqBM/j/VHYJ1Wdd8zwPPXz0ecgNcDDfw79fM5BdpWHTJP+OZgvlaArR6C1+6R/jvx8b5vh/in65zA/LydIauIOz4Gfb96pwcV/jvWo+qfa2M6c4TnZv6uZp2JKvR/qURkllbrby+M/5+dHIc/pQu3EE56H+h51QBw+iQ9fvoHnpH+quXnv5snPIU9LuuSRHf3zxf2QLPSciQb7zVf3Q1zopfnwHOp73mZoIzuf0cHz2H9y65hIIokk8nHkD2tgP0j4Cx7vAAAAAElFTkSuQmCC" width="328" height="328" alt="QR code linking to https://htpn-clinical-checker.vercel.app/dfu/">
+    <p class="u">htpn-clinical-checker.vercel.app/dfu/</p>
+    <p class="d"><b>Research prototype.</b> Not a medical device, not validated,
+      not for treatment decisions. Photographs stay on your own phone.<br>
+      Dr Naim Bin Abdul Malek &middot; HTPN</p>
+  </div>
+  <div class="cut">
+    <p class="k">Scan to try it</p>
+    <p class="t">Diabetic foot ulcer<br>wound tracing &amp; triage</p>
+    <img class="qr" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUgAAAFIAQMAAAAI2vVwAAAABlBMVEUVFxz///8+za9AAAABj0lEQVR42u2aQY7EMAgEW/P/P7OzsqFJ9hKT41ZGIyUypxLQbWzF00dEEkkkkUTeI7We3w9pf661XPk+Hz19/nOkjD9fF9j13VbgecAzs3O9r5y9rMBzwnO/Kssenq94KrMzUcLzVf/MvHT3pH+OeJa+//mh7wOeN/+UjK8r8HzOs96l6Fm7i5/8PNYjG/kUpKVHCvRoUO9q+Vjivv5bn+B5Vu8lQVHbJJUdhefQf0Z1zCSZ5Q7PI/+ZTdONdFd7KT08z/Lz7p88aSI/z/tneELn7pnqBM/j/VHYJ1Wdd8zwPPXz0ecgNcDDfw79fM5BdpWHTJP+OZgvlaArR6C1+6R/jvx8b5vh/in65zA/LydIauIOz4Gfb96pwcV/jvWo+qfa2M6c4TnZv6uZp2JKvR/qURkllbrby+M/5+dHIc/pQu3EE56H+h51QBw+iQ9fvoHnpH+quXnv5snPIU9LuuSRHf3zxf2QLPSciQb7zVf3Q1zopfnwHOp73mZoIzuf0cHz2H9y65hIIokk8nHkD2tgP0j4Cx7vAAAAAElFTkSuQmCC" width="328" height="328" alt="QR code linking to https://htpn-clinical-checker.vercel.app/dfu/">
+    <p class="u">htpn-clinical-checker.vercel.app/dfu/</p>
+    <p class="d"><b>Research prototype.</b> Not a medical device, not validated,
+      not for treatment decisions. Photographs stay on your own phone.<br>
+      Dr Naim Bin Abdul Malek &middot; HTPN</p>
+  </div>
+  <div class="cut">
+    <p class="k">Scan to try it</p>
+    <p class="t">Diabetic foot ulcer<br>wound tracing &amp; triage</p>
+    <img class="qr" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUgAAAFIAQMAAAAI2vVwAAAABlBMVEUVFxz///8+za9AAAABj0lEQVR42u2aQY7EMAgEW/P/P7OzsqFJ9hKT41ZGIyUypxLQbWzF00dEEkkkkUTeI7We3w9pf661XPk+Hz19/nOkjD9fF9j13VbgecAzs3O9r5y9rMBzwnO/Kssenq94KrMzUcLzVf/MvHT3pH+OeJa+//mh7wOeN/+UjK8r8HzOs96l6Fm7i5/8PNYjG/kUpKVHCvRoUO9q+Vjivv5bn+B5Vu8lQVHbJJUdhefQf0Z1zCSZ5Q7PI/+ZTdONdFd7KT08z/Lz7p88aSI/z/tneELn7pnqBM/j/VHYJ1Wdd8zwPPXz0ecgNcDDfw79fM5BdpWHTJP+OZgvlaArR6C1+6R/jvx8b5vh/in65zA/LydIauIOz4Gfb96pwcV/jvWo+qfa2M6c4TnZv6uZp2JKvR/qURkllbrby+M/5+dHIc/pQu3EE56H+h51QBw+iQ9fvoHnpH+quXnv5snPIU9LuuSRHf3zxf2QLPSciQb7zVf3Q1zopfnwHOp73mZoIzuf0cHz2H9y65hIIokk8nHkD2tgP0j4Cx7vAAAAAElFTkSuQmCC" width="328" height="328" alt="QR code linking to https://htpn-clinical-checker.vercel.app/dfu/">
+    <p class="u">htpn-clinical-checker.vercel.app/dfu/</p>
+    <p class="d"><b>Research prototype.</b> Not a medical device, not validated,
+      not for treatment decisions. Photographs stay on your own phone.<br>
+      Dr Naim Bin Abdul Malek &middot; HTPN</p>
+  </div>
+</div>

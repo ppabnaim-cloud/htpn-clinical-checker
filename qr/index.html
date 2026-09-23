@@ -1,0 +1,59 @@
+<title>DFU Tool Scan Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Karla:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Committed to a light ground on purpose: a QR code has to be dark-on-light, and a
+   projector throws light, so a dark slide with a white code block scans far worse. */
+:root{
+  --paper:#FFFFFF; --ink:#15171C; --body:#343943; --quiet:#6C7482; --rule:#E0E2E8;
+  --maroon:#99304A; --slate:#3D5166; --moss:#2A6A4A;
+  --display:'Newsreader',Georgia,serif;
+  --sans:'Karla',system-ui,-apple-system,sans-serif;
+  --mono:'Roboto Mono',ui-monospace,Consolas,monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--body);font-family:var(--sans);
+  display:flex;align-items:center;justify-content:center;padding-block:clamp(20px,4vh,48px);padding-left:20px;padding-right:20px}
+.card{width:100%;max-width:1000px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:clamp(14px,2.4vh,26px)}
+.kick{font-family:var(--mono);font-size:clamp(11px,1.5vw,15px);letter-spacing:.16em;text-transform:uppercase;color:var(--maroon);margin:0}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(25px,3.6vw,42px);line-height:1.05;letter-spacing:-.015em;color:var(--ink);margin:0;text-wrap:balance}
+.qrwrap{background:#fff;border:1px solid var(--rule);border-radius:14px;padding:clamp(10px,1.4vw,18px);line-height:0;
+  width:min(clamp(250px,56vh,660px),100%)}
+.qr{display:block;image-rendering:pixelated;width:100%;height:auto;aspect-ratio:1/1}
+.url{font-family:var(--mono);font-size:clamp(13px,2.1vw,26px);color:var(--ink);word-break:break-all;margin:0;user-select:all}
+.url b{color:var(--maroon);font-weight:500}
+.steps{display:flex;flex-wrap:wrap;justify-content:center;gap:10px clamp(14px,3vw,40px);margin:0;padding:0;list-style:none}
+.steps li{font-size:clamp(13px,1.6vw,19px);color:var(--body);display:flex;align-items:baseline;gap:8px}
+.steps span{font-family:var(--mono);font-size:.78em;color:var(--slate);font-weight:500}
+.foot{border-top:1px solid var(--rule);padding-top:clamp(10px,1.6vh,16px);width:100%;
+  display:flex;flex-wrap:wrap;justify-content:center;gap:4px 18px;font-size:clamp(11px,1.25vw,14.5px);color:var(--quiet)}
+.foot b{color:var(--maroon);font-weight:700}
+@media print{
+  body{height:auto;padding:0}
+  .qrwrap{border:none;padding:0}
+  .qr{width:120mm}
+  .foot{border-top:1px solid #999}
+}
+</style>
+
+<main class="card">
+  <p class="kick">Try it on your own phone</p>
+  <h1>Diabetic foot ulcer &mdash; wound tracing and triage</h1>
+
+  <div class="qrwrap"><img class="qr" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUgAAAFIAQMAAAAI2vVwAAAABlBMVEUVFxz///8+za9AAAABj0lEQVR42u2aQY7EMAgEW/P/P7OzsqFJ9hKT41ZGIyUypxLQbWzF00dEEkkkkUTeI7We3w9pf661XPk+Hz19/nOkjD9fF9j13VbgecAzs3O9r5y9rMBzwnO/Kssenq94KrMzUcLzVf/MvHT3pH+OeJa+//mh7wOeN/+UjK8r8HzOs96l6Fm7i5/8PNYjG/kUpKVHCvRoUO9q+Vjivv5bn+B5Vu8lQVHbJJUdhefQf0Z1zCSZ5Q7PI/+ZTdONdFd7KT08z/Lz7p88aSI/z/tneELn7pnqBM/j/VHYJ1Wdd8zwPPXz0ecgNcDDfw79fM5BdpWHTJP+OZgvlaArR6C1+6R/jvx8b5vh/in65zA/LydIauIOz4Gfb96pwcV/jvWo+qfa2M6c4TnZv6uZp2JKvR/qURkllbrby+M/5+dHIc/pQu3EE56H+h51QBw+iQ9fvoHnpH+quXnv5snPIU9LuuSRHf3zxf2QLPSciQb7zVf3Q1zopfnwHOp73mZoIzuf0cHz2H9y65hIIokk8nHkD2tgP0j4Cx7vAAAAAElFTkSuQmCC" width="328" height="328" alt="QR code linking to https://htpn-clinical-checker.vercel.app/dfu/"></div>
+
+  <p class="url">htpn-clinical-checker.vercel.app<b>/dfu/</b></p>
+
+  <ul class="steps">
+    <li><span>1</span>Open your camera and point it here</li>
+    <li><span>2</span>Nothing to install, no sign-in</li>
+    <li><span>3</span>Photographs stay on your phone</li>
+  </ul>
+
+  <div class="foot">
+    <span><b>Research prototype.</b> Not a medical device. Not for treatment decisions.</span>
+    <span>Dr Naim Bin Abdul Malek &middot; Hospital Tengku Permaisuri Norashikin</span>
+  </div>
+</main>

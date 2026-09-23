@@ -841,7 +841,28 @@ function roiBox(seg){
 }
 function cropCanvas(box){
   const c = document.createElement('canvas'); c.width = c.height = IMG;
-  c.getContext('2d').drawImage($('imgCanvas'), box.l, box.t, box.s, box.s, 0, 0, IMG, IMG);
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, IMG, IMG);
+  /* Crop from the ORIGINAL photograph, not from the 448 px view. The view is already a downscale
+     of whatever the camera produced, so cropping it upsamples a thumbnail: a wound 72 view-pixels
+     across becomes a blurred 224 px input even when several hundred source pixels existed. Mapping
+     the box back through the letterbox geometry recovers that detail — which matters most for the
+     infection head, because slough, granulation and pus are texture rather than shape.
+     It also matches training: ml/audit_improvements.py crops the ROI from the full-resolution
+     image, so cropping the preview here was a train/test mismatch as well as a loss of detail. */
+  if (currentImg && fit){
+    const sx = (box.l - fit.ox) / fit.scale, sy = (box.t - fit.oy) / fit.scale, ss = box.s / fit.scale;
+    // the ROI box can overlap the letterbox padding, so draw only the part the photograph covers
+    const x0 = Math.max(0, sx), y0 = Math.max(0, sy);
+    const x1 = Math.min(fit.srcW, sx + ss), y1 = Math.min(fit.srcH, sy + ss);
+    if (x1 - x0 > 1 && y1 - y0 > 1){
+      const k = IMG / ss;
+      ctx.drawImage(currentImg, x0, y0, x1 - x0, y1 - y0,
+                    (x0 - sx) * k, (y0 - sy) * k, (x1 - x0) * k, (y1 - y0) * k);
+      return c;
+    }
+  }
+  ctx.drawImage($('imgCanvas'), box.l, box.t, box.s, box.s, 0, 0, IMG, IMG);   // fallback
   return c;
 }
 function drawSegOverlay(seg, box){
@@ -1022,6 +1043,31 @@ function interpret(){
   }
   return { texas, wagner };
 }
+/* "Declines to classify" on its own tells a clinician nothing they can act on. Name the most likely
+   reason from what was actually measured on this image, so the next photograph can be better. The
+   order is deliberate: the things the photographer can change come first. */
+function whyAbstain(){
+  const bits = [];
+  if (lastSeg && lastSeg.found){
+    const widthFrac = lastSeg.diamPx / SEG;                       // wound's longest side, share of frame
+    const srcPx = fit ? Math.round(lastSeg.diamPx * (VIEW / SEG) / fit.scale) : null;
+    if (widthFrac < 0.25)
+      bits.push(`The wound's longest dimension is ${(widthFrac * 100).toFixed(0)} % of the frame`
+        + (srcPx ? `, about ${srcPx} pixels in the original file` : '')
+        + `, where the protocol asks for roughly a third. Infection is judged from texture — slough, granulation, exudate — and at this size there is little texture to read. Re-shooting closer is the single biggest thing that would change this answer.`);
+    if (lastBox && lastBox.marginTruncated)
+      bits.push('The wound also fills too much of the frame for the usual margin of surrounding skin, so the crop differs from the ones the model was trained on.');
+  } else {
+    bits.push('No wound was outlined, so the whole photograph was classified — the configuration in which this model is weakest.');
+  }
+  if (lastTissue && !lastTissue.sparse){
+    const f = lastTissue.frac, s2 = f.slough, n = f.necro;
+    if ((s2 > 0.05 && s2 < 0.20) || (n > 0.05 && n < 0.20))
+      bits.push(`The wound bed reads ${(s2 * 100).toFixed(0)} % slough and ${(n * 100).toFixed(0)} % necrosis, which sits in the band where this model’s own training labels were treated as ambiguous and excluded. It was never taught a confident answer for a wound that looks like this, so a figure near 50 % is the honest output rather than a failure.`);
+  }
+  bits.push('Do not lower the confidence threshold to force an answer: at 53 % the model is guessing, and a guess presented as a classification is worse than a refusal.');
+  return bits.length ? ' ' + bits.join(' ') : '';
+}
 function renderClass(){
   const it = interpret(); if (!it) return;
   if (it.abstain){
@@ -1029,7 +1075,7 @@ function renderClass(){
     $('ischField').classList.add('hidden');
     $('classBig').textContent = '—';
     const which = it.gradeOut && it.infOut ? 'Neither head is' : it.gradeOut ? 'The depth head is not' : 'The infection head is not';
-    $('classDesc').textContent = `${which} confident enough to classify this image. No grade or stage is offered. Refer for clinical assessment.`;
+    $('classDesc').textContent = `${which} confident enough to classify this image. No grade or stage is offered. Refer for clinical assessment.` + whyAbstain();
     $('caution').textContent = `The tool declines below ${(ABSTAIN_AT*100).toFixed(0)} % confidence rather than report a number it cannot support. On the held-out set, declining the least confident third of images raised accuracy on the remainder from 83 % to 89 %.`;
     return;
   }

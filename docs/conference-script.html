@@ -1,0 +1,577 @@
+<title>DFU Vision Talk Script</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Karla:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ground:#F7F7F8; --card:#FFFFFF; --sunk:#EEEFF2;
+  --ink:#15171C; --body:#343943; --quiet:#6C7482; --rule:#E0E2E8;
+  --maroon:#99304A; --maroon-soft:#FAEEF1;
+  --slate:#3D5166; --slate-soft:#EDF1F6;
+  --moss:#2A6A4A; --moss-soft:#E8F2EC;
+  --display:'Newsreader',Georgia,serif;
+  --sans:'Karla',system-ui,-apple-system,sans-serif;
+  --mono:'Roboto Mono',ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#101216; --card:#181B21; --sunk:#1E222A;
+    --ink:#ECEEF2; --body:#C6CBD4; --quiet:#8C96A4; --rule:#282D36;
+    --maroon:#EC9AAC; --maroon-soft:#2A1419;
+    --slate:#9DB6D0; --slate-soft:#161D26;
+    --moss:#7ECBA2; --moss-soft:#11231A;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#101216; --card:#181B21; --sunk:#1E222A;
+  --ink:#ECEEF2; --body:#C6CBD4; --quiet:#8C96A4; --rule:#282D36;
+  --maroon:#EC9AAC; --maroon-soft:#2A1419;
+  --slate:#9DB6D0; --slate-soft:#161D26;
+  --moss:#7ECBA2; --moss-soft:#11231A;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--body);font-family:var(--sans);font-size:16.5px;line-height:1.6}
+.wrap{max-width:880px;margin:0 auto;padding-block:clamp(26px,5vw,56px);padding-left:20px;padding-right:20px}
+
+header{border-bottom:3px solid var(--maroon);padding-bottom:22px}
+.kick{font-family:var(--mono);font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--maroon);margin:0 0 12px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(31px,5.6vw,46px);line-height:1.08;letter-spacing:-.015em;color:var(--ink);margin:0 0 14px;text-wrap:balance}
+.stand{font-size:clamp(17px,2.3vw,19px);line-height:1.5;max-width:56ch;margin:0}
+.facts{display:flex;flex-wrap:wrap;gap:6px 24px;font-family:var(--mono);font-size:12px;color:var(--quiet);margin-top:18px}
+
+.howto{background:var(--slate-soft);border-left:3px solid var(--slate);border-radius:0 10px 10px 0;padding:15px 18px;margin:30px 0 8px}
+.howto h2{font-family:var(--mono);font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--slate);margin:0 0 8px;font-weight:500}
+.howto p{margin:0 0 9px;font-size:15px}
+.howto p:last-child{margin:0}
+
+.band{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--maroon);border-top:1px solid var(--rule);padding-top:13px;margin:52px 0 0}
+
+.slide{background:var(--card);border:1px solid var(--rule);border-radius:13px;padding:20px 22px;margin-top:18px}
+.slide.core{border-left:4px solid var(--maroon)}
+.shead{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;margin-bottom:4px}
+.snum{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--maroon);letter-spacing:.05em}
+.stime{font-family:var(--mono);font-size:11.5px;color:var(--quiet);margin-left:auto}
+.slide h3{font-family:var(--display);font-weight:600;font-size:clamp(20px,3vw,25px);line-height:1.22;color:var(--ink);margin:0 0 14px;text-wrap:balance;width:100%}
+.lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--quiet);display:block;margin:16px 0 6px}
+.lab:first-of-type{margin-top:0}
+.onslide{background:var(--sunk);border-radius:9px;padding:12px 15px;font-size:14.5px}
+.onslide ul{margin:0;padding-left:19px}
+.onslide li{margin:4px 0}
+.say{font-size:17px;line-height:1.62;color:var(--ink)}
+.say p{margin:0 0 11px}
+.say p:last-child{margin:0}
+.say dfn{font-style:normal;font-weight:700;color:var(--slate)}
+.say em{font-style:normal;background:var(--moss-soft);color:var(--moss);padding:0 4px;margin:0 -3px;border-radius:3px;font-weight:500;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.aside{border-left:3px solid var(--moss);background:var(--moss-soft);border-radius:0 9px 9px 0;padding:11px 15px;margin-top:15px;font-size:14.5px}
+.aside b{color:var(--moss);font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;display:block;margin-bottom:5px;font-weight:500}
+
+.qa{background:var(--card);border:1px solid var(--rule);border-radius:13px;padding:6px 0;margin-top:20px}
+.q{border-top:1px solid var(--rule);padding:15px 22px}
+.q:first-child{border-top:none}
+.q h4{font-family:var(--sans);font-weight:700;font-size:15.5px;color:var(--ink);margin:0 0 7px}
+.q p{margin:0;font-size:15.5px}
+
+.tw{overflow-x:auto;margin:18px 0;border:1px solid var(--rule);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{padding:9px 14px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+thead th{background:var(--sunk);color:var(--ink);font-weight:700;font-size:12.5px;font-family:var(--mono);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+td:first-child{color:var(--quiet);white-space:nowrap}
+td strong{color:var(--ink)}
+
+/* The method panel. A different register from the spoken script: proper terminology,
+   architecture and hyperparameters, for questions or for a technical backup slide. */
+.meth{margin-top:16px;background:var(--slate-soft);border:1px solid var(--rule);border-left:3px solid var(--slate);border-radius:0 9px 9px 0;padding:13px 16px}
+.meth > b{color:var(--slate);font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;display:block;margin-bottom:9px;font-weight:500}
+.meth p{margin:0 0 8px;font-size:14.5px;line-height:1.55}
+.meth p:last-child,.meth ul:last-child{margin-bottom:0}
+.meth ul{margin:0 0 8px;padding-left:19px;font-size:14.5px;line-height:1.55}
+.meth li{margin-bottom:7px}
+.meth li:last-child{margin-bottom:0}
+.meth strong{color:var(--ink)}
+.meth dfn{font-style:normal;font-weight:700;color:var(--ink)}
+code{font-family:var(--mono);font-size:13px;background:var(--card);border:1px solid var(--rule);border-radius:4px;padding:1px 3px;margin:0 -1px;white-space:nowrap}
+
+.gloss td:nth-child(1){font-family:var(--mono);font-size:12.5px;color:var(--ink);white-space:normal}
+.gloss td:nth-child(2){font-size:14px}
+.gloss td:nth-child(3){color:var(--moss);font-weight:500;font-size:14px}
+.spec td:nth-child(1){font-family:var(--mono);font-size:12.5px;color:var(--ink);white-space:normal;font-weight:500}
+.spec td:nth-child(2),.spec td:nth-child(3){font-size:14px}
+
+/* At phone width the columns cannot all be read side by side, so each row stacks. */
+@media (max-width:620px){
+  .tw{overflow-x:visible}
+  thead{display:none}
+  table,tbody,tr,td{display:block;width:auto}
+  tr{border-bottom:1px solid var(--rule);padding:9px 0}
+  tbody tr:last-child{border-bottom:none}
+  td{border-bottom:none;padding:2px 14px}
+  td:first-child{white-space:normal}
+  .gloss td:nth-child(1),.spec td:nth-child(1){font-size:13px;font-weight:700}
+  .gloss td:nth-child(2)::before,.spec td:nth-child(2)::before{content:"= ";color:var(--quiet)}
+  .gloss td:nth-child(3)::before,.spec td:nth-child(3)::before{content:"\2192\00a0";color:var(--quiet)}
+  code{white-space:normal}
+}
+
+.note{font-size:15px;color:var(--quiet);max-width:70ch;margin:0 0 14px}
+
+footer{margin-top:52px;border-top:1px solid var(--rule);padding-top:18px;font-size:14px;color:var(--quiet)}
+
+@media print{
+  body{background:#fff;color:#000;font-size:10.5pt}
+  .wrap{max-width:none;padding:0}
+  .meth,.slide,.qa{break-inside:avoid;border:none;border-top:1px solid #999;border-radius:0;padding:8pt 0}
+  .slide.core{border-left:none}
+  .onslide,.aside,.howto,.meth{background:#f2f2f2;border-radius:0}
+  .meth{border:none;border-top:1px solid #bbb}
+  .say{font-size:11pt}
+  .band{margin:14pt 0 0}
+}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="kick">Conference talk &middot; presenter's script</p>
+  <h1>Teaching a phone to look at a diabetic foot</h1>
+  <p class="stand">Fifteen slides and three technical backup slides. The clinical case is in plain language for an audience with no background in computing; the method, the terminology and the pipeline are specified in full.</p>
+  <div class="facts">
+    <span>Dr Naim Bin Abdul Malek</span>
+    <span>Hospital Tengku Permaisuri Norashikin</span>
+    <span>15 slides + 3 backup &middot; ~17 min, or ~23 with the method read aloud</span>
+  </div>
+</header>
+
+<div class="howto">
+  <h2>How to use this script</h2>
+  <p><b>Each slide has two registers, and they are for different moments.</b> <b>What you say</b> is plain language, written to be read more or less verbatim to a clinical audience. <b>Method</b> is the same step stated properly &mdash; architecture, terminology, hyperparameters, measured figures.</p>
+  <p>Read the plain script aloud and let the method panels sit unread; they answer questions, and Backup A to C are three slides you can put up when one is asked. That is the seventeen-minute talk. If the room turns out to be technical, read the method panels in place of the plain paragraphs for slides 6, 7, 8, 12 and 13 &mdash; they are written to be spoken &mdash; which makes it about twenty-three minutes.</p>
+  <p><b>Slides marked with a maroon bar are the core.</b> Cut to ten minutes by keeping those and dropping the rest. Do not cut into the pipeline, Part 2; it is the spine of the talk. Green highlights mark the numbers worth landing slowly.</p>
+  <p>Read the whole thing aloud once with a timer. Talks always run long, and the pipeline is where you will want the spare minute.</p>
+</div>
+
+<p class="band">Part 1 &middot; Why anyone should care</p>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 1</span><span class="stime">30 sec</span>
+    <h3>Title</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">Title, your name and hospital, and one photograph of a foot ulcer with the app's outline drawn on it. No bullet points.</div>
+  <span class="lab">What you say</span>
+  <div class="say"><p>Good morning. I am going to show you something my phone can do that it could not do a year ago. It can look at a photograph of a diabetic foot ulcer and tell you two things: how deep the wound looks, and whether it looks infected. I will show you exactly how it works, what it gets right, and rather more interestingly, what it gets wrong.</p></div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 2</span><span class="stime">90 sec</span>
+    <h3>Why a foot ulcer is a life-or-death problem</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">Four numbers, large, one per quadrant. No paragraphs.
+    <ul><li>15.6 % of Malaysian adults have diabetes</li><li>1 in 3 will develop a foot ulcer</li><li>30.5 % die within five years of getting one</li><li>56.6 % die within five years of a major amputation</li></ul></div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>Let me start with why this matters, because the numbers are worse than most people assume.</p>
+    <p>In Malaysia, the proportion of adults with diabetes rose from eleven per cent in 2011 to <em>fifteen point six per cent in 2023</em>. A substantial share of them will develop a foot ulcer at some point.</p>
+    <p>Here is the part that surprises clinicians outside this field. Once a patient has a diabetic foot ulcer, their chance of dying within five years is <em>thirty per cent</em>. If they lose part of the limb, it is <em>fifty-seven per cent</em>. That is worse than many cancers we treat far more aggressively.</p>
+    <p>And in our own setting, roughly <em>eighteen per cent</em> of Malaysian patients with a diabetic foot ulcer eventually undergo an amputation.</p>
+  </div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 3</span><span class="stime">60 sec</span>
+    <h3>Infection is the thing that decides</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">A simple two-arrow diagram: ulcer &rarr; infected &rarr; amputation, and ulcer &rarr; not infected &rarr; healing. One caption: "more than half become infected".</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>What turns an ulcer into an amputation is usually infection. More than half of all foot ulcers become infected, and <em>seventeen per cent of infected ulcers</em> end in amputation.</p>
+    <p>So the single most valuable thing you can do early is recognise infection and refer. That is a decision made in a clinic, often by a medical officer who sees a foot ulcer a few times a month, not by a specialist who sees them daily.</p>
+    <p>That gap is what I have been working on.</p>
+  </div>
+</section>
+
+<p class="band">Part 2 &middot; The pipeline, from photograph to answer</p>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 4</span><span class="stime">45 sec</span>
+    <h3>What we built, in one sentence</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">A phone held in a hand, showing the app with a wound outlined. One line of text: "A web page that runs on any phone. Nothing is uploaded."</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>It is a web page. You open it on a phone browser, photograph the wound, and it answers. There is no app to install and no account to create.</p>
+    <p>The important detail is this: <em>the photograph never leaves the phone</em>. All the computing happens inside the browser, on the handset in your pocket. That matters for patient privacy, and it means it works when the clinic's internet does not.</p>
+  </div>
+  <div class="meth"><b>Method &mdash; what is actually running</b>
+  <ul>
+    <li><dfn>Client-side inference.</dfn> Three <strong>TensorFlow.js</strong> <code>LayersModel</code> graphs execute in the browser on the <strong>WebGL</strong> backend. There is no server round trip and no API call, so there is nothing to intercept and nothing to log.</li>
+    <li><dfn>Payload.</dfn> Segmentation model 12 MB, wound-crop classifier 4.5 MB, whole-frame classifier 4.5 MB. All three are <strong>float16-quantised</strong> &mdash; half-precision weights, which halves the download for a loss in accuracy too small to measure here. About <strong>21 MB on first load</strong>, cached by the browser thereafter.</li>
+    <li><dfn>Latency.</dfn> A full pass &mdash; segment, crop, classify four augmented views, Grad-CAM &mdash; takes <strong>2.5 to 4 seconds</strong> in a software renderer, and less on a phone GPU.</li>
+    <li><dfn>Architecture of the whole thing.</dfn> A single static HTML page. No build step, no framework, no database, no backend. That is a deliberate constraint: it is auditable by one person, and it cannot silently start uploading.</li>
+  </ul></div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 5</span><span class="stime">45 sec</span>
+    <h3>Step 1 &mdash; take the photograph properly</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">The six-point acquisition protocol, with a good photo and a bad photo side by side.</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>Step one has nothing to do with computers. Before the app does anything, it makes you agree to a photography protocol. Dressing off, wound irrigated and blotted dry. Camera thirty to forty centimetres away, straight on. Flash off. Plain sheet behind the foot. A paper ruler beside the wound, never on it. And no faces or name bands in the frame.</p>
+    <p>I put this first deliberately, because in wound photography the camera is the biggest source of error, not the computer. Two photographs of the same ulcer taken at different distances and under different lights can look like different wounds. If we do not standardise this, nothing downstream can be trusted.</p>
+  </div>
+  <div class="aside"><b>If you have time</b>Hold up your own phone and mime the distance. The audience remembers gestures better than bullet points.</div>
+  <div class="meth"><b>Method &mdash; why acquisition is a modelling problem</b>
+  <ul>
+    <li><dfn>Input tensor.</dfn> <code>224 &times; 224 &times; 3</code>, rescaled to the range <code>[-1, 1]</code> by <code>x / 127.5 - 1</code>. That is MobileNetV2's own <code>preprocess_input</code>. The browser performs the identical arithmetic in JavaScript, so training-time and inference-time preprocessing cannot drift apart &mdash; a common and silent source of degraded performance in deployed models.</li>
+    <li><dfn>What the protocol controls.</dfn> Distance, illumination, white balance and background are <strong>unmodelled covariates</strong>. Varying them moves the input away from the distribution the model was fitted on &mdash; <strong>covariate shift</strong>. Data augmentation makes a model tolerant of variation it has seen; it does not make it tolerant of variation nobody standardised. Controlling variance at the point of capture is cheaper and more honest than correcting it afterwards.</li>
+    <li><dfn>Scale.</dfn> The paper ruler is a <strong>fiducial marker</strong>. Two taps on it give a pixels-per-millimetre factor, which is what converts a pixel count into square centimetres. Without it the area is reported in pixels and is not comparable between visits.</li>
+  </ul></div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 6</span><span class="stime">75 sec</span>
+    <h3>Step 2 &mdash; the computer traces round the wound</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">One photograph, before and after, with the teal outline drawn. Two numbers beneath: "agreement with experts 0.85" and "centre lands inside the real wound in 89 % of photographs".</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>The first thing the computer does is draw round the wound edge. The proper name for this is <dfn>semantic segmentation</dfn> &mdash; deciding, for every single pixel, whether it is wound or not wound. I will call it drawing round the wound.</p>
+    <p>If you have ever traced a wound onto a transparency sheet to measure how it is healing, this is exactly the same idea, done automatically in about a second.</p>
+    <p>We taught it using roughly a thousand photographs where wound specialists had already drawn the outline by hand. It now agrees closely with those experts. The overlap score is <em>zero point eight five</em>, where one point zero would be a perfect match. And the centre of its outline falls inside the real wound in <em>eighty-nine out of a hundred</em> photographs.</p>
+    <p>Because it has the outline, it can also measure the wound. Tap the two ends of the paper ruler, tell it how long that is, and it reports the area in square centimetres. That gives you a number to compare at the next visit, instead of "looks a bit smaller".</p>
+  </div>
+  <div class="meth"><b>Method &mdash; the segmentation model in full</b>
+  <ul>
+    <li><dfn>Task.</dfn> <strong>Semantic segmentation</strong>: classify every pixel as wound or not wound, producing a mask rather than a label.</li>
+    <li><dfn>Architecture.</dfn> <strong>MobileNetV2-UNet</strong>. The encoder is MobileNetV2 (&alpha; = 1.0, ImageNet weights) which compresses the image to a 7&times;7 representation. The decoder is four <em>upsample &rarr; concatenate &rarr; convolve</em> blocks of 192, 96, 48 and 24 channels that expand it back out. Each block concatenates the encoder tensor of matching resolution &mdash; <code>block_13_expand_relu</code> at 14&sup2;, <code>block_6_expand_relu</code> at 28&sup2;, <code>block_3_expand_relu</code> at 56&sup2;, <code>block_1_expand_relu</code> at 112&sup2;. Those cross-links are the <strong>skip connections</strong>, and they are the whole point of a U-Net: the deep layers know <em>what</em> the thing is, the shallow layers still know exactly <em>where</em> its edge was, and the skips let the decoder use both. The output is a single-channel <strong>sigmoid</strong> mask &mdash; one wound probability per pixel.</li>
+    <li><dfn>Loss.</dfn> <strong>Soft Dice plus binary cross-entropy.</strong> Cross-entropy alone is dominated by the background, which is most of the image; the Dice term scores overlap with the true mask directly, so a small wound cannot be ignored cheaply.</li>
+    <li><dfn>Training.</dfn> Two phases, Adam, batch 16. Phase 1: encoder frozen, learning rate <code>1e-3</code>, up to 12 epochs, early stopping on validation Dice. Phase 2: the top of the encoder unfrozen at <code>5e-5</code> for 6 epochs, with all <strong>BatchNormalization</strong> layers held frozen so their running statistics are not corrupted by small batches. Total 17.6 minutes.</li>
+    <li><dfn>Data.</dfn> FUSeg 2021 (AZH Wound and Vascular Center) &mdash; <strong>787 training and 190 held-out</strong> images, each with a mask drawn by a wound specialist.</li>
+    <li><dfn>Held-out performance.</dfn> <strong>Dice 0.848</strong> mean, 0.894 median; <strong>IoU 0.760</strong>; predicted centroid inside the true ulcer in <strong>88.9 %</strong> of images.</li>
+    <li><dfn>Post-processing.</dfn> In the browser: threshold at 0.5, then <strong>4-connected component labelling</strong> (a flood fill) keeping only the largest region. This discards speckle, so one stray positive pixel on a glove cannot drag the region of interest off the wound.</li>
+  </ul></div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 7</span><span class="stime">60 sec</span>
+    <h3>Step 3 &mdash; it steps closer</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">The same photo with a dashed square around the wound, then the cropped close-up beside it. Caption: "1.3 % of the photo &rarr; 9 %". Below: "accuracy 84 % &rarr; 92 %".</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>This step is called cropping to the <dfn>region of interest</dfn>. It sounds trivial and it is the most important thing in the whole design.</p>
+    <p>In our photographs, a typical ulcer takes up only <em>one point three per cent</em> of the picture. The rest is foot, bed sheet, gloves, and the clinic floor. Asking a computer to judge infection from that is like asking you to assess a wound from a photograph of the whole ward.</p>
+    <p>So once it knows where the wound is, it crops in around it, keeping a margin of surrounding skin because redness spreading beyond the wound edge is itself a sign of infection. The wound now fills about <em>nine per cent</em> of what the computer sees.</p>
+    <p>That one change lifted accuracy from <em>eighty-four per cent to ninety-two per cent</em>. We did not build a cleverer computer. We just stood it closer.</p>
+  </div>
+  <div class="meth"><b>Method &mdash; the region of interest, and why it matters this much</b>
+  <ul>
+    <li><dfn>The geometry.</dfn> At a <code>224 &times; 224</code> input, an object occupying 1.3 % of the frame is about <strong>25 pixels across</strong>. MobileNetV2 has five stride-2 stages, so the final convolutional map is <strong>7 &times; 7</strong>: each cell summarises a 32-pixel square. The ulcer is therefore <em>smaller than one cell of the representation the classifier reasons over</em>. This is the standard <strong>small-object problem</strong> in a fixed-input convolutional network, and no change of architecture at that input size fixes it.</li>
+    <li><dfn>The crop.</dfn> Take the bounding box of the retained mask component, square it, dilate it by a <strong>60 % margin</strong> on each side (2.2&times; linear) and clamp to the image. The margin is clinical, not cosmetic: erythema spreading beyond the wound edge is itself a sign of infection, so the model must be allowed to see peri-wound skin.</li>
+    <li><dfn>Matched training.</dfn> A second classifier was trained on crops produced by <em>this same geometry</em> &mdash; 717 training and 171 validation crops &mdash; so the distribution at training matches the distribution at inference. Cropping at test time only would have been a train&ndash;test mismatch.</li>
+    <li><dfn>Measured effect.</dfn> Median wound occupancy rises from <strong>1.3 % to 9.0 %</strong> of the input. Whole frame &rarr; crop: severity <strong>AUC 0.927 &rarr; 0.963</strong>, accuracy <strong>84.1 &rarr; 92.5 %</strong>; infection <strong>AUC 0.805 &rarr; 0.834</strong>, accuracy <strong>75.2 &rarr; 81.5 %</strong>. Same architecture, same data, same weights initialisation &mdash; the gain is entirely resolution recovered.</li>
+  </ul></div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 8</span><span class="stime">60 sec</span>
+    <h3>Step 4 &mdash; it answers two questions</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">Two gauges: "How deep does it look?" and "Does it look infected?", each with a percentage. Nothing else.</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>Now it looks at the close-up and answers two separate questions. In the jargon these are two <dfn>classification heads</dfn> sharing one set of eyes &mdash; two questions answered from the same look at the wound.</p>
+    <p>First, how deep does this look: superficial, or deep and extensive. Second, does this look infected.</p>
+    <p>Each answer comes with a percentage, and I want to be precise about what that percentage means. It is the computer's confidence in that one label. It is not a severity score. Eighty per cent does not mean a worse wound than sixty per cent; it means the computer is more sure of its answer.</p>
+    <p>And when it is not sure, it says so. Below <em>seventy per cent confidence</em> it refuses to answer and tells you to refer. I will come back to why that refusal matters.</p>
+  </div>
+  <div class="meth"><b>Method &mdash; the classifier, and the three things bolted onto it</b>
+  <ul>
+    <li><dfn>Architecture.</dfn> One MobileNetV2 backbone (&alpha; = 1.0, ImageNet weights). <strong>Global average pooling</strong> over <code>out_relu</code>, the final <code>7&times;7&times;1280</code> feature map, then dropout 0.3, then <strong>two independent softmax heads</strong>, each <code>Dense(2)</code>: <code>grade</code> (mild / severe) and <code>infection</code> (none / suspected). This is <strong>multi-task learning</strong> on a shared representation &mdash; both questions read the same features, which is efficient and appropriate when the underlying visual cues overlap.</li>
+    <li><dfn>Class imbalance.</dfn> Per-head sample weights up-weight the minority class so the loss is balanced. Cases whose label is ambiguous for one head are given <strong>weight zero for that head only</strong>, so they still train the other. This is why the two heads have different effective sample sizes.</li>
+    <li><dfn>Test-time augmentation.</dfn> Four views &mdash; identity, horizontal flip, vertical flip, both &mdash; with the probabilities averaged. A wound has no canonical orientation, so this is a free variance reduction: infection <strong>AUC 0.834 &rarr; 0.863</strong>, severity 0.963 &rarr; 0.965.</li>
+    <li><dfn>Calibration.</dfn> <strong>Platt scaling</strong>: <code>p_cal = &sigma;(a &middot; logit(p) + b)</code>, a one-parameter-per-term rescaling of confidence that leaves the ranking of cases untouched. Applied to the severity head (<code>a = 0.755, b = -0.302</code>), which lifts the <strong>calibration slope from 0.78 to 0.97</strong> at no cost in accuracy. <em>Not</em> applied to infection: the four-view averaging already brings that slope to 0.96, and over <strong>20 disjoint half-splits</strong> Platt scaling gave no Brier improvement and cost accuracy (0.835 &rarr; 0.809). Both coefficient sets are recorded in <code>calibration.json</code> with the reason, so the decision is auditable.</li>
+    <li><dfn>Selective prediction.</dfn> If the maximum posterior is below <strong>0.70</strong> the head <strong>abstains</strong>. On the infection head that retains <strong>66 % of cases at 89 % accuracy</strong>, against 83 % if it is forced to answer everything. Trading coverage for reliability is the correct direction for a triage tool: a declined case costs a referral, a confident wrong answer costs a foot.</li>
+    <li><dfn>What the percentage is.</dfn> A <strong>posterior probability for one label</strong>, not a severity score and not a risk. Eighty per cent for &ldquo;severe&rdquo; does not mean a worse wound than sixty; it means less doubt about the word.</li>
+  </ul></div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 9</span><span class="stime">60 sec</span>
+    <h3>Step 5 &mdash; the clinician supplies what a photograph cannot</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">The Texas grid with one cell highlighted, and a blue box off to the side labelled "you: pulses, ABPI, toe pressure".</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>The two answers then map onto the classification systems you already use. The app shows both the University of Texas grid and the Wagner grades.</p>
+    <p>But notice what it does not do. The Texas system also asks whether the foot is ischaemic. <em>No photograph can show blood supply.</em> So the app asks you. You enter whether the pulses are present, or the ABPI, or the toe pressure, and only then does it complete the classification.</p>
+    <p>I think this is the right instinct for clinical AI generally. The tool should do the part it can genuinely do, and ask you for the part it cannot, rather than guessing to look clever.</p>
+  </div>
+  <div class="meth"><b>Method &mdash; bounding the output space to the input modality</b>
+  <ul>
+    <li><dfn>The formal problem.</dfn> The Texas stage requires perfusion, and perfusion is not merely unlabelled in our data &mdash; it is <strong>not identifiable from an RGB photograph at all</strong>. No quantity of training data recovers a variable the sensor cannot observe. Attempting it would produce a model that appears to predict ischaemia while in fact predicting some correlate of it, such as skin tone or lighting.</li>
+    <li><dfn>The design response.</dfn> Restrict the model to what the modality supports &mdash; depth and infection appearance &mdash; and obtain the rest by <strong>structured elicitation</strong> from the clinician: pulses present or absent, ABPI, or toe pressure. The Texas cell is then composed: <code>cell = grade &times; (infection stage + clinician ischaemia)</code>.</li>
+    <li><dfn>Why Wagner is offered as well.</dfn> Wagner grade 3 and above turn on <strong>probe-to-bone</strong> and radiology, and Wagner 4&ndash;5 on gangrene extent. Those are examination and imaging findings, so the app takes them as input rather than predicting them. Offering both systems also lets a clinician record in whichever they already use, which matters for whether the case log is ever filled in.</li>
+  </ul></div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 10</span><span class="stime">60 sec</span>
+    <h3>Step 6 &mdash; the loop that makes it better</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">A circle: photograph &rarr; AI answer &rarr; clinician's own grade and the culture result &rarr; better training data &rarr; back to the start.</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>The last step is the one that turns a demonstration into a research tool.</p>
+    <p>After the app gives its answer, the clinician records the truth: their own grading, whether the probe reached bone, and when it comes back, the tissue culture and sensitivity result. The app keeps a log of AI answer against real answer, and can export it as a spreadsheet.</p>
+    <p>So every patient seen makes the next version better. And it means we can state plainly how often the tool agrees with a culture result, rather than how often it agrees with somebody's impression.</p>
+  </div>
+  <div class="meth"><b>Method &mdash; from weak labels to a reference standard</b>
+  <ul>
+    <li><dfn>What the log holds.</dfn> Each case stores the model's posteriors for both heads, the clinician's own grade and stage, probe-to-bone, and the tissue culture and sensitivity organisms when they return, with a CSV export.</li>
+    <li><dfn>Why that is the whole point.</dfn> Every figure in this talk is measured against <strong>weak labels</strong> &mdash; a visual proxy. The log is the mechanism that replaces them with a <strong>clinician-adjudicated, culture-confirmed reference standard</strong>. Until that exists, nothing here is a diagnostic accuracy estimate; it is an engineering check.</li>
+    <li><dfn>What it unlocks.</dfn> Refitting the calibration and the abstention threshold on real labels rather than proxies; estimating sensitivity and specificity against culture; and reporting under <strong>TRIPOD+AI</strong> and <strong>STARD</strong> instead of quoting internal validation numbers.</li>
+    <li><dfn>Governance first.</dfn> No patient image is loaded until <strong>NMRR registration and MREC approval</strong> are in place, with de-identification and consent under the <strong>PDPA 2010</strong>. The readiness dashboard in the app counts images per class against a target of 100 and states plainly when a class is too thin to train on.</li>
+  </ul></div>
+</section>
+
+<section class="slide">
+  <div class="shead"><span class="snum">Slide 11</span><span class="stime">90 sec</span>
+    <h3>Watch it run</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">The thirty-five second screen recording. Have it as a video file on the machine, not streaming from the internet.</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>Let me show you. This is a real recording, not a mock-up.</p>
+    <p>Protocol first. Photograph. The outline appears, and the measurement. It answers the two questions, places it on the Texas grid, and then the clinician fills in the culture result and saves the case.</p>
+    <p>That whole sequence takes about four seconds of computing on an ordinary phone.</p>
+  </div>
+  <div class="aside"><b>Rehearse this</b>Play the video at least twice before the talk and know where to pause. If the room's audio-visual set-up fails, you can still walk the audience through slides 6 to 10 as stills. Never rely on live internet for a demo.</div>
+</section>
+
+<p class="band">Part 3 &middot; How it learned, and where it fails</p>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 12</span><span class="stime">75 sec</span>
+    <h3>We did not teach it from nothing</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">Two panels. Left: a grid of everyday photographs (cats, cars, chairs) labelled "already learned to see, 1.4 million pictures". Right: foot ulcers labelled "then learned wounds, about 800 pictures".</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>People imagine that building this needs a supercomputer and a million wound photographs. It does not, because of one idea.</p>
+    <p>We started with a program that had already looked at <em>one point four million everyday photographs</em> — cats, cars, chairs. From those it had already learned the general business of seeing: edges, colours, textures, shapes.</p>
+    <p>We then showed it about <em>eight hundred</em> foot ulcer photographs and let it adjust what it already knew. It is the difference between hiring an experienced photographer and teaching them wound photography, versus teaching a newborn to see.</p>
+    <p>That is why this took about five minutes of training on an ordinary laptop, and why a district hospital can do this. The specialists call it transfer learning. You can call it standing on someone else's shoulders.</p>
+  </div>
+  <div class="meth"><b>Method &mdash; transfer learning, stated properly</b>
+  <ul>
+    <li><dfn>What is transferred.</dfn> MobileNetV2 pretrained on <strong>ImageNet-1k</strong> &mdash; 1.28 million photographs, 1,000 everyday classes. We keep the <strong>convolutional feature extractor</strong> and discard its classifier. Early layers encode edges, colour opponency and texture; middle layers encode parts and shapes. Those are generic to photographs, wounds included, which is why they need not be relearned from 800 images.</li>
+    <li><dfn>Two-phase schedule.</dfn> Phase 1 &mdash; backbone frozen, heads only, Adam at <code>1e-3</code>, 10 epochs. The randomly initialised heads produce large early gradients; freezing the backbone means those gradients cannot destroy the pretrained weights. Phase 2 &mdash; <strong>fine-tune the top 30 layers only</strong>, Adam at <code>2e-5</code>, fifty times lower, for 4 epochs, with BatchNormalization layers kept frozen. The low rate and the shallow depth of unfreezing are what stop <strong>catastrophic forgetting</strong> on a small dataset.</li>
+    <li><dfn>Why MobileNetV2 and not something larger.</dfn> 3.5 million parameters, <strong>depthwise-separable convolutions</strong> and inverted residual blocks: roughly a ninth of the multiply-accumulate operations of a standard convolution at similar accuracy. That is what makes a 4.5 MB browser download and phone-side inference possible at all. With around 800 images, a ResNet-50 or a vision transformer would overfit sooner and could not be deployed this way. The constraint chose the architecture.</li>
+    <li><dfn>Cost and reproducibility.</dfn> About five minutes on an ordinary laptop CPU for the classifier, 17.6 minutes for the segmentation model. Seeds fixed at 0; the training scripts and the audit scripts are in the repository, so every number in this talk can be recomputed.</li>
+  </ul></div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 13</span><span class="stime">2 min</span>
+    <h3>The thing that surprised me</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">One large picture: a 7 &times; 7 grid over a photograph, with one square shaded and a tiny ulcer inside it. Two labels: "one square = 2 % of the picture" and "a typical ulcer = 1.3 %".</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>If you remember one thing from this talk, let it be this slide.</p>
+    <p>There is a very popular technique for explaining what these systems are doing. Its proper name is <dfn>Grad-CAM</dfn>, a saliency map; everyone calls it a heat map. It colours the picture to show which parts the computer leaned on. Every paper shows one. It looks convincing. I had it in my own first version, and I presented it as our explainability feature.</p>
+    <p>Then we measured whether it actually points at the ulcer. It does not. The hottest spot landed inside the real ulcer in only <em>thirteen out of a hundred</em> photographs.</p>
+    <p>The reason is simple once you see this picture. The heat map can only see the photograph as a grid of forty-nine squares. Each square covers about <em>two per cent</em> of the image. A typical ulcer in our data covers <em>one point three per cent</em>. The wound is smaller than the smallest thing the heat map is able to see. It was never going to work, and no amount of tuning would have fixed it.</p>
+    <p>So we stopped using it to locate the wound and used the tracing instead, which lands correctly <em>eighty-nine per cent</em> of the time. The heat map is still in the app, but labelled honestly: it tells you whether the computer is looking at the foot or at the curtains. Nothing more.</p>
+    <p>The general lesson is not about foot ulcers. If somebody shows you a heat map as evidence that their AI is trustworthy, ask them whether they measured it.</p>
+  </div>
+  <div class="meth"><b>Method &mdash; Grad-CAM, and how the failure was measured</b>
+  <ul>
+    <li><dfn>What Grad-CAM computes.</dfn> Take the final convolutional map (<code>out_relu</code>, <code>7&times;7&times;1280</code>). Compute the gradient of the target class score with respect to each channel of that map, and <strong>global-average-pool those gradients</strong> to get one weight per channel &mdash; how much this channel mattered to this prediction. Form the weighted sum of the channels, apply ReLU to keep only positive evidence, normalise, and <strong>bilinearly upsample</strong> to the input size. That last step is where the trouble hides.</li>
+    <li><dfn>The audit.</dfn> The <strong>pointing game</strong>, on the 190 held-out images that carry expert masks: does the heat map's peak pixel fall inside the true wound? Also the fraction of CAM mass inside the mask, divided by the mask's area fraction, which gives performance <strong>relative to chance</strong>.</li>
+    <li><dfn>Results.</dfn> Whole frame: peak inside the wound <strong>13 %</strong>, mass 2.8&times; chance. Cropped to the wound: <strong>47 %</strong>, 3.1&times;. Retrained on crops: <strong>21 %</strong>, 1.8&times;.</li>
+    <li><dfn>Why it cannot be tuned away.</dfn> <code>224 / 7 = 32</code> pixels per cell, so <strong>one cell is 2.04 % of the frame</strong> and the median ulcer is 1.3 %. The unit of explanation is coarser than the object being explained. Bilinear upsampling then produces a smooth, precise-looking image whose underlying representation contains no such precision &mdash; the map looks like evidence and is an artefact of interpolation.</li>
+    <li><dfn>The honest reading of the retrained case.</dfn> Its pointing score is <em>worse</em>, and that may be correct behaviour: trained on crops, the model legitimately attends to peri-wound skin, where erythema is a genuine infection sign. A saliency map cannot distinguish &ldquo;looking in the wrong place&rdquo; from &ldquo;looking at a different right place&rdquo;. That is precisely why saliency is not a validation instrument, and it is consistent with the published literature on saliency reliability in medical imaging.</li>
+    <li><dfn>What replaced it.</dfn> Segmentation, whose centroid lands inside the true ulcer in <strong>88.9 %</strong> of the same images. Grad-CAM is retained, drawn only inside the crop it explains, and labelled on screen as a check on whether the model is reading the wound or the room.</li>
+  </ul></div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 14</span><span class="stime">90 sec</span>
+    <h3>What it gets wrong</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">Three short headings only: "Our labels are guesses", "It misses sloughy edges", "It has never seen a Malaysian foot". Beside the second, show the under-traced example.</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>Three weaknesses, stated plainly, because a tool whose limits you cannot describe is a tool nobody should use.</p>
+    <p><b>First, our labels are guesses.</b> The technical term is <dfn>weak labels</dfn>. The public photographs we trained on came with no culture results and no clinical grades. So we inferred infection from visual clues: how much yellow slough, how much black tissue. That is a proxy, not a diagnosis. Every accuracy figure I have quoted measures agreement with our guesses, not with the truth.</p>
+    <p><b>Second, it under-traces sloughy wounds.</b> On one of my own examples it outlined the top third and missed the yellow slough below it, reporting about a third of the true area. The average is good; individual cases are not always.</p>
+    <p><b>Third, it has never seen a Malaysian foot.</b> Every photograph came from clinics in the United States and the United Kingdom. Different skin tones, different cameras, different lighting. There is no reason to assume the numbers I have shown you will hold in a Klinik Kesihatan, and good reason to assume they will drop.</p>
+  </div>
+  <div class="aside"><b>Why this slide wins the room</b>Most AI talks skip it. Presenting your failures with measurements makes the rest of your numbers believable, and it is the slide senior clinicians will remember you for.</div>
+  <div class="meth"><b>Method &mdash; the limitations in technical terms</b>
+  <ul>
+    <li><dfn>Weak supervision.</dfn> The infection label is a rule over mask-derived colour features in HSV space: <em>suspected</em> if the slough fraction exceeds 0.10 or the necrosis fraction exceeds 0.15; <em>none</em> if slough is below 0.01 and necrosis below 0.02; otherwise the case is <strong>excluded from that head</strong> rather than guessed. A peri-wound erythema term was computed and deliberately dropped &mdash; healthy granulation tissue is also red, and including it lowered infection AUC from 0.805 to 0.72. So every accuracy figure quoted is <strong>agreement with a proxy</strong>, and an upper bound on nothing clinical.</li>
+    <li><dfn>Split granularity.</dfn> The train / validation split is <strong>image-level, not patient-level</strong>, because FUSeg publishes no patient identifiers. Two images of the same ulcer may therefore straddle the split, which biases the estimates <em>optimistically</em>. The prospective study will split by patient.</li>
+    <li><dfn>Domain shift.</dfn> All data comes from centres in the United States and United Kingdom. Skin tone distribution is unreported in the source datasets, and Malaysian cameras, lighting and case mix differ. Expect the numbers to fall on first external testing; a model that does not fall is usually a model that has leaked.</li>
+    <li><dfn>Spectrum bias.</dfn> The training images are hospital wound-clinic cases. The intended deployment is primary care, where the prevalence of severe and infected ulcers is lower. The same model, unchanged, will have a <strong>lower positive predictive value</strong> there &mdash; a property of prevalence, not of the weights.</li>
+    <li><dfn>What has not been done.</dfn> No external validation, no prospective evaluation, no patient outcome measured, no regulatory assessment, no <strong>DECIDE-AI</strong> style evaluation of clinician interaction. Under <strong>TRIPOD+AI</strong> this is internal development and internal validation only, and it should be described as such.</li>
+  </ul></div>
+</section>
+
+<section class="slide core">
+  <div class="shead"><span class="snum">Slide 15</span><span class="stime">75 sec</span>
+    <h3>What it is not, and what comes next</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">Two columns. "Not yet": not a medical device, not validated, not for treatment decisions. "Next": 400 patients, culture-confirmed labels, ethics submitted, primary care validation.</div>
+  <span class="lab">What you say</span>
+  <div class="say">
+    <p>Let me be clear about what this is not. It is a research prototype. It is not a medical device, it is not validated, and nobody should make a treatment decision with it. The app says so on its own opening screen and will not let you past until you agree.</p>
+    <p>What comes next is the part that actually matters. I am registering a study to collect around <em>four hundred patients</em> with proper consent, where each ulcer is graded independently by two wound clinicians, disagreements are settled by a consultant, and infection is confirmed by tissue culture rather than by how it looks.</p>
+    <p>Then the question stops being "can a computer do this" and becomes "does it help a medical officer in Kajang refer the right patient sooner". That is a harder question and a more useful one.</p>
+    <p>Thank you. I am happy to take questions.</p>
+  </div>
+</section>
+
+<p class="band">Part 4 &middot; Technical appendix, for the questions and the backup slides</p>
+
+<section class="slide">
+  <div class="shead"><span class="snum">Backup A</span><span class="stime">1 slide</span>
+    <h3>The pipeline, specified</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">This table, as one dense slide. Do not read it out. Put it up only if a question needs it, and point at the row that answers the question.</div>
+  <div class="tw">
+    <table class="spec">
+      <thead><tr><th>Stage</th><th>Operation</th><th>Output</th></tr></thead>
+      <tbody>
+        <tr><td>0 &middot; Acquisition</td><td>Six-point protocol; fiducial ruler in frame, off the wound</td><td>JPEG, arbitrary resolution</td></tr>
+        <tr><td>1 &middot; Preprocess</td><td>Resize to 224&sup2;, rescale to [-1, 1] (<code>x/127.5 - 1</code>)</td><td>Tensor 224&times;224&times;3</td></tr>
+        <tr><td>2 &middot; Segment</td><td>MobileNetV2-UNet, 4 skip connections, sigmoid output</td><td>Wound probability per pixel</td></tr>
+        <tr><td>3 &middot; Clean up</td><td>Threshold 0.5, 4-connected components, keep largest</td><td>Single wound mask</td></tr>
+        <tr><td>4 &middot; Measure</td><td>Pixel count and longest chord &times; ruler scale factor</td><td>Area cm&sup2;, longest dimension</td></tr>
+        <tr><td>5 &middot; Crop</td><td>Mask bounding box, squared, +60 % margin, clamped</td><td>Wound ROI, 9 % occupancy</td></tr>
+        <tr><td>6 &middot; Classify</td><td>MobileNetV2 backbone, GAP, dropout 0.3, two softmax heads</td><td><code>grade</code>, <code>infection</code> posteriors</td></tr>
+        <tr><td>7 &middot; Average</td><td>Test-time augmentation over 4 flipped views</td><td>Variance-reduced posteriors</td></tr>
+        <tr><td>8 &middot; Calibrate</td><td>Platt scaling on severity only (<code>a&nbsp;0.755, b&nbsp;-0.302</code>)</td><td>Calibrated posteriors</td></tr>
+        <tr><td>9 &middot; Decide</td><td>Abstain if max posterior &lt; 0.70</td><td>Answer, or a refusal and advice to refer</td></tr>
+        <tr><td>10 &middot; Explain</td><td>Grad-CAM on <code>out_relu</code>, drawn inside the crop only</td><td>Labelled sanity check, not localisation</td></tr>
+        <tr><td>11 &middot; Compose</td><td>grade &times; (infection + clinician ischaemia), or Wagner</td><td>Texas cell or Wagner grade</td></tr>
+        <tr><td>12 &middot; Record</td><td>Clinician grade, probe-to-bone, culture and sensitivity</td><td>Case log, CSV export</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="aside"><b>How to use this slide</b>It exists so that you never have to say &ldquo;I would have to check&rdquo;. Every number a technical questioner can ask about is on it.</div>
+</section>
+
+<section class="slide">
+  <div class="shead"><span class="snum">Backup B</span><span class="stime">1 slide</span>
+    <h3>Every metric, defined</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">This table. Use it if somebody challenges a number, so that you are defining the measure rather than defending the score.</div>
+  <div class="meth"><b>Measures used in this work</b>
+  <ul>
+    <li><dfn>Dice coefficient.</dfn> Twice the overlap between the predicted and true mask, divided by their combined area. 1.0 is identical, 0 is no overlap. <strong>Ours: 0.848 mean, 0.894 median.</strong> For wound segmentation, 0.8 and above is the range published methods report on this dataset.</li>
+    <li><dfn>Intersection over union.</dfn> The same idea, scored more harshly &mdash; overlap divided by combined extent. Always lower than Dice. <strong>Ours: 0.760.</strong></li>
+    <li><dfn>Centroid-in-wound.</dfn> Does the centre of the predicted outline fall inside the true wound? A blunt but decision-relevant check, because it is what determines whether the crop lands on the ulcer. <strong>Ours: 88.9 %.</strong></li>
+    <li><dfn>AUC (area under the ROC curve).</dfn> The probability that a randomly chosen positive case is ranked above a randomly chosen negative one. 0.5 is chance. It measures <em>discrimination</em> &mdash; the ordering of cases &mdash; and says nothing about whether the probabilities themselves are trustworthy. <strong>Ours: severity 0.963, infection 0.863 with augmentation.</strong></li>
+    <li><dfn>Accuracy.</dfn> The proportion of cases labelled correctly at the chosen threshold. Sensitive to class balance, which is why it is quoted alongside AUC and not instead of it. <strong>Ours: severity 92.5 %, infection 81.5 %.</strong></li>
+    <li><dfn>Calibration slope.</dfn> Regress outcome on the predicted log-odds: 1.0 means the stated confidence matches observed frequency, below 1.0 means the model is overconfident. <strong>Ours: severity 0.78 raw, 0.97 after Platt scaling; infection 0.96 after augmentation.</strong> This is the measure that decides whether &ldquo;eighty per cent&rdquo; may be shown to a clinician at all.</li>
+    <li><dfn>Brier score.</dfn> Mean squared error of the predicted probabilities &mdash; a single number combining discrimination and calibration. Lower is better. Used here to check that calibration was not bought at the cost of something else.</li>
+    <li><dfn>Pointing game.</dfn> The localisation test for saliency maps: does the hottest pixel fall inside the true object? <strong>Grad-CAM: 13 %. Segmentation centroid: 88.9 %.</strong></li>
+    <li><dfn>Coverage and accuracy-on-retained.</dfn> The selective-prediction pair. At a 0.70 threshold the infection head answers <strong>66 % of cases at 89 % accuracy</strong>, against 83 % if forced to answer all. Report both numbers or neither; quoting the retained accuracy alone is how abstention gets abused.</li>
+  </ul></div>
+</section>
+
+<section class="slide">
+  <div class="shead"><span class="snum">Backup C</span><span class="stime">1 slide</span>
+    <h3>What the study needs to be</h3></div>
+  <span class="lab">On the slide</span>
+  <div class="onslide">Three lines: "400 patients", "two independent raters, consultant adjudication", "culture-confirmed infection". Then: "binary referral endpoint, not six Wagner grades".</div>
+  <div class="meth"><b>Design of the prospective phase</b>
+  <ul>
+    <li><dfn>Endpoint.</dfn> A <strong>binary referral decision</strong> &mdash; does this ulcer need same-week specialist review &mdash; not a six-class Wagner prediction. The arithmetic forces this: to estimate performance for Wagner 5 with any precision you need around 50 such cases, and at their prevalence that means recruiting on the order of <strong>2,500 patients</strong>. A binary endpoint is answerable at 400 and is also the decision a GP actually makes.</li>
+    <li><dfn>Reference standard.</dfn> Two wound clinicians grade independently, disagreements adjudicated by a consultant; infection confirmed by <strong>tissue culture and sensitivity</strong>, not by appearance. Inter-rater agreement reported as &kappa;, because a reference standard without a reliability figure is not a reference standard.</li>
+    <li><dfn>Sample size.</dfn> Around <strong>400 patients</strong>, sized on the standard error of an AUC (Hanley&ndash;McNeil) and on the precision of a proportion, which gives a usable confidence interval for sensitivity at the referral threshold.</li>
+    <li><dfn>Splitting.</dfn> <strong>By patient</strong>, not by image, so that no ulcer contributes to both development and testing.</li>
+    <li><dfn>Governance.</dfn> NMRR registration, then MREC approval &mdash; realistically two months or more &mdash; with de-identification and consent under the PDPA 2010. Reporting to <strong>TRIPOD+AI</strong> and <strong>STARD</strong>, with <strong>CLAIM</strong> for the imaging description and <strong>DECIDE-AI</strong> when clinician interaction is evaluated.</li>
+  </ul></div>
+</section>
+
+<p class="band">Backup &middot; questions you should expect</p>
+
+<div class="qa">
+  <div class="q"><h4>Is this going to replace clinicians?</h4>
+    <p>No, and the design says so. It refuses to answer when it is unsure, and it asks the clinician for the vascular assessment it cannot do. It is a second opinion for someone who sees a foot ulcer twice a month, not a substitute for someone who sees them daily.</p></div>
+  <div class="q"><h4>How accurate is it, really?</h4>
+    <p>On our held-out photographs, about ninety-two per cent for depth and eighty-two per cent for infection. But those are measured against our own visual guesses, not against culture results, so treat them as an engineering check rather than clinical accuracy. That is exactly what the next study is for.</p></div>
+  <div class="q"><h4>What about patient confidentiality?</h4>
+    <p>The photograph never leaves the phone. All the computing happens in the browser. Nothing is uploaded to any server. And no patient image goes anywhere near it until ethics approval is in place.</p></div>
+  <div class="q"><h4>How much did this cost?</h4>
+    <p>Nothing so far but time. The photographs are public research datasets, the training ran on a free graphics card in a web browser, and the app is hosted free. That is the point worth making to a ministry: the barrier here is data and governance, not money.</p></div>
+  <div class="q"><h4>Why not just use one of the commercial wound apps?</h4>
+    <p>Several exist and they are good at measuring wounds. None of them classify infection, which is the decision that drives amputation. And none were built or validated on Malaysian patients.</p></div>
+  <div class="q"><h4>Could it work for pressure ulcers or venous ulcers?</h4>
+    <p>Probably, with retraining, because the underlying method is not specific to feet. But I would not claim it until it had been tested, and the grading systems are different.</p></div>
+  <div class="q"><h4>What happens if somebody photographs the wrong thing?</h4>
+    <p>We tested that. Point it at a desk and it finds no wound, both answers fall below the confidence threshold, and it declines to classify and advises referral. It used to produce a confident answer for a photograph of a desk. Fixing that was one of the more useful afternoons of the project.</p></div>
+  <div class="q"><h4>Why MobileNetV2 and not a larger, more accurate model?</h4>
+    <p>Because the deployment constraint came first. The model has to download over clinic internet and run inside a phone browser, which puts a hard ceiling of a few megabytes and a few hundred million operations. MobileNetV2 meets it at 3.5 million parameters using depthwise-separable convolutions. And with roughly 800 training images, a ResNet-50 or a vision transformer would overfit sooner rather than perform better &mdash; the data, not the architecture, is the binding constraint here.</p></div>
+  <div class="q"><h4>Why train your own segmentation model rather than use a foundation model?</h4>
+    <p>A general-purpose segmenter needs a prompt &mdash; a click or a box telling it what to cut out &mdash; and it is far too large to run in a browser. We need something that finds the wound unprompted, on the device, in about a second. A task-specific 12 MB U-Net does that. If the clinical question were interactive annotation rather than automatic triage, the answer would be different.</p></div>
+  <div class="q"><h4>Why two binary heads instead of predicting the Texas cell directly?</h4>
+    <p>Three reasons. The Texas grid has a dozen occupied cells, and splitting 800 images across them leaves too few per cell to fit or to evaluate. Depth and infection are conceptually independent, so forcing them into one label discards that structure. And the stage axis needs ischaemia, which no photograph contains, so a single combined output would be partly unidentifiable by construction. Two heads plus clinician input for perfusion is both more honest and easier to validate.</p></div>
+  <div class="q"><h4>Is a Dice of 0.85 actually good?</h4>
+    <p>It is in the range that published methods report on this dataset, and the median is 0.89. But the mean hides the tail: on sloughy wounds with indistinct edges it under-traces, and on one of my own examples it recovered only about a third of the true area. For serial measurement the failure mode matters more than the average, which is why the app shows the outline for the clinician to reject rather than reporting an area silently.</p></div>
+  <div class="q"><h4>Why does it run in the browser rather than on a server, and why not federated learning?</h4>
+    <p>In-browser inference means no image leaves the device, which removes the largest privacy and governance risk at source and makes the tool work when the clinic's internet does not. Federated learning solves a different problem &mdash; training across sites without pooling data &mdash; and it is premature here: it presumes several sites already collecting labelled data to an agreed protocol. We do not have one yet. Get the single-site reference standard right first.</p></div>
+  <div class="q"><h4>How do you know the improvement came from cropping and not from chance?</h4>
+    <p>Same architecture, same data, same initialisation, same schedule &mdash; only the input geometry changed, and both discrimination and accuracy moved together on both heads. I also learnt this lesson the hard way elsewhere: a single half-split suggested that calibrating the infection head improved accuracy, and averaging over twenty disjoint half-splits showed it made things worse. That is why the calibration is applied to one head and not the other, and why the reason is written into the shipped model file.</p></div>
+  <div class="q"><h4>Who owns it?</h4>
+    <p>The code is mine and openly available. The public photographs remain the property of the research groups that released them, and their licences forbid clinical use, which is one reason the deployed version must be trained on our own data.</p></div>
+</div>
+
+<p class="band">Reference &middot; terminology, with the plain words beside it</p>
+
+<p class="note">Name the proper term once, then say the plain version and carry on. An audience that hears
+&ldquo;semantic segmentation &mdash; the computer draws round the wound&rdquo; learns a word and loses nothing. An audience
+that hears only the plain version learns nothing they can look up afterwards.</p>
+
+<div class="tw">
+  <table class="gloss">
+    <thead><tr><th>Term</th><th>What it actually means</th><th>Say aloud</th></tr></thead>
+    <tbody>
+      <tr><td>Convolutional neural network</td><td>A model that slides small learned filters over an image, stacking them so early layers detect edges and later layers detect shapes and objects</td><td>the computer, or the program</td></tr>
+      <tr><td>MobileNetV2</td><td>A small CNN (3.5 M parameters) using depthwise-separable convolutions, designed to run on a phone</td><td>a small, fast version built for phones</td></tr>
+      <tr><td>ImageNet pretraining</td><td>Weights fitted on 1.28 M everyday photographs across 1,000 classes, reused as a general-purpose feature extractor</td><td>it had already looked at a million photographs</td></tr>
+      <tr><td>Transfer learning</td><td>Reusing those features and retraining only the last layers on the new task</td><td>it already knew how to see; we taught it wounds</td></tr>
+      <tr><td>Fine-tuning, frozen layers</td><td>Unfreezing the top 30 layers at a learning rate 50&times; lower, to adapt without catastrophic forgetting</td><td>we adjusted the last part gently, so it did not forget</td></tr>
+      <tr><td>Semantic segmentation</td><td>Classifying every pixel, producing a mask rather than a single label</td><td>drawing round the wound</td></tr>
+      <tr><td>U-Net, skip connections</td><td>An encoder&ndash;decoder with cross-links at matching resolutions, so the decoder keeps the fine edge detail the encoder discarded</td><td>it zooms out to understand, then back in to get the edge right</td></tr>
+      <tr><td>Region of interest (ROI)</td><td>The mask bounding box, squared and dilated 60 %, on which the classifier is trained and run</td><td>it crops in close, with a margin of skin around</td></tr>
+      <tr><td>Classification head</td><td>A final dense layer with softmax over the shared features, one per question</td><td>the part that answers one question</td></tr>
+      <tr><td>Multi-task learning</td><td>Two heads over one backbone, trained jointly on a shared representation</td><td>two questions, answered from the same look</td></tr>
+      <tr><td>Posterior probability</td><td>The model's confidence in one label &mdash; not a severity or a risk</td><td>how sure it is of the word, not how bad the wound is</td></tr>
+      <tr><td>Test-time augmentation</td><td>Averaging predictions over four flipped views of the same input</td><td>it looks four ways and averages</td></tr>
+      <tr><td>Calibration, Platt scaling</td><td>Rescaling confidence so stated probability matches observed frequency; measured by the calibration slope</td><td>when it says eighty per cent sure, is it right eighty per cent of the time</td></tr>
+      <tr><td>Selective prediction, abstention</td><td>Declining to answer below a confidence threshold, trading coverage for reliability</td><td>it refuses to answer when it is not sure</td></tr>
+      <tr><td>Grad-CAM, saliency map</td><td>A heat map from the gradient of the class score with respect to the last convolutional map, upsampled to image size</td><td>a heat map showing where it looked</td></tr>
+      <tr><td>Pointing game</td><td>Whether the heat map's peak falls inside the true object &mdash; the test that showed it does not</td><td>we checked whether it points at the ulcer; it does not</td></tr>
+      <tr><td>Dice coefficient 0.85</td><td>Twice the overlap of predicted and true mask over their combined area</td><td>its outline and the expert's outline mostly overlap</td></tr>
+      <tr><td>AUC 0.86</td><td>Probability a positive case is ranked above a negative one; discrimination only</td><td>it puts them in the right order about eight times in ten</td></tr>
+      <tr><td>Weak labels</td><td>Labels derived by rule from image features rather than from a clinical reference standard</td><td>we inferred the answer from how the wound looked, not from a culture result</td></tr>
+      <tr><td>Covariate shift, domain shift</td><td>Test data drawn from a different distribution than training data &mdash; different cameras, lighting, skin tones</td><td>it has never seen a Malaysian foot</td></tr>
+      <tr><td>Spectrum bias</td><td>Performance changing with case mix, because predictive value depends on prevalence</td><td>hospital wounds are worse than clinic wounds, so the numbers will move</td></tr>
+      <tr><td>Client-side inference</td><td>The model executes in the browser on the device; no server request is made</td><td>the photograph never leaves the phone</td></tr>
+      <tr><td>Float16 quantisation</td><td>Storing weights at half precision to halve the download</td><td>we shrank the file so it loads on clinic internet</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<footer>
+  <p><strong>Timing.</strong> The fifteen slides at the times given come to about seventeen minutes, which leaves room for questions in a twenty-five minute slot. Reading the method panels aloud as well adds roughly six minutes. For a ten-minute slot, keep slides 1, 2, 4, 6, 7, 8, 13 and 15, skip every method panel, and show the video only if the audio-visual set-up has already been tested. Backup A to C are not part of the running time; they exist to be put up in answer to a question.</p>
+  <p><strong>Sources for the epidemiology.</strong> National Health and Morbidity Survey 2023 (Mat Rifin et al., <em>Scientific Reports</em> 2025); Armstrong et al., <em>Journal of Foot and Ankle Research</em> 2020, for five-year mortality; Rosedi et al., <em>IJERPH</em> 2022, for Malaysian amputation rates. Model figures are from the project's own held-out measurements on 190 FUSeg validation images with expert masks, and are reproducible with <code>ml/audit_gradcam.py</code> and <code>ml/audit_improvements.py</code> in the repository. Architecture and hyperparameters quoted in the method panels are those in <code>ml/train_segmentation.py</code> and <code>ml/train_dfu.py</code>; the calibration and abstention figures are those recorded in <code>dfu/model-roi/calibration.json</code>.</p>
+</footer>
+
+</div>

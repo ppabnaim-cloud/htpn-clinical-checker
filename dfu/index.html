@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0B1F3A">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%2715%27 fill=%27%230B1F3A%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%277%27 fill=%27%231CB8A0%27/%3E%3C/svg%3E">
-<title>DFU Vision — Diabetic Foot Ulcer AI Prototype</title>
+<title>Wound Vision — diabetic foot ulcer &amp; pressure injury AI prototype</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="vendor/tf.min.js"></script>
@@ -80,7 +80,11 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 /* image + heatmap */
 .viewer{position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:1;max-width:100%}
 .viewer canvas{position:absolute;inset:0;width:100%;height:100%}
-#camCanvas{transition:opacity .25s}
+#camCanvas,#tissueCanvas{transition:opacity .25s}
+.tissuelegend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px}
+.tissuelegend span{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tissuelegend i{width:12px;height:12px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.15)}
+.tissuelegend b{color:var(--text);font-weight:600}
 .viewer .badge{position:absolute;left:10px;top:10px;font-family:var(--mono);font-size:11px;background:rgba(11,31,58,.75);color:#fff;padding:4px 9px;border-radius:999px;z-index:2}
 #segCanvas,#scaleCanvas{transition:opacity .25s}
 .viewer.picking{cursor:crosshair}
@@ -131,6 +135,13 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .rung.hit{background:var(--teal);color:#fff}.rung.hit b{color:#fff}
 .rung.hit.sev{background:var(--rose)}
 .rung.maybe{background:rgba(28,184,160,.25)}
+.rung.pick{cursor:pointer}.rung.pick:hover{background:rgba(28,184,160,.18)}
+.rung.pick:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.rung .src{display:block;margin-top:5px;font-size:8.5px;letter-spacing:.04em;text-transform:uppercase;opacity:.85}
+.rung.exam{background:repeating-linear-gradient(135deg,var(--cloud),var(--cloud) 6px,#e4ebf3 6px,#e4ebf3 12px)}
+.rung.exam.hit{background:var(--navy-mid)}
+#npiapLadder{grid-template-columns:repeat(3,1fr)}
+@media(min-width:620px){#npiapLadder{grid-template-columns:repeat(6,1fr)}}
 .class-out{display:flex;align-items:center;gap:14px;margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--navy);color:#fff}
 .class-out .big{font-family:var(--serif);font-size:40px;line-height:1;white-space:nowrap}
 .class-out .desc{font-size:12.5px;opacity:.85}
@@ -230,9 +241,9 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <div id="gate">
   <div class="gate-box">
     <span class="tag">Research prototype · Not a medical device</span>
-    <h2>DFU Vision — before you take a photograph</h2>
+    <h2>Wound Vision — before you take a photograph</h2>
     <p style="font-family:var(--mono);font-size:12px;color:var(--faint);margin-bottom:12px">A prototype by Dr Naim Bin Abdul Malek</p>
-    <p>This demonstrator classifies diabetic foot ulcer photographs with a deep learning model. It is for education and Centre of Excellence demonstration only. It does <b>not</b> replace clinical assessment, probe-to-bone testing, vascular assessment or microbiology, and must not be used to make treatment decisions.</p>
+    <p>This demonstrator analyses wound photographs with a deep learning model: <b>diabetic foot ulcers</b>, where it outlines the wound and classifies depth and infection appearance, and <b>pressure injuries</b>, where it outlines and measures the wound but does <b>not</b> stage it &mdash; no pressure injury classifier has been trained yet, so NPIAP staging is yours to enter. It is for education and Centre of Excellence demonstration only. It does <b>not</b> replace clinical assessment, probe-to-bone testing, vascular assessment or microbiology, and must not be used to make treatment decisions.</p>
     <p>A model is only as good as its inputs. Photographs taken under different distances, lighting and angles are the single biggest source of error in wound image AI. Please follow the standardised image acquisition protocol:</p>
     <div class="protocol">
       <h4>Standardised image acquisition protocol</h4>
@@ -240,7 +251,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
         <li><b>Prepare the wound:</b> remove the dressing, irrigate with saline and gently blot dry before photographing.</li>
         <li><b>Distance and angle:</b> hold the camera 30–40 cm away, perpendicular to the wound surface; the ulcer should fill roughly one third of the frame.</li>
         <li><b>Lighting:</b> even, diffuse room lighting; flash off; avoid shadows, glare and coloured light.</li>
-        <li><b>Background and scale:</b> plain drape or sheet behind the foot; place a disposable paper ruler or colour reference beside (not over) the wound.</li>
+        <li><b>Background and scale:</b> plain drape or sheet behind the limb or trunk; place a disposable paper ruler or colour reference beside (not over) the wound. The ruler must carry a study identifier only &mdash; never a name or identity card number.</li>
         <li><b>Framing:</b> include a margin of peri-wound skin; no faces, name bands, documents or identifiers in the frame.</li>
         <li><b>Consistency:</b> same device, same settings and same view at every visit so change over time is real, not photographic.</li>
       </ul>
@@ -271,6 +282,10 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   <!-- STEP 1: CAPTURE -->
   <section class="card" id="capture">
     <div class="step"><span class="n">1</span><h3>Capture or upload the wound image</h3><span class="hint">runs on-device</span></div>
+    <div class="cam-controls" style="margin:0 0 12px">
+      <span class="small">Wound type</span>
+      <div class="seg" id="diseaseToggle"><button data-v="dfu" class="on">Diabetic foot ulcer</button><button data-v="pi">Pressure injury</button></div>
+    </div>
     <div class="capture-grid">
       <label class="capture-btn">
         <svg viewBox="0 0 24 24"><path d="M4 7h3l2-3h6l2 3h3v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
@@ -284,11 +299,13 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       </label>
     </div>
     <div class="samples">
-      <p>Or try a de-identified sample image (public FUSeg 2021 dataset, held out from training):</p>
+      <p>Or try a de-identified sample image (public FUSeg 2021 dataset, held out from training). D and E are A&nbsp;to&nbsp;C re-framed into camera and phone shapes, to show that nothing at the edge of the frame is now discarded:</p>
       <div class="sample-row">
         <button class="sample" data-src="samples/mild_plantar_ulcer.jpg" data-name="Sample A"><img src="samples/mild_plantar_ulcer.jpg" alt="Sample A: small plantar ulcer"><span>A · small plantar ulcer</span></button>
         <button class="sample" data-src="samples/severe_infected_ulcer.jpg" data-name="Sample B"><img src="samples/severe_infected_ulcer.jpg" alt="Sample B: sloughy ulcer with erythema"><span>B · sloughy, erythematous</span></button>
         <button class="sample" data-src="samples/deep_heel_ulcer.jpg" data-name="Sample C"><img src="samples/deep_heel_ulcer.jpg" alt="Sample C: deep heel ulcer"><span>C · deep heel ulcer</span></button>
+        <button class="sample" data-src="samples/landscape_offcentre.jpg" data-name="Sample D (landscape)"><img src="samples/landscape_offcentre.jpg" alt="Sample D: the same heel ulcer in a 4:3 landscape frame, off to one side"><span>D · landscape, off-centre</span></button>
+        <button class="sample" data-src="samples/portrait_phone.jpg" data-name="Sample E (portrait)"><img src="samples/portrait_phone.jpg" alt="Sample E: the same sloughy ulcer in a 9:16 portrait phone frame"><span>E · portrait, phone shape</span></button>
       </div>
     </div>
   </section>
@@ -301,10 +318,11 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       <canvas id="imgCanvas" width="448" height="448"></canvas>
       <canvas id="segCanvas" width="448" height="448"></canvas>
       <canvas id="camCanvas" width="448" height="448" style="opacity:0"></canvas>
-      <canvas id="scaleCanvas" width="448" height="448"></canvas>
+      <canvas id="tissueCanvas" width="448" height="448" style="opacity:0"></canvas>
+  <canvas id="scaleCanvas" width="448" height="448"></canvas>
     </div>
     <div class="cam-controls">
-      <div class="seg" id="camToggle"><button data-v="0">Photo</button><button data-v="1" class="on">Wound outline</button><button data-v="2">Grad-CAM</button></div>
+      <div class="seg" id="camToggle"><button data-v="0">Photo</button><button data-v="1" class="on">Wound outline</button><button data-v="3">Tissue</button><button data-v="2">Grad-CAM</button></div>
       <select id="camTarget" class="hidden"></select>
       <input type="range" id="camAlpha" min="0" max="100" value="55" title="overlay opacity">
     </div>
@@ -314,6 +332,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       <div class="camlegend hidden" id="camLegend">
         <span>contributed less</span><i></i><span>contributed more</span>
       </div>
+      <div class="tissuelegend hidden" id="tissueLegend"></div>
     </div>
     <div class="status" id="status"><span class="spinner"></span><span id="statusText">Loading models…</span></div>
 
@@ -336,7 +355,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     </div>
 
     <div id="results" class="hidden">
-      <div class="cam-controls" style="margin:0 0 10px">
+      <div class="cam-controls" style="margin:0 0 10px" id="schemeRow">
         <span class="small">Classification scheme</span>
         <div class="seg" id="schemeToggle"><button data-v="texas" class="on">Texas</button><button data-v="wagner">Wagner</button></div>
         <span class="small" id="modelUsed"></span>
@@ -375,6 +394,11 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
         <h4>Meggitt–Wagner classification</h4>
         <div class="ladder" id="ladder"></div>
       </div>
+      <div class="wagner hidden" id="npiapPanel">
+        <h4>NPIAP pressure injury staging — tap the stage you assign</h4>
+        <div class="ladder" id="npiapLadder"></div>
+        <p class="small" id="npiapNote" style="margin-top:8px"></p>
+      </div>
       <div class="class-out">
         <div class="big" id="classBig">—</div>
         <div class="desc" id="classDesc"></div>
@@ -390,7 +414,8 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   <!-- STEP 3: GROUND TRUTH -->
   <section class="card hidden" id="truth">
     <div class="step"><span class="n">3</span><h3>Ground truth &amp; feedback loop</h3><span class="hint">closes the learning loop</span></div>
-    <p class="small" style="margin-bottom:6px">Record the clinician's classification and the tissue culture &amp; sensitivity result. Logged cases become the labelled dataset for the next training cycle.</p>
+    <p class="small" style="margin-bottom:6px" id="truthIntro"></p>
+    <div id="gtDfu">
     <div class="row3">
       <div class="field"><label>Clinician Texas grade</label>
         <select id="gtGrade"><option value="">—</option><option>0</option><option>1</option><option>2</option><option>3</option></select></div>
@@ -413,8 +438,28 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       </div>
     </div>
     <div class="field"><label>Sensitivity pattern / notes</label><textarea id="gtNotes" placeholder="e.g. sensitive to co-amoxiclav, resistant to ciprofloxacin; ESBL negative"></textarea></div>
+    </div>
+    <div id="gtPi" class="hidden">
+      <div class="row3">
+        <div class="field"><label>Clinician NPIAP stage</label>
+          <select id="gtNpiap"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>Unstageable</option><option>Deep tissue injury</option></select></div>
+        <div class="field"><label>Blanching test</label>
+          <select id="gtBlanch"><option value="">—</option><option>Blanchable</option><option>Non-blanchable</option><option>Not tested</option></select></div>
+        <div class="field"><label>Deepest structure seen or palpated</label>
+          <select id="gtDeep"><option value="">—</option><option>Dermis</option><option>Adipose</option><option>Fascia</option><option>Muscle</option><option>Tendon</option><option>Bone</option><option>Obscured by slough or eschar</option></select></div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>Body site</label>
+          <select id="gtSite"><option value="">—</option><option>Sacrum</option><option>Coccyx</option><option>Ischial tuberosity</option><option>Heel</option><option>Lateral malleolus</option><option>Greater trochanter</option><option>Occiput</option><option>Ear</option><option>Elbow</option><option>Device-related</option><option>Other</option></select></div>
+        <div class="field"><label>Assessment date</label><input type="date" id="gtPiDate"></div>
+        <div class="field"><label>Outcome at follow-up</label>
+          <select id="gtOutcome"><option value="">—</option><option>Healed</option><option>Improving</option><option>Static</option><option>Deteriorated</option><option>Not yet known</option></select></div>
+      </div>
+      <div class="field"><label>Notes</label><textarea id="gtPiNotes" placeholder="e.g. device-related under mask strap; offloading in place; Braden 12"></textarea></div>
+      <div class="note">There is deliberately no culture and sensitivity field here. Every chronic wound is colonised, so a swab does not establish infection in a pressure injury and swabbing is discouraged; infection is a clinical diagnosis. The reference standard for this arm is the clinician's stage under adjudication, together with the outcome at follow-up.</div>
+    </div>
     <button class="btn btn-teal" id="saveCase" style="width:100%">Save ground truth to case log</button>
-    <div class="note teal">Culture &amp; sensitivity is the reference standard for infection. The clinician's Texas or Wagner class is the reference standard for the classification head. Stored locally in this browser only for the prototype.</div>
+    <div class="note teal" id="truthNote"></div>
   </section>
 
   <!-- CASE LOG -->
@@ -546,8 +591,8 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 </div>
 </main>
 <footer>
-  <b>DFU Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
-  Deep Learning Healthcare Centre of Excellence &middot; prototype v0.5<br>
+  <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
+  Deep Learning Healthcare Centre of Excellence &middot; prototype v0.6 &middot; diabetic foot ulcer and pressure injury<br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>
@@ -588,6 +633,8 @@ let backbone = null;             // tf.model input -> out_relu  (shared by demo 
 let active = null;               // { kind:'demo'|'head'|'full', name, classes, conv, tail, gradLayer, inputRange, scheme }
 let currentImg = null, currentName = '', lastPred = null, lastActs = null, isch = '0', scheme = 'texas', camManual = false;
 let segModel = null, segMetrics = null, lastSeg = null, lastBox = null;   // lastBox = the crop actually classified
+let lastTissue = null;                                                     // wound-bed colour composition
+let fit = null;            // how the photograph was letterboxed into the square view
 let pxPerCm = null, picking = false, pickPts = [];                        // optional ruler scale
 const VIEW = 448;                                                          // viewer canvas size
 
@@ -702,10 +749,21 @@ function useImage(img, name){
   currentImg = img; currentName = name; lastPred = null; camManual = false;
   $('imgName').textContent = name;
   const c = $('imgCanvas'), ctx = c.getContext('2d');
-  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height, s = Math.min(w, h);
-  ctx.drawImage(img, (w - s)/2, (h - s)/2, s, s, 0, 0, c.width, c.height);   // centre square crop
-  [$('camCanvas'), $('segCanvas'), $('scaleCanvas')].forEach(k => k.getContext('2d').clearRect(0, 0, VIEW, VIEW));
-  lastSeg = null; lastBox = null; pickPts = []; picking = false; $('viewer').classList.remove('picking');
+  /* Letterbox, never centre-crop. A centre crop of a 4:3 camera frame discards a quarter of its
+     width and of a 9:16 phone frame nearly half its height, which silently threw away wound —
+     a gangrenous toe at the edge of a landscape photograph disappeared entirely. Padding is black
+     because FUSeg's own images are zero-padded to square, so the segmentation model was trained
+     with exactly this kind of border. */
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  const sc = Math.min(c.width / w, c.height / h);
+  const dw = Math.round(w * sc), dh = Math.round(h * sc);
+  const ox = Math.round((c.width - dw) / 2), oy = Math.round((c.height - dh) / 2);
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, c.width, c.height);
+  ctx.drawImage(img, 0, 0, w, h, ox, oy, dw, dh);
+  fit = { ox, oy, dw, dh, scale: sc, srcW: w, srcH: h,
+          frac: (dw * dh) / (c.width * c.height) };   // share of the square that is real photograph
+  [$('camCanvas'), $('segCanvas'), $('tissueCanvas'), $('scaleCanvas')].forEach(k => k.getContext('2d').clearRect(0, 0, VIEW, VIEW));
+  lastSeg = null; lastBox = null; lastTissue = null; pickPts = []; picking = false; $('viewer').classList.remove('picking');
   pxPerCm = null; $('scaleBtn').textContent = 'Set scale with the ruler';   // a scale belongs to one photograph only
   setCam(segModel ? 1 : 0);
   $('analyse').classList.remove('hidden'); $('truth').classList.remove('hidden');
@@ -713,10 +771,19 @@ function useImage(img, name){
   $('analyse').scrollIntoView({behavior:'smooth', block:'start'});
   if (backbone) runInference(); else $('statusText').textContent = 'Loading models…';
 }
-function fileToImage(file, name){
-  const url = URL.createObjectURL(file); const img = new Image();
-  img.onload = () => { useImage(img, name); URL.revokeObjectURL(url); };
-  img.src = url;
+async function fileToImage(file, name){
+  /* Phones store portrait shots rotated with an EXIF orientation tag. Drawing such a file to a
+     canvas without honouring that tag feeds the model a sideways wound, silently. createImageBitmap
+     applies it; the <img> fallback is for browsers that lack the option. */
+  try {
+    const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    useImage(bmp, name); return;
+  } catch (e) {
+    const url = URL.createObjectURL(file); const img = new Image();
+    img.onload = () => { useImage(img, name); URL.revokeObjectURL(url); };
+    img.onerror = () => { URL.revokeObjectURL(url); toast('That file could not be read as an image'); };
+    img.src = url;
+  }
 }
 $('camInput').onchange = e => e.target.files[0] && fileToImage(e.target.files[0], 'camera capture');
 $('fileInput').onchange = e => e.target.files[0] && fileToImage(e.target.files[0], e.target.files[0].name);
@@ -765,8 +832,12 @@ function roiBox(seg){
   /* Wound bounding box, squared off and expanded by ROI_MARGIN on each side, in viewer coordinates. */
   const k = VIEW / SEG, [x0, y0, x1, y1] = seg.bbox.map(v => v * k);
   const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-  const s = Math.min(Math.max(x1 - x0, y1 - y0) * (1 + 2 * ROI_MARGIN), VIEW);
-  return { l: Math.max(0, Math.min(cx - s/2, VIEW - s)), t: Math.max(0, Math.min(cy - s/2, VIEW - s)), s };
+  const want = Math.max(x1 - x0, y1 - y0) * (1 + 2 * ROI_MARGIN);
+  const s = Math.min(want, VIEW);
+  /* A wound filling the frame cannot be given the full margin, so the crop no longer matches the
+     geometry the classifier was trained on. Flag it rather than quietly degrading. */
+  return { l: Math.max(0, Math.min(cx - s/2, VIEW - s)), t: Math.max(0, Math.min(cy - s/2, VIEW - s)), s,
+           marginTruncated: want > VIEW * 1.02 };
 }
 function cropCanvas(box){
   const c = document.createElement('canvas'); c.width = c.height = IMG;
@@ -804,13 +875,16 @@ function showWound(seg){
   const k = VIEW / SEG;
   const areaCm2 = pxPerCm ? seg.sizePx * k * k / (pxPerCm * pxPerCm) : null;
   const diamCm = pxPerCm ? seg.diamPx * k / pxPerCm : null;
-  $('wArea').textContent = areaCm2 !== null ? `${areaCm2.toFixed(2)} cm² (${(seg.areaFrac*100).toFixed(1)} % of frame)` : `${(seg.areaFrac*100).toFixed(1)} % of frame`;
+  // areaFrac counts the padded square, so divide by the share of it that is actually photograph
+  const inFrame = seg.areaFrac / ((fit && fit.frac) || 1);
+  $('wArea').textContent = areaCm2 !== null ? `${areaCm2.toFixed(2)} cm² (${(inFrame*100).toFixed(1)} % of frame)` : `${(inFrame*100).toFixed(1)} % of frame`;
   $('wDiam').textContent = diamCm !== null ? `${diamCm.toFixed(1)} cm` : `${seg.diamPx} px — set a scale for cm`;
   $('wConf').textContent = `${(seg.conf*100).toFixed(0)} %`;
   $('howMeasure').textContent = pxPerCm
     ? 'Area and longest dimension are in centimetres using the ruler scale you set on this photograph, and confidence is the segmentation model’s mean probability across the outlined pixels.'
     : 'Area is a percentage of the photograph until you set a ruler scale, so it is comparable only between images shot at the same distance; confidence is the model’s mean probability across the outlined pixels.';
-  $('whatMeasure').textContent = `The model outlined this ulcer at ${(seg.conf*100).toFixed(0)} % mean confidence, and on 190 held-out images outlines like it reached a mean Dice of 0.85 against expert masks — good enough to crop and measure from, not good enough to accept without looking.`;
+  $('whatMeasure').textContent = `The model outlined this ulcer at ${(seg.conf*100).toFixed(0)} % mean confidence, and on 190 held-out images outlines like it reached a mean Dice of 0.85 against expert masks — good enough to crop and measure from, not good enough to accept without looking.`
+    + (lastBox && lastBox.marginTruncated ? ' This wound fills so much of the photograph that the classifier could not be given its usual margin of surrounding skin, so read the classification below with more caution than the figures above and re-shoot from further back if you can.' : '');
 }
 
 /* ═══════════════════════════ inference ═══════════════════════════ */
@@ -828,6 +902,13 @@ async function runInference(){
   lastSeg = await segment();
   lastBox = (active.wantsRoi && lastSeg && lastSeg.found) ? roiBox(lastSeg) : null;
   drawSegOverlay(lastSeg, lastBox); showWound(lastSeg);
+  lastTissue = tissueMap(lastSeg); renderTissue(lastTissue);
+  if (DISEASE === 'pi' && active.kind === 'demo'){
+    if (lastActs){ lastActs.dispose(); lastActs = null; }
+    lastPred = { ms: performance.now() - t0, views: 0, piOnly: true };
+    showPiResults();
+    return;
+  }
   $('statusText').textContent = 'Classifying…'; await sleep(20);
   if (lastActs) lastActs.dispose();
   const x0 = preprocess(lastBox ? cropCanvas(lastBox) : $('imgCanvas'), active.inputRange);
@@ -870,6 +951,7 @@ async function runInference(){
 }
 function showResults(){
   const p = lastPred;
+  $('camToggle').querySelector('[data-v="2"]').disabled = false;
   $('timing').textContent = `${p.ms.toFixed(0)} ms on ${tf.getBackend()}`;
   $('status').classList.add('hidden'); $('results').classList.remove('hidden');
   $('demoHeads').classList.toggle('hidden', active.kind !== 'demo');
@@ -1027,15 +1109,264 @@ function setCam(v){
   const a = $('camAlpha').value / 100;
   $('segCanvas').style.opacity = v === 1 ? 1 : 0;
   $('camCanvas').style.opacity = v === 2 ? a : 0;
+  $('tissueCanvas').style.opacity = v === 3 ? a : 0;
   $('camTarget').classList.toggle('hidden', v !== 2);
   $('camLegend').classList.toggle('hidden', v !== 2);
-  const t = OVERLAY_TEXT[v] || OVERLAY_TEXT[0];
+  $('tissueLegend').classList.toggle('hidden', v !== 3);
+  const t = v === 3 ? tissueText(lastTissue) : (OVERLAY_TEXT[v] || OVERLAY_TEXT[0]);
   $('howOverlay').textContent = t.how;
   $('whatOverlay').textContent = t.what;
 }
 $('camToggle').querySelectorAll('button').forEach(b => b.onclick = () => setCam(+b.dataset.v));
-$('camAlpha').oninput = () => { if (+$('camToggle').querySelector('.on').dataset.v === 2) $('camCanvas').style.opacity = $('camAlpha').value/100; };
+$('camAlpha').oninput = () => { const v = +$('camToggle').querySelector('.on').dataset.v, a = $('camAlpha').value/100;
+  if (v === 2) $('camCanvas').style.opacity = a; if (v === 3) $('tissueCanvas').style.opacity = a; };
 $('camTarget').onchange = async () => { camManual = true; await drawGradCam(); setCam(2); };
+
+/* ═══════════════════════════ wound type: DFU or pressure injury ═══════════════════════════
+   One app, one selector. Segmentation, measurement and the tissue map are wound-type agnostic —
+   granulation and eschar look the same on a sacrum as on a heel — so those are shared. Staging is
+   not: the two classification heads were trained on diabetic foot ulcer crops and have never seen
+   a pressure injury, so in pressure-injury mode they are not run at all rather than run and hidden.
+
+   The NPIAP stages are marked by what actually establishes them. Three of the six turn on findings
+   no camera can record: whether erythema blanches under finger pressure, whether muscle or bone is
+   directly palpable, and whether a discolouration persists. Marking them is the same discipline the
+   Texas ischaemia axis already follows — the model claims only what the modality supports.        */
+let DISEASE = 'dfu', npiapPick = null;
+
+const NPIAP = [
+  { id:'1', name:'Stage 1', short:'Non-blanchable erythema, intact skin', from:'exam',
+    def:'Intact skin with non-blanchable erythema over a localised area.',
+    why:'Non-blanchable means the redness does not fade under finger pressure. A photograph cannot show that, and in darker skin tones the erythema itself may not be visible at all.' },
+  { id:'2', name:'Stage 2', short:'Partial thickness, exposed dermis', from:'camera',
+    def:'Partial-thickness skin loss with exposed dermis, presenting as a viable pink or red wound bed, or a fluid-filled blister.' },
+  { id:'3', name:'Stage 3', short:'Full thickness, adipose visible', from:'both',
+    def:'Full-thickness skin loss with adipose visible and granulation present; slough or eschar may be visible, but muscle, tendon and bone are not exposed.',
+    why:'The wound bed is photographable, but confirming that muscle, tendon and bone are NOT exposed is an inspection of depth.' },
+  { id:'4', name:'Stage 4', short:'Muscle, tendon or bone exposed', from:'exam',
+    def:'Full-thickness skin and tissue loss with exposed or directly palpable muscle, tendon, cartilage or bone.',
+    why:'"Directly palpable" is a finding of touch. A photograph showing deep tissue cannot distinguish stage 3 from stage 4 reliably.' },
+  { id:'U', name:'Unstageable', short:'Depth obscured by slough or eschar', from:'camera',
+    def:'Full-thickness skin and tissue loss where the extent of damage cannot be confirmed because it is obscured by slough or eschar.' },
+  { id:'DTPI', name:'Deep tissue', short:'Deep red, maroon or purple discolouration', from:'exam',
+    def:'Persistent non-blanchable deep red, maroon or purple discolouration, or a blood-filled blister revealing a dark wound bed.',
+    why:'Both "non-blanchable" and "persistent" need examination, the second over more than one occasion.' }
+];
+const SRC_LBL = { camera:'photo', exam:'examination', both:'photo + exam' };
+
+function renderNpiap(){
+  const l = $('npiapLadder'); l.innerHTML = '';
+  NPIAP.forEach(st => {
+    const r = document.createElement('button');
+    r.className = 'rung pick' + (st.from === 'exam' ? ' exam' : '') + (npiapPick === st.id ? ' hit' : '');
+    if (npiapPick === st.id && (st.id === '4' || st.id === 'U')) r.classList.add('sev');
+    r.innerHTML = `<b>${st.id === 'U' ? 'U' : st.id === 'DTPI' ? 'D' : st.id}</b>${st.short}<span class="src">${SRC_LBL[st.from]}</span>`;
+    r.title = st.def + (st.why ? '\n\n' + st.why : '');
+    r.onclick = () => { npiapPick = (npiapPick === st.id ? null : st.id); renderNpiap(); renderPiOut();
+                        $('gtNpiap').value = npiapPick ? (NPIAP.find(x => x.id === npiapPick).name === 'Deep tissue' ? 'Deep tissue injury' : (npiapPick === 'U' ? 'Unstageable' : npiapPick)) : ''; };
+    l.appendChild(r);
+  });
+  const exam = NPIAP.filter(x => x.from === 'exam').length, both = NPIAP.filter(x => x.from === 'both').length;
+  $('npiapNote').textContent = `Hatched stages cannot be established from a photograph at all — ${exam} of the ${NPIAP.length}, turning on whether erythema blanches under pressure, whether bone is directly palpable, or whether a discolouration persists. ${both === 1 ? 'Stage 3 is partly photographic: its bed is visible, but ruling out exposed muscle or bone is not.' : ''} Tap the stage you assign on examination; the app records it as yours, not the model's.`;
+}
+
+function renderPiOut(){
+  const st = NPIAP.find(x => x.id === npiapPick);
+  $('classBig').textContent = st ? (st.id === 'U' ? 'U' : st.id === 'DTPI' ? 'DTI' : 'S' + st.id) : '—';
+  $('classDesc').textContent = st
+    ? `${st.name}: ${st.def}` + (st.why ? ' ' + st.why : '')
+    : 'Tap a stage above once you have examined the wound. Nothing here is predicted.';
+  $('howClass').textContent = 'The stage shown is the one you selected, not a model output. What the app contributes for a pressure injury is the wound outline, the measurement and the tissue composition, all of which are independent of wound type.';
+  $('whatClass').textContent = 'No pressure injury classifier has been trained: both heads were fitted on diabetic foot ulcer crops and have never seen a pressure injury, so they are not run on this image. They become available once you have collected and trained on pressure injury data.';
+  $('caution').textContent = 'Segmentation and tissue figures apply to any wound. Staging is yours. Stage 1 and deep tissue injury are the two most likely to be missed on a photograph, and both are harder to see in darker skin — examine, do not rely on the image.';
+}
+
+function setDisease(d){
+  DISEASE = d;
+  $('diseaseToggle').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === d));
+  const pi = d === 'pi';
+  $('schemeRow').classList.toggle('hidden', pi);
+  $('ischField').classList.toggle('hidden', pi);
+  $('npiapPanel').classList.toggle('hidden', !pi);
+  $('gtDfu').classList.toggle('hidden', pi);
+  $('gtPi').classList.toggle('hidden', !pi);
+  $('truthIntro').textContent = pi
+    ? 'Record the stage you assigned, the blanching test and the deepest structure you could see or palpate. Outcome at follow-up is the reference standard here, not a swab.'
+    : "Record the clinician's classification and the tissue culture & sensitivity result. Logged cases become the labelled dataset for the next training cycle.";
+  $('truthNote').textContent = pi
+    ? 'The clinician’s NPIAP stage, under adjudication, is the reference standard for this arm, with outcome at follow-up as the clinical endpoint. Stored locally in this browser only for the prototype.'
+    : "Culture & sensitivity is the reference standard for infection. The clinician's Texas or Wagner class is the reference standard for the classification head. Stored locally in this browser only for the prototype.";
+  if (pi) renderNpiap();
+  // the built-in heads are diabetic-foot-ulcer heads; re-run so the right path is taken
+  if (currentImg && backbone) runInference();
+}
+$('diseaseToggle').querySelectorAll('button').forEach(b => b.onclick = () => setDisease(b.dataset.v));
+
+/* Shown in place of the classification when the wound type has no trained model. */
+function showPiResults(){
+  $('timing').textContent = `${lastPred.ms.toFixed(0)} ms on ${tf.getBackend()} · segmentation only`;
+  $('status').classList.add('hidden'); $('results').classList.remove('hidden');
+  $('demoHeads').classList.add('hidden'); $('customProbs').classList.add('hidden');
+  $('texasPanel').classList.add('hidden'); $('wagnerPanel').classList.add('hidden');
+  $('camToggle').querySelector('[data-v="2"]').disabled = true;
+  if (+$('camToggle').querySelector('.on').dataset.v === 2) setCam(1);
+  renderNpiap(); renderPiOut();
+}
+
+/* ═══════════════════════════ wound-bed tissue composition ═══════════════════════════
+   A COLOUR RULE, not a trained model. Every pixel inside the segmentation mask is assigned
+   to one of four wound-bed appearances by its position in CIE Lab, which is the red / yellow /
+   black scheme clinicians already use at the bedside, made countable. Lab is used rather than
+   RGB or HSV because its hue angle and lightness separate "beefy red" from "yellow slough"
+   far more cleanly, and because a fixed threshold in Lab means roughly the same thing to the
+   eye across the range of skin tones in a foot photograph.
+
+   Peri-wound erythema is measured differently, and deliberately so: redness is compared against
+   the patient's OWN skin further out from the wound, because an absolute redness threshold is
+   a skin-tone threshold. See ERY below.
+
+   What this is not: a diagnosis, a learned segmentation, or a validated measurement. No pixel in
+   any dataset available to this project carries a tissue label, so there is nothing to validate
+   these thresholds against yet. They are stated here so a clinician can disagree with a number
+   rather than with a colour.                                                                    */
+const TISSUE = [
+  { id:'gran',   name:'Granulation',    rgb:[214, 69, 80],  hint:'red, beefy'    },
+  { id:'slough', name:'Slough',         rgb:[232,163, 61],  hint:'yellow, fibrinous' },
+  { id:'necro',  name:'Necrosis',       rgb:[ 59, 46, 74],  hint:'black eschar'  },
+  { id:'pale',   name:'Epithelial/pale',rgb:[242,184,198],  hint:'pale, re-epithelialising' },
+  { id:'other',  name:'Unclassified',   rgb:[150,160,172],  hint:'no rule fits'  }
+];
+const ERY_RGB = [194, 71, 143];             // magenta band, distinct from every tissue colour
+
+function srgbToLab(r, g, b){
+  const f = c => { c /= 255; return c <= 0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); };
+  const R = f(r), G = f(g), B = f(b);
+  // sRGB D65 -> XYZ, then XYZ -> Lab against the D65 white point
+  const X = (0.4124*R + 0.3576*G + 0.1805*B) / 0.95047,
+        Y = (0.2126*R + 0.7152*G + 0.0722*B),
+        Z = (0.0193*R + 0.1192*G + 0.9505*B) / 1.08883;
+  const k = t => t > 0.008856 ? Math.cbrt(t) : (7.787*t + 16/116);
+  const fx = k(X), fy = k(Y), fz = k(Z);
+  return [116*fy - 16, 500*(fx - fy), 200*(fy - fz)];
+}
+
+/* Assign one wound-bed pixel. Order matters: darkness is checked before hue, because a very dark
+   pixel has an unstable hue angle, and pallor is checked last so it cannot swallow weak granulation. */
+function tissueOf(L, a, bb){
+  const C = Math.hypot(a, bb);                       // chroma: how colourful, regardless of hue
+  let h = Math.atan2(bb, a) * 180 / Math.PI; if (h < 0) h += 360;
+  if (L < 30) return 'necro';                        // eschar: too dark for hue to mean anything
+  if (C > 15 && h >= 55 && h <= 105) return 'slough'; // yellow
+  if (C > 15 && (h >= 340 || h < 55)) return 'gran';  // red, wrapping through 0
+  if (L >= 58 && C <= 18) return 'pale';              // washed out, little colour
+  return 'other';
+}
+
+/* Is this pixel plausibly skin? The annuli around a wound routinely contain bed sheet, glove, floor
+   and shadow, and averaging those into a "surrounding skin" reference is what made the first version
+   report every wound as having LESS red skin around it than further out. Lab bounds are loose on
+   purpose: they must admit every skin tone while rejecting white linen, dark floor and blue glove. */
+function skinLike(L, a, bb){
+  const C = Math.hypot(a, bb); let h = Math.atan2(bb, a) * 180 / Math.PI; if (h < 0) h += 360;
+  return L >= 25 && L <= 88 && C >= 8 && C <= 48 && h >= 10 && h <= 80;
+}
+
+/* Square dilation on the SEG-resolution mask. Crude, but a disc would cost more than it buys at
+   224 px and the ring is only ever used for an average. */
+function dilate(mask, N, r){
+  const out = new Uint8Array(N*N);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
+    if (!mask[y*N + x]) continue;
+    const y0 = Math.max(0, y-r), y1 = Math.min(N-1, y+r), x0 = Math.max(0, x-r), x1 = Math.min(N-1, x+r);
+    for (let j = y0; j <= y1; j++) for (let i = x0; i <= x1; i++) out[j*N + i] = 1;
+  }
+  return out;
+}
+
+function tissueMap(seg){
+  const ctx = $('tissueCanvas').getContext('2d');
+  ctx.clearRect(0, 0, VIEW, VIEW);
+  if (!seg || !seg.found) return null;
+
+  const N = SEG, k = VIEW / N, m = seg.mask;
+  const src = $('imgCanvas').getContext('2d').getImageData(0, 0, VIEW, VIEW).data;
+  const out = ctx.createImageData(VIEW, VIEW);
+
+  // ERY: two annuli. ring = skin immediately around the wound, ref = the patient's own skin
+  // further out, used as the baseline. Redness is then a difference in a*, not an absolute value,
+  // so the measure does not change meaning with skin tone.
+  const r1 = Math.max(3, Math.round(0.18 * Math.sqrt(seg.sizePx / Math.PI)));
+  const d1 = dilate(m, N, r1), d2 = dilate(m, N, r1 * 2);
+  let ringA = 0, ringN = 0, refA = 0, refN = 0;
+
+  const count = {}; TISSUE.forEach(t => count[t.id] = 0);
+  let total = 0;
+
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
+    const i = y*N + x;
+    const inWound = !!m[i], inRing = !inWound && !!d1[i], inRef = !d1[i] && !!d2[i];
+    if (!inWound && !inRing && !inRef) continue;
+
+    // sample the pixel at the centre of this mask cell's block in the 448 px view
+    const px = (((y*k + k/2) | 0) * VIEW + ((x*k + k/2) | 0)) * 4;
+    const [L, A, B] = srgbToLab(src[px], src[px+1], src[px+2]);
+
+    if (inRing){ if (skinLike(L, A, B)){ ringA += A; ringN++; } continue; }
+    if (inRef){  if (skinLike(L, A, B)){ refA  += A; refN++;  } continue; }
+
+    const id = tissueOf(L, A, B);
+    count[id]++; total++;
+    const [cr, cg, cb] = TISSUE.find(t => t.id === id).rgb;
+    for (let dy = 0; dy < k; dy++) for (let dx = 0; dx < k; dx++){
+      const o = (((y*k + dy) | 0) * VIEW + ((x*k + dx) | 0)) * 4;
+      out.data[o] = cr; out.data[o+1] = cg; out.data[o+2] = cb; out.data[o+3] = 200;
+    }
+  }
+
+  // paint the peri-wound band faintly so the erythema figure has something to point at
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
+    const i = y*N + x; if (m[i] || !d1[i]) continue;
+    for (let dy = 0; dy < k; dy++) for (let dx = 0; dx < k; dx++){
+      const o = (((y*k + dy) | 0) * VIEW + ((x*k + dx) | 0)) * 4;
+      out.data[o] = ERY_RGB[0]; out.data[o+1] = ERY_RGB[1]; out.data[o+2] = ERY_RGB[2]; out.data[o+3] = 90;
+    }
+  }
+  ctx.putImageData(out, 0, 0);
+
+  const frac = {}; TISSUE.forEach(t => frac[t.id] = total ? count[t.id] / total : 0);
+  // 50 cells is about 1 % of the mask at this resolution: below that an average is not worth printing
+  const dA = (ringN >= 50 && refN >= 50) ? (ringA/ringN - refA/refN) : null;
+  return { frac, total, dA, ringN, refN, sparse: total < 150 };
+}
+
+function renderTissue(t){
+  const el = $('tissueLegend');
+  if (!t){ el.innerHTML = '<span>No wound outlined, so there is no wound bed to describe.</span>'; return; }
+  const parts = TISSUE.filter(x => t.frac[x.id] >= 0.005).map(x =>
+    `<span><i style="background:rgb(${x.rgb.join(',')})"></i>${x.name} <b>${(t.frac[x.id]*100).toFixed(0)} %</b></span>`);
+  parts.push(t.dA !== null
+    ? `<span><i style="background:rgb(${ERY_RGB.join(',')})"></i>Peri-wound redness <b>${t.dA >= 0 ? '+' : ''}${t.dA.toFixed(1)} a*</b></span>`
+    : `<span><i style="background:rgb(${ERY_RGB.join(',')})"></i>Peri-wound redness <b>not measurable</b></span>`);
+  if (t.sparse) parts.push('<span><b>&#9888; too few pixels</b></span>');
+  el.innerHTML = parts.join('');
+}
+
+/* The two sentences shown under the viewer for this mode, written from THIS image's numbers. */
+function tissueText(t){
+  const how = 'Each pixel inside the outline is assigned to the closest wound-bed appearance by its colour in CIE Lab — this is a colour rule, not a trained model, so it describes what the surface looks like and never whether the wound is infected; peri-wound redness is measured against the patient’s own skin further out, not against an absolute threshold.';
+  if (!t) return { how, what: 'Nothing is measured here because no wound was outlined.' };
+  const ranked = TISSUE.filter(x => x.id !== 'other' && t.frac[x.id] >= 0.05)
+                       .sort((a, b) => t.frac[b.id] - t.frac[a.id])
+                       .map(x => `${(t.frac[x.id]*100).toFixed(0)} % ${x.name.toLowerCase()}`);
+  const ery = t.dA === null ? ' Peri-wound redness could not be measured, because too little of the skin around this wound is visible and unobstructed to compare against skin further out.'
+    : ` The skin immediately around the wound reads ${Math.abs(t.dA).toFixed(1)} a* units ${t.dA >= 0 ? 'redder' : 'less red'} than skin further out`
+      + `${t.dA >= 3 ? ', a difference worth examining directly' : ', which is within the range ordinary lighting and curvature produce'}.`;
+  const what = (ranked.length ? `This wound bed reads as ${ranked.join(', ')}.` : 'No single appearance covers more than a twentieth of this wound bed.')
+    + (t.sparse ? ` The outline covers only ${t.total} of the model\u2019s ${SEG}\u00d7${SEG} cells, so those percentages rest on too few pixels to be stable \u2014 re-shoot closer before reading them.` : '')
+    + ery
+    + ' No dataset available to this project labels tissue type, so these thresholds are unvalidated and shift with white balance — treat them as a structured description to agree or disagree with, not a measurement.';
+  return { how, what };
+}
 
 /* ═══════════════════════════ ruler scale (optional) ═══════════════════════════ */
 $('scaleBtn').onclick = () => {
@@ -1071,15 +1402,25 @@ $('saveCase').onclick = () => {
   if (!lastPred) return toast('Analyse an image first');
   const orgs = [...$('orgChips').querySelectorAll('.chip.on')].map(b => b.dataset.v);
   const thumb = (() => { const c = document.createElement('canvas'); c.width = c.height = 96; c.getContext('2d').drawImage($('imgCanvas'), 0, 0, 96, 96); return c.toDataURL('image/jpeg', 0.6); })();
-  const it = interpret();
-  const ai_label = it.label || (it.texas ? it.texas.grade + it.texas.stage : '') + (it.wagner ? (it.texas ? ' / ' : '') + 'W' + it.wagner.grade : '');
-  const p_inf = active.kind === 'demo' ? +lastPred.infection[1].toFixed(3) : null;
-  const rec = { id: Date.now(), when: new Date().toISOString(), image: currentName, thumb, model: active.name, ai_label,
-    p_severe: active.kind === 'demo' ? +lastPred.grade[1].toFixed(3) : null, p_infection: p_inf,
-    probs: active.kind === 'demo' ? null : Object.fromEntries(active.classes.map((c, i) => [c, +lastPred.probs[i].toFixed(3)])),
+  /* piOnly cases carry no model prediction by design: the heads are not run on a wound type they
+     were never trained on, so the record must not imply one was produced. */
+  const scored = !lastPred.piOnly;
+  const it = scored ? interpret() : { label: '' };
+  const ai_label = scored ? (it.label || (it.texas ? it.texas.grade + it.texas.stage : '') + (it.wagner ? (it.texas ? ' / ' : '') + 'W' + it.wagner.grade : '')) : '';
+  const demo = scored && active.kind === 'demo';
+  const t = lastTissue;
+  const rec = { id: Date.now(), when: new Date().toISOString(), image: currentName, thumb, model: scored ? active.name : 'none (segmentation only)',
+    disease: DISEASE === 'pi' ? 'pressure injury' : 'diabetic foot ulcer', ai_label,
+    p_severe: demo ? +lastPred.grade[1].toFixed(3) : null, p_infection: demo ? +lastPred.infection[1].toFixed(3) : null,
+    probs: (!scored || active.kind === 'demo') ? null : Object.fromEntries(active.classes.map((c, i) => [c, +lastPred.probs[i].toFixed(3)])),
+    wound_area_frac: lastSeg && lastSeg.found ? +(lastSeg.areaFrac / ((fit && fit.frac) || 1)).toFixed(4) : null,
+    tissue: t ? { granulation: +t.frac.gran.toFixed(3), slough: +t.frac.slough.toFixed(3), necrosis: +t.frac.necro.toFixed(3),
+                  pale: +t.frac.pale.toFixed(3), periwound_delta_a: t.dA === null ? null : +t.dA.toFixed(2) } : null,
     gt_grade: $('gtGrade').value, gt_stage: $('gtStage').value, gt_wagner: $('gtWagner').value, probe_to_bone: $('gtPtb').value, specimen_date: $('gtDate').value,
     organisms: orgs, sensitivity_notes: $('gtNotes').value.trim(),
-    culture_positive: orgs.length ? !(orgs.length === 1 && orgs[0] === 'No growth') : null };
+    culture_positive: orgs.length ? !(orgs.length === 1 && orgs[0] === 'No growth') : null,
+    npiap_stage: $('gtNpiap').value, blanching: $('gtBlanch').value, deepest_structure: $('gtDeep').value,
+    body_site: $('gtSite').value, pi_date: $('gtPiDate').value, outcome: $('gtOutcome').value, pi_notes: $('gtPiNotes').value.trim() };
   const log = loadLog(); log.unshift(rec); saveLog(log); renderLog(); toast('Case saved to log');
   $('logCard').scrollIntoView({behavior:'smooth', block:'start'});
 };
@@ -1092,18 +1433,27 @@ function renderLog(){
   $('kCult').textContent = cult.length ? `${cult.filter(r => r.culture_positive).length}/${cult.length}` : '—';
   $('logList').innerHTML = log.slice(0, 8).map(r => {
     const a = (r.culture_positive === null || r.p_infection === null) ? '' : `<span class="agree ${(r.p_infection>=0.5)===r.culture_positive?'':'no'}">${(r.p_infection>=0.5)===r.culture_positive?'agrees with C&S':'disagrees with C&S'}</span>`;
-    const gt = [r.gt_grade && r.gt_stage ? r.gt_grade + r.gt_stage : '', r.gt_wagner ? 'W' + r.gt_wagner : ''].filter(Boolean).join(' / ') || '?';
-    return `<li><img src="${r.thumb}" alt=""><div class="who"><b>AI ${r.ai_label || '?'} · clinician ${gt}</b><small>${r.image} · ${new Date(r.when).toLocaleString()} · ${r.organisms.join(', ') || 'no C&S yet'}</small></div>${a}</li>`;
+    const pi = r.disease === 'pressure injury';
+    const gt = pi
+      ? (r.npiap_stage ? 'NPIAP ' + r.npiap_stage : '?')
+      : ([r.gt_grade && r.gt_stage ? r.gt_grade + r.gt_stage : '', r.gt_wagner ? 'W' + r.gt_wagner : ''].filter(Boolean).join(' / ') || '?');
+    const tail = pi ? [r.body_site, r.outcome].filter(Boolean).join(' · ') || 'no site recorded'
+                    : ((r.organisms || []).join(', ') || 'no C&S yet');
+    const head = pi ? `clinician ${gt} · no model` : `AI ${r.ai_label || '?'} · clinician ${gt}`;
+    return `<li><img src="${r.thumb}" alt=""><div class="who"><b>${head}</b><small>${r.image} · ${new Date(r.when).toLocaleString()} · ${tail}</small></div>${a}</li>`;
   }).join('');
 }
 $('exportCsv').onclick = () => {
   const log = loadLog(); if (!log.length) return toast('Nothing to export');
-  const cols = ['id','when','image','model','ai_label','p_severe','p_infection','probs','gt_grade','gt_stage','gt_wagner','probe_to_bone','specimen_date','organisms','sensitivity_notes','culture_positive'];
+  const cols = ['id','when','image','disease','model','ai_label','p_severe','p_infection','probs','wound_area_frac','tissue',
+                'gt_grade','gt_stage','gt_wagner','probe_to_bone','specimen_date','organisms','sensitivity_notes','culture_positive',
+                'npiap_stage','blanching','deepest_structure','body_site','pi_date','outcome','pi_notes'];
   const esc = v => '"' + String(Array.isArray(v) ? v.join('; ') : (v && typeof v === 'object' ? JSON.stringify(v) : (v ?? ''))).replace(/"/g, '""') + '"';
   const csv = [cols.join(',')].concat(log.map(r => cols.map(c => esc(r[c])).join(','))).join('\n');
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'dfu_vision_cases.csv'; a.click();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'wound_vision_cases.csv'; a.click();
 };
 renderLog();
+setDisease('dfu');
 
 /* ═══════════════════════════ TRAIN: data intake ═══════════════════════════ */
 const data = { classes: new Map() };          // className -> [{file|blob, name, url}]
@@ -1258,7 +1608,11 @@ function loadImg(item){ return new Promise((res, rej) => { const im = new Image(
 async function embed(img, flips){
   /* returns Float32Array[] of 1280-d embeddings (original + optional flips) */
   const c = document.createElement('canvas'); c.width = c.height = IMG; const ctx = c.getContext('2d');
-  const w = img.naturalWidth, h = img.naturalHeight, s = Math.min(w, h); ctx.drawImage(img, (w-s)/2, (h-s)/2, s, s, 0, 0, IMG, IMG);
+  // letterboxed exactly as useImage() does, so training and inference see the same geometry
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  const sc = Math.min(IMG / w, IMG / h), dw = Math.round(w * sc), dh = Math.round(h * sc);
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, IMG, IMG);
+  ctx.drawImage(img, 0, 0, w, h, Math.round((IMG-dw)/2), Math.round((IMG-dh)/2), dw, dh);
   const outs = [];
   const variants = flips ? [[1,1],[-1,1],[1,-1]] : [[1,1]];
   for (const [sx, sy] of variants){

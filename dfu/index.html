@@ -135,6 +135,13 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .rung.hit{background:var(--teal);color:#fff}.rung.hit b{color:#fff}
 .rung.hit.sev{background:var(--rose)}
 .rung.maybe{background:rgba(28,184,160,.25)}
+.rung.pick{cursor:pointer}.rung.pick:hover{background:rgba(28,184,160,.18)}
+.rung.pick:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.rung .src{display:block;margin-top:5px;font-size:8.5px;letter-spacing:.04em;text-transform:uppercase;opacity:.85}
+.rung.exam{background:repeating-linear-gradient(135deg,var(--cloud),var(--cloud) 6px,#e4ebf3 6px,#e4ebf3 12px)}
+.rung.exam.hit{background:var(--navy-mid)}
+#npiapLadder{grid-template-columns:repeat(3,1fr)}
+@media(min-width:620px){#npiapLadder{grid-template-columns:repeat(6,1fr)}}
 .class-out{display:flex;align-items:center;gap:14px;margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--navy);color:#fff}
 .class-out .big{font-family:var(--serif);font-size:40px;line-height:1;white-space:nowrap}
 .class-out .desc{font-size:12.5px;opacity:.85}
@@ -275,6 +282,10 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   <!-- STEP 1: CAPTURE -->
   <section class="card" id="capture">
     <div class="step"><span class="n">1</span><h3>Capture or upload the wound image</h3><span class="hint">runs on-device</span></div>
+    <div class="cam-controls" style="margin:0 0 12px">
+      <span class="small">Wound type</span>
+      <div class="seg" id="diseaseToggle"><button data-v="dfu" class="on">Diabetic foot ulcer</button><button data-v="pi">Pressure injury</button></div>
+    </div>
     <div class="capture-grid">
       <label class="capture-btn">
         <svg viewBox="0 0 24 24"><path d="M4 7h3l2-3h6l2 3h3v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
@@ -342,7 +353,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     </div>
 
     <div id="results" class="hidden">
-      <div class="cam-controls" style="margin:0 0 10px">
+      <div class="cam-controls" style="margin:0 0 10px" id="schemeRow">
         <span class="small">Classification scheme</span>
         <div class="seg" id="schemeToggle"><button data-v="texas" class="on">Texas</button><button data-v="wagner">Wagner</button></div>
         <span class="small" id="modelUsed"></span>
@@ -381,6 +392,11 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
         <h4>Meggitt–Wagner classification</h4>
         <div class="ladder" id="ladder"></div>
       </div>
+      <div class="wagner hidden" id="npiapPanel">
+        <h4>NPIAP pressure injury staging — tap the stage you assign</h4>
+        <div class="ladder" id="npiapLadder"></div>
+        <p class="small" id="npiapNote" style="margin-top:8px"></p>
+      </div>
       <div class="class-out">
         <div class="big" id="classBig">—</div>
         <div class="desc" id="classDesc"></div>
@@ -396,7 +412,8 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   <!-- STEP 3: GROUND TRUTH -->
   <section class="card hidden" id="truth">
     <div class="step"><span class="n">3</span><h3>Ground truth &amp; feedback loop</h3><span class="hint">closes the learning loop</span></div>
-    <p class="small" style="margin-bottom:6px">Record the clinician's classification and the tissue culture &amp; sensitivity result. Logged cases become the labelled dataset for the next training cycle.</p>
+    <p class="small" style="margin-bottom:6px" id="truthIntro"></p>
+    <div id="gtDfu">
     <div class="row3">
       <div class="field"><label>Clinician Texas grade</label>
         <select id="gtGrade"><option value="">—</option><option>0</option><option>1</option><option>2</option><option>3</option></select></div>
@@ -419,8 +436,28 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       </div>
     </div>
     <div class="field"><label>Sensitivity pattern / notes</label><textarea id="gtNotes" placeholder="e.g. sensitive to co-amoxiclav, resistant to ciprofloxacin; ESBL negative"></textarea></div>
+    </div>
+    <div id="gtPi" class="hidden">
+      <div class="row3">
+        <div class="field"><label>Clinician NPIAP stage</label>
+          <select id="gtNpiap"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>Unstageable</option><option>Deep tissue injury</option></select></div>
+        <div class="field"><label>Blanching test</label>
+          <select id="gtBlanch"><option value="">—</option><option>Blanchable</option><option>Non-blanchable</option><option>Not tested</option></select></div>
+        <div class="field"><label>Deepest structure seen or palpated</label>
+          <select id="gtDeep"><option value="">—</option><option>Dermis</option><option>Adipose</option><option>Fascia</option><option>Muscle</option><option>Tendon</option><option>Bone</option><option>Obscured by slough or eschar</option></select></div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>Body site</label>
+          <select id="gtSite"><option value="">—</option><option>Sacrum</option><option>Coccyx</option><option>Ischial tuberosity</option><option>Heel</option><option>Lateral malleolus</option><option>Greater trochanter</option><option>Occiput</option><option>Ear</option><option>Elbow</option><option>Device-related</option><option>Other</option></select></div>
+        <div class="field"><label>Assessment date</label><input type="date" id="gtPiDate"></div>
+        <div class="field"><label>Outcome at follow-up</label>
+          <select id="gtOutcome"><option value="">—</option><option>Healed</option><option>Improving</option><option>Static</option><option>Deteriorated</option><option>Not yet known</option></select></div>
+      </div>
+      <div class="field"><label>Notes</label><textarea id="gtPiNotes" placeholder="e.g. device-related under mask strap; offloading in place; Braden 12"></textarea></div>
+      <div class="note">There is deliberately no culture and sensitivity field here. Every chronic wound is colonised, so a swab does not establish infection in a pressure injury and swabbing is discouraged; infection is a clinical diagnosis. The reference standard for this arm is the clinician's stage under adjudication, together with the outcome at follow-up.</div>
+    </div>
     <button class="btn btn-teal" id="saveCase" style="width:100%">Save ground truth to case log</button>
-    <div class="note teal">Culture &amp; sensitivity is the reference standard for infection. The clinician's Texas or Wagner class is the reference standard for the classification head. Stored locally in this browser only for the prototype.</div>
+    <div class="note teal" id="truthNote"></div>
   </section>
 
   <!-- CASE LOG -->
@@ -864,6 +901,12 @@ async function runInference(){
   lastBox = (active.wantsRoi && lastSeg && lastSeg.found) ? roiBox(lastSeg) : null;
   drawSegOverlay(lastSeg, lastBox); showWound(lastSeg);
   lastTissue = tissueMap(lastSeg); renderTissue(lastTissue);
+  if (DISEASE === 'pi' && active.kind === 'demo'){
+    if (lastActs){ lastActs.dispose(); lastActs = null; }
+    lastPred = { ms: performance.now() - t0, views: 0, piOnly: true };
+    showPiResults();
+    return;
+  }
   $('statusText').textContent = 'Classifying…'; await sleep(20);
   if (lastActs) lastActs.dispose();
   const x0 = preprocess(lastBox ? cropCanvas(lastBox) : $('imgCanvas'), active.inputRange);
@@ -906,6 +949,7 @@ async function runInference(){
 }
 function showResults(){
   const p = lastPred;
+  $('camToggle').querySelector('[data-v="2"]').disabled = false;
   $('timing').textContent = `${p.ms.toFixed(0)} ms on ${tf.getBackend()}`;
   $('status').classList.add('hidden'); $('results').classList.remove('hidden');
   $('demoHeads').classList.toggle('hidden', active.kind !== 'demo');
@@ -1075,6 +1119,97 @@ $('camToggle').querySelectorAll('button').forEach(b => b.onclick = () => setCam(
 $('camAlpha').oninput = () => { const v = +$('camToggle').querySelector('.on').dataset.v, a = $('camAlpha').value/100;
   if (v === 2) $('camCanvas').style.opacity = a; if (v === 3) $('tissueCanvas').style.opacity = a; };
 $('camTarget').onchange = async () => { camManual = true; await drawGradCam(); setCam(2); };
+
+/* ═══════════════════════════ wound type: DFU or pressure injury ═══════════════════════════
+   One app, one selector. Segmentation, measurement and the tissue map are wound-type agnostic —
+   granulation and eschar look the same on a sacrum as on a heel — so those are shared. Staging is
+   not: the two classification heads were trained on diabetic foot ulcer crops and have never seen
+   a pressure injury, so in pressure-injury mode they are not run at all rather than run and hidden.
+
+   The NPIAP stages are marked by what actually establishes them. Three of the six turn on findings
+   no camera can record: whether erythema blanches under finger pressure, whether muscle or bone is
+   directly palpable, and whether a discolouration persists. Marking them is the same discipline the
+   Texas ischaemia axis already follows — the model claims only what the modality supports.        */
+let DISEASE = 'dfu', npiapPick = null;
+
+const NPIAP = [
+  { id:'1', name:'Stage 1', short:'Non-blanchable erythema, intact skin', from:'exam',
+    def:'Intact skin with non-blanchable erythema over a localised area.',
+    why:'Non-blanchable means the redness does not fade under finger pressure. A photograph cannot show that, and in darker skin tones the erythema itself may not be visible at all.' },
+  { id:'2', name:'Stage 2', short:'Partial thickness, exposed dermis', from:'camera',
+    def:'Partial-thickness skin loss with exposed dermis, presenting as a viable pink or red wound bed, or a fluid-filled blister.' },
+  { id:'3', name:'Stage 3', short:'Full thickness, adipose visible', from:'both',
+    def:'Full-thickness skin loss with adipose visible and granulation present; slough or eschar may be visible, but muscle, tendon and bone are not exposed.',
+    why:'The wound bed is photographable, but confirming that muscle, tendon and bone are NOT exposed is an inspection of depth.' },
+  { id:'4', name:'Stage 4', short:'Muscle, tendon or bone exposed', from:'exam',
+    def:'Full-thickness skin and tissue loss with exposed or directly palpable muscle, tendon, cartilage or bone.',
+    why:'"Directly palpable" is a finding of touch. A photograph showing deep tissue cannot distinguish stage 3 from stage 4 reliably.' },
+  { id:'U', name:'Unstageable', short:'Depth obscured by slough or eschar', from:'camera',
+    def:'Full-thickness skin and tissue loss where the extent of damage cannot be confirmed because it is obscured by slough or eschar.' },
+  { id:'DTPI', name:'Deep tissue', short:'Deep red, maroon or purple discolouration', from:'exam',
+    def:'Persistent non-blanchable deep red, maroon or purple discolouration, or a blood-filled blister revealing a dark wound bed.',
+    why:'Both "non-blanchable" and "persistent" need examination, the second over more than one occasion.' }
+];
+const SRC_LBL = { camera:'photo', exam:'examination', both:'photo + exam' };
+
+function renderNpiap(){
+  const l = $('npiapLadder'); l.innerHTML = '';
+  NPIAP.forEach(st => {
+    const r = document.createElement('button');
+    r.className = 'rung pick' + (st.from === 'exam' ? ' exam' : '') + (npiapPick === st.id ? ' hit' : '');
+    if (npiapPick === st.id && (st.id === '4' || st.id === 'U')) r.classList.add('sev');
+    r.innerHTML = `<b>${st.id === 'U' ? 'U' : st.id === 'DTPI' ? 'D' : st.id}</b>${st.short}<span class="src">${SRC_LBL[st.from]}</span>`;
+    r.title = st.def + (st.why ? '\n\n' + st.why : '');
+    r.onclick = () => { npiapPick = (npiapPick === st.id ? null : st.id); renderNpiap(); renderPiOut();
+                        $('gtNpiap').value = npiapPick ? (NPIAP.find(x => x.id === npiapPick).name === 'Deep tissue' ? 'Deep tissue injury' : (npiapPick === 'U' ? 'Unstageable' : npiapPick)) : ''; };
+    l.appendChild(r);
+  });
+  const exam = NPIAP.filter(x => x.from === 'exam').length, both = NPIAP.filter(x => x.from === 'both').length;
+  $('npiapNote').textContent = `Hatched stages cannot be established from a photograph at all — ${exam} of the ${NPIAP.length}, turning on whether erythema blanches under pressure, whether bone is directly palpable, or whether a discolouration persists. ${both === 1 ? 'Stage 3 is partly photographic: its bed is visible, but ruling out exposed muscle or bone is not.' : ''} Tap the stage you assign on examination; the app records it as yours, not the model's.`;
+}
+
+function renderPiOut(){
+  const st = NPIAP.find(x => x.id === npiapPick);
+  $('classBig').textContent = st ? (st.id === 'U' ? 'U' : st.id === 'DTPI' ? 'DTI' : 'S' + st.id) : '—';
+  $('classDesc').textContent = st
+    ? `${st.name}: ${st.def}` + (st.why ? ' ' + st.why : '')
+    : 'Tap a stage above once you have examined the wound. Nothing here is predicted.';
+  $('howClass').textContent = 'The stage shown is the one you selected, not a model output. What the app contributes for a pressure injury is the wound outline, the measurement and the tissue composition, all of which are independent of wound type.';
+  $('whatClass').textContent = 'No pressure injury classifier has been trained: both heads were fitted on diabetic foot ulcer crops and have never seen a pressure injury, so they are not run on this image. They become available once you have collected and trained on pressure injury data.';
+  $('caution').textContent = 'Segmentation and tissue figures apply to any wound. Staging is yours. Stage 1 and deep tissue injury are the two most likely to be missed on a photograph, and both are harder to see in darker skin — examine, do not rely on the image.';
+}
+
+function setDisease(d){
+  DISEASE = d;
+  $('diseaseToggle').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === d));
+  const pi = d === 'pi';
+  $('schemeRow').classList.toggle('hidden', pi);
+  $('ischField').classList.toggle('hidden', pi);
+  $('npiapPanel').classList.toggle('hidden', !pi);
+  $('gtDfu').classList.toggle('hidden', pi);
+  $('gtPi').classList.toggle('hidden', !pi);
+  $('truthIntro').textContent = pi
+    ? 'Record the stage you assigned, the blanching test and the deepest structure you could see or palpate. Outcome at follow-up is the reference standard here, not a swab.'
+    : "Record the clinician's classification and the tissue culture & sensitivity result. Logged cases become the labelled dataset for the next training cycle.";
+  $('truthNote').textContent = pi
+    ? 'The clinician’s NPIAP stage, under adjudication, is the reference standard for this arm, with outcome at follow-up as the clinical endpoint. Stored locally in this browser only for the prototype.'
+    : "Culture & sensitivity is the reference standard for infection. The clinician's Texas or Wagner class is the reference standard for the classification head. Stored locally in this browser only for the prototype.";
+  if (pi) renderNpiap();
+  // the built-in heads are diabetic-foot-ulcer heads; re-run so the right path is taken
+  if (currentImg && backbone) runInference();
+}
+$('diseaseToggle').querySelectorAll('button').forEach(b => b.onclick = () => setDisease(b.dataset.v));
+
+/* Shown in place of the classification when the wound type has no trained model. */
+function showPiResults(){
+  $('timing').textContent = `${lastPred.ms.toFixed(0)} ms on ${tf.getBackend()} · segmentation only`;
+  $('status').classList.add('hidden'); $('results').classList.remove('hidden');
+  $('demoHeads').classList.add('hidden'); $('customProbs').classList.add('hidden');
+  $('texasPanel').classList.add('hidden'); $('wagnerPanel').classList.add('hidden');
+  $('camToggle').querySelector('[data-v="2"]').disabled = true;
+  if (+$('camToggle').querySelector('.on').dataset.v === 2) setCam(1);
+  renderNpiap(); renderPiOut();
+}
 
 /* ═══════════════════════════ wound-bed tissue composition ═══════════════════════════
    A COLOUR RULE, not a trained model. Every pixel inside the segmentation mask is assigned
@@ -1265,15 +1400,25 @@ $('saveCase').onclick = () => {
   if (!lastPred) return toast('Analyse an image first');
   const orgs = [...$('orgChips').querySelectorAll('.chip.on')].map(b => b.dataset.v);
   const thumb = (() => { const c = document.createElement('canvas'); c.width = c.height = 96; c.getContext('2d').drawImage($('imgCanvas'), 0, 0, 96, 96); return c.toDataURL('image/jpeg', 0.6); })();
-  const it = interpret();
-  const ai_label = it.label || (it.texas ? it.texas.grade + it.texas.stage : '') + (it.wagner ? (it.texas ? ' / ' : '') + 'W' + it.wagner.grade : '');
-  const p_inf = active.kind === 'demo' ? +lastPred.infection[1].toFixed(3) : null;
-  const rec = { id: Date.now(), when: new Date().toISOString(), image: currentName, thumb, model: active.name, ai_label,
-    p_severe: active.kind === 'demo' ? +lastPred.grade[1].toFixed(3) : null, p_infection: p_inf,
-    probs: active.kind === 'demo' ? null : Object.fromEntries(active.classes.map((c, i) => [c, +lastPred.probs[i].toFixed(3)])),
+  /* piOnly cases carry no model prediction by design: the heads are not run on a wound type they
+     were never trained on, so the record must not imply one was produced. */
+  const scored = !lastPred.piOnly;
+  const it = scored ? interpret() : { label: '' };
+  const ai_label = scored ? (it.label || (it.texas ? it.texas.grade + it.texas.stage : '') + (it.wagner ? (it.texas ? ' / ' : '') + 'W' + it.wagner.grade : '')) : '';
+  const demo = scored && active.kind === 'demo';
+  const t = lastTissue;
+  const rec = { id: Date.now(), when: new Date().toISOString(), image: currentName, thumb, model: scored ? active.name : 'none (segmentation only)',
+    disease: DISEASE === 'pi' ? 'pressure injury' : 'diabetic foot ulcer', ai_label,
+    p_severe: demo ? +lastPred.grade[1].toFixed(3) : null, p_infection: demo ? +lastPred.infection[1].toFixed(3) : null,
+    probs: (!scored || active.kind === 'demo') ? null : Object.fromEntries(active.classes.map((c, i) => [c, +lastPred.probs[i].toFixed(3)])),
+    wound_area_frac: lastSeg && lastSeg.found ? +(lastSeg.areaFrac / ((fit && fit.frac) || 1)).toFixed(4) : null,
+    tissue: t ? { granulation: +t.frac.gran.toFixed(3), slough: +t.frac.slough.toFixed(3), necrosis: +t.frac.necro.toFixed(3),
+                  pale: +t.frac.pale.toFixed(3), periwound_delta_a: t.dA === null ? null : +t.dA.toFixed(2) } : null,
     gt_grade: $('gtGrade').value, gt_stage: $('gtStage').value, gt_wagner: $('gtWagner').value, probe_to_bone: $('gtPtb').value, specimen_date: $('gtDate').value,
     organisms: orgs, sensitivity_notes: $('gtNotes').value.trim(),
-    culture_positive: orgs.length ? !(orgs.length === 1 && orgs[0] === 'No growth') : null };
+    culture_positive: orgs.length ? !(orgs.length === 1 && orgs[0] === 'No growth') : null,
+    npiap_stage: $('gtNpiap').value, blanching: $('gtBlanch').value, deepest_structure: $('gtDeep').value,
+    body_site: $('gtSite').value, pi_date: $('gtPiDate').value, outcome: $('gtOutcome').value, pi_notes: $('gtPiNotes').value.trim() };
   const log = loadLog(); log.unshift(rec); saveLog(log); renderLog(); toast('Case saved to log');
   $('logCard').scrollIntoView({behavior:'smooth', block:'start'});
 };
@@ -1286,18 +1431,27 @@ function renderLog(){
   $('kCult').textContent = cult.length ? `${cult.filter(r => r.culture_positive).length}/${cult.length}` : '—';
   $('logList').innerHTML = log.slice(0, 8).map(r => {
     const a = (r.culture_positive === null || r.p_infection === null) ? '' : `<span class="agree ${(r.p_infection>=0.5)===r.culture_positive?'':'no'}">${(r.p_infection>=0.5)===r.culture_positive?'agrees with C&S':'disagrees with C&S'}</span>`;
-    const gt = [r.gt_grade && r.gt_stage ? r.gt_grade + r.gt_stage : '', r.gt_wagner ? 'W' + r.gt_wagner : ''].filter(Boolean).join(' / ') || '?';
-    return `<li><img src="${r.thumb}" alt=""><div class="who"><b>AI ${r.ai_label || '?'} · clinician ${gt}</b><small>${r.image} · ${new Date(r.when).toLocaleString()} · ${r.organisms.join(', ') || 'no C&S yet'}</small></div>${a}</li>`;
+    const pi = r.disease === 'pressure injury';
+    const gt = pi
+      ? (r.npiap_stage ? 'NPIAP ' + r.npiap_stage : '?')
+      : ([r.gt_grade && r.gt_stage ? r.gt_grade + r.gt_stage : '', r.gt_wagner ? 'W' + r.gt_wagner : ''].filter(Boolean).join(' / ') || '?');
+    const tail = pi ? [r.body_site, r.outcome].filter(Boolean).join(' · ') || 'no site recorded'
+                    : ((r.organisms || []).join(', ') || 'no C&S yet');
+    const head = pi ? `clinician ${gt} · no model` : `AI ${r.ai_label || '?'} · clinician ${gt}`;
+    return `<li><img src="${r.thumb}" alt=""><div class="who"><b>${head}</b><small>${r.image} · ${new Date(r.when).toLocaleString()} · ${tail}</small></div>${a}</li>`;
   }).join('');
 }
 $('exportCsv').onclick = () => {
   const log = loadLog(); if (!log.length) return toast('Nothing to export');
-  const cols = ['id','when','image','model','ai_label','p_severe','p_infection','probs','gt_grade','gt_stage','gt_wagner','probe_to_bone','specimen_date','organisms','sensitivity_notes','culture_positive'];
+  const cols = ['id','when','image','disease','model','ai_label','p_severe','p_infection','probs','wound_area_frac','tissue',
+                'gt_grade','gt_stage','gt_wagner','probe_to_bone','specimen_date','organisms','sensitivity_notes','culture_positive',
+                'npiap_stage','blanching','deepest_structure','body_site','pi_date','outcome','pi_notes'];
   const esc = v => '"' + String(Array.isArray(v) ? v.join('; ') : (v && typeof v === 'object' ? JSON.stringify(v) : (v ?? ''))).replace(/"/g, '""') + '"';
   const csv = [cols.join(',')].concat(log.map(r => cols.map(c => esc(r[c])).join(','))).join('\n');
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'dfu_vision_cases.csv'; a.click();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'wound_vision_cases.csv'; a.click();
 };
 renderLog();
+setDisease('dfu');
 
 /* ═══════════════════════════ TRAIN: data intake ═══════════════════════════ */
 const data = { classes: new Map() };          // className -> [{file|blob, name, url}]

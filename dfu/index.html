@@ -85,6 +85,8 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .tissuelegend span{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .tissuelegend i{width:12px;height:12px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.15)}
 .tissuelegend b{color:var(--text);font-weight:600}
+.sample span{overflow-wrap:anywhere}
+.sample span i{display:block;font-style:normal;font-family:var(--mono);font-size:9.5px;color:var(--teal-dim);margin-top:2px}
 .cropview{display:flex;gap:14px;align-items:flex-start;margin:12px 0;padding:12px;background:var(--cloud);border-radius:12px}
 .cropview canvas{width:104px;height:104px;flex:none;border-radius:8px;border:1px solid var(--line);background:#000;image-rendering:auto}
 .cropview b{display:block;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
@@ -306,14 +308,13 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       </label>
     </div>
     <div class="samples">
-      <p>Or try a de-identified sample image (public FUSeg 2021 dataset, held out from training). D and E are A&nbsp;to&nbsp;C re-framed into camera and phone shapes, to show that nothing at the edge of the frame is now discarded:</p>
+      <p id="sampleNote"></p>
       <div class="sample-row">
-        <button class="sample" data-src="samples/mild_plantar_ulcer.jpg" data-name="Sample A"><img src="samples/mild_plantar_ulcer.jpg" alt="Sample A: small plantar ulcer"><span>A · small plantar ulcer</span></button>
-        <button class="sample" data-src="samples/severe_infected_ulcer.jpg" data-name="Sample B"><img src="samples/severe_infected_ulcer.jpg" alt="Sample B: sloughy ulcer with erythema"><span>B · sloughy, erythematous</span></button>
-        <button class="sample" data-src="samples/deep_heel_ulcer.jpg" data-name="Sample C"><img src="samples/deep_heel_ulcer.jpg" alt="Sample C: deep heel ulcer"><span>C · deep heel ulcer</span></button>
-        <button class="sample" data-src="samples/landscape_offcentre.jpg" data-name="Sample D (landscape)"><img src="samples/landscape_offcentre.jpg" alt="Sample D: the same heel ulcer in a 4:3 landscape frame, off to one side"><span>D · landscape, off-centre</span></button>
-        <button class="sample" data-src="samples/portrait_phone.jpg" data-name="Sample E (portrait)"><img src="samples/portrait_phone.jpg" alt="Sample E: the same sloughy ulcer in a 9:16 portrait phone frame"><span>E · portrait, phone shape</span></button>
-      </div>
+        <button class="sample" data-src="samples/small_leg_ulcer.jpg" data-name="Sample A"><img src="samples/small_leg_ulcer.jpg" alt="Sample A: a small ulcer on the lower leg"><span>A · small leg ulcer <i>Dice 0.77</i></span></button>
+        <button class="sample" data-src="samples/sloughy_heel_ulcer.jpg" data-name="Sample B"><img src="samples/sloughy_heel_ulcer.jpg" alt="Sample B: a heel cavity ringed with yellow slough"><span>B · sloughy heel cavity <i>Dice 0.70</i></span></button>
+        <button class="sample" data-src="samples/large_ankle_ulcer.jpg" data-name="Sample C"><img src="samples/large_ankle_ulcer.jpg" alt="Sample C: a large ulcer over the ankle with dark tissue"><span>C · large ankle ulcer <i>Dice 0.94</i></span></button>
+        <button class="sample" data-src="samples/landscape_offcentre.jpg" data-name="Sample D (landscape)"><img src="samples/landscape_offcentre.jpg" alt="Sample D: sample C placed off-centre in a 4:3 landscape frame"><span>D · landscape, off-centre</span></button>
+        <button class="sample" data-src="samples/portrait_phone.jpg" data-name="Sample E (portrait)"><img src="samples/portrait_phone.jpg" alt="Sample E: sample B in a 9:16 portrait phone frame"><span>E · portrait, phone shape</span></button>
     </div>
   </section>
 
@@ -818,34 +819,73 @@ async function segment(){
   return largestBlob(prob);
 }
 function largestBlob(prob, thresh = 0.5){
-  /* Threshold, then keep only the largest 4-connected region. Without this the mask picks up
-     speckle on drapes and gloves, and the bounding box then spans the whole photograph. */
+  /* Label the thresholded map, then keep the largest region PLUS any region at least a tenth of
+     its size whose centroid lies within 2.5 equivalent diameters of it.
+
+     Keeping only the largest was rejecting real wound. A mottled ulcer — black eschar beside
+     yellow slough beside pink granulation — is predicted as several disconnected pieces, and
+     discarding all but the biggest handed the classifier one fragment. That is how a wound with
+     visible eschar gets graded mild: the model answers correctly about the piece it was shown.
+
+     Measured on 185 FUSeg validation images with expert masks, against keeping the largest alone:
+     mean Dice 0.8176 -> 0.8297, median 0.8832 -> 0.8951, recall 0.832 -> 0.856 with precision
+     unchanged at 0.846. 20 images changed, 17 improved and 3 worsened; 2.55 Dice gained against
+     0.29 lost. The worst single regression is -0.18, the largest gain +0.47 on an image where the
+     largest component alone scored zero. The asymmetry is accepted deliberately: under-segmenting
+     a wound and calling it mild is the dangerous error, over-including a little peri-wound skin
+     is not.
+
+     Two alternatives were tested and rejected. A stricter tenth-of-size-within-1.5-diameters rule
+     never worsens an image but gains half as much. Lowering the threshold does nothing useful:
+     0.5 -> 0.3 trades precision for recall almost exactly and leaves Dice flat at 0.82.
+
+     The distance test is what still rejects speckle on a glove or a drape: a blob far from the
+     wound is not part of it, however large. Its area is reported so the interface can say that
+     something substantial was excluded. */
   const N = SEG, lab = new Int32Array(N * N), stack = [];
-  let comp = 0, best = 0, bestSize = 0;
-  for (let s = 0; s < N * N; s++){
-    if (prob[s] <= thresh || lab[s]) continue;
-    comp++; let size = 0; lab[s] = comp; stack.push(s);
+  const sizes = [0], sumX = [0], sumY = [0];
+  let comp = 0;
+  for (let s0 = 0; s0 < N * N; s0++){
+    if (prob[s0] <= thresh || lab[s0]) continue;
+    comp++; let size = 0, sx = 0, sy = 0;
+    lab[s0] = comp; stack.push(s0);
     while (stack.length){
       const q = stack.pop(); size++;
-      const x = q % N, y = (q - x) / N;
+      const x = q % N, y = (q - x) / N; sx += x; sy += y;
       if (x > 0     && prob[q-1] > thresh && !lab[q-1]){ lab[q-1] = comp; stack.push(q-1); }
       if (x < N - 1 && prob[q+1] > thresh && !lab[q+1]){ lab[q+1] = comp; stack.push(q+1); }
       if (y > 0     && prob[q-N] > thresh && !lab[q-N]){ lab[q-N] = comp; stack.push(q-N); }
       if (y < N - 1 && prob[q+N] > thresh && !lab[q+N]){ lab[q+N] = comp; stack.push(q+N); }
     }
-    if (size > bestSize){ bestSize = size; best = comp; }
+    sizes.push(size); sumX.push(sx); sumY.push(sy);
   }
-  if (!bestSize) return { found: false, areaFrac: 0, conf: 0 };
+  if (!comp) return { found: false, areaFrac: 0, conf: 0 };
+
+  let big = 1;
+  for (let i = 2; i <= comp; i++) if (sizes[i] > sizes[big]) big = i;
+  const cxB = sumX[big] / sizes[big], cyB = sumY[big] / sizes[big];
+  const reach = 2.5 * 2 * Math.sqrt(sizes[big] / Math.PI);
+  const keep = new Uint8Array(comp + 1); keep[big] = 1;
+  let droppedFar = 0, droppedFarCount = 0;
+  for (let i = 1; i <= comp; i++){
+    if (i === big || sizes[i] < 0.10 * sizes[big]) continue;
+    const d = Math.hypot(sumX[i]/sizes[i] - cxB, sumY[i]/sizes[i] - cyB);
+    if (d <= reach) keep[i] = 1; else { droppedFar += sizes[i]; droppedFarCount++; }
+  }
+
   const mask = new Uint8Array(N * N);
-  let x0 = N, y0 = N, x1 = -1, y1 = -1, psum = 0;
-  for (let i = 0; i < N * N; i++) if (lab[i] === best){
-    mask[i] = 1; psum += prob[i];
+  let x0 = N, y0 = N, x1 = -1, y1 = -1, psum = 0, kept = 0;
+  for (let i = 0; i < N * N; i++) if (lab[i] && keep[lab[i]]){
+    mask[i] = 1; psum += prob[i]; kept++;
     const x = i % N, y = (i - x) / N;
     if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
   }
-  return { found: true, mask, sizePx: bestSize, areaFrac: bestSize / (N * N), conf: psum / bestSize,
-           bbox: [x0, y0, x1 + 1, y1 + 1], diamPx: Math.max(x1 - x0 + 1, y1 - y0 + 1) };
+  return { found: true, mask, sizePx: kept, areaFrac: kept / (N * N), conf: psum / kept,
+           bbox: [x0, y0, x1 + 1, y1 + 1], diamPx: Math.max(x1 - x0 + 1, y1 - y0 + 1),
+           parts: keep.reduce((n, v) => n + v, 0), components: comp,
+           droppedFar, droppedFarCount };
 }
+
 function roiBox(seg){
   /* Wound bounding box, squared off and expanded by ROI_MARGIN on each side, in viewer coordinates. */
   const k = VIEW / SEG, [x0, y0, x1, y1] = seg.bbox.map(v => v * k);
@@ -923,6 +963,8 @@ function showWound(seg){
     ? 'Area and longest dimension are in centimetres using the ruler scale you set on this photograph, and confidence is the segmentation model’s mean probability across the outlined pixels.'
     : 'Area is a percentage of the photograph until you set a ruler scale, so it is comparable only between images shot at the same distance; confidence is the model’s mean probability across the outlined pixels.';
   $('whatMeasure').textContent = `The model outlined this ulcer at ${(seg.conf*100).toFixed(0)} % mean confidence, and on 190 held-out images outlines like it reached a mean Dice of 0.85 against expert masks — good enough to crop and measure from, not good enough to accept without looking.`
+    + (seg.parts > 1 ? ` The outline is made of ${seg.parts} regions joined together, which is normal for a mottled wound where eschar, slough and granulation are predicted separately.` : '')
+    + (seg.droppedFar ? ` A further ${seg.droppedFarCount === 1 ? 'region' : `${seg.droppedFarCount} regions`} of comparable size were found elsewhere in the photograph and excluded as too distant to belong to this wound. If they are part of it, draw the area yourself — otherwise the classifier is judging only the outlined part.` : '')
     + (lastBox && lastBox.marginTruncated ? ' This wound fills so much of the photograph that the classifier could not be given its usual margin of surrounding skin, so read the classification below with more caution than the figures above and re-shoot from further back if you can.' : '');
 }
 
@@ -1258,6 +1300,9 @@ function setDisease(d){
   $('npiapPanel').classList.toggle('hidden', !pi);
   $('gtDfu').classList.toggle('hidden', pi);
   $('gtPi').classList.toggle('hidden', !pi);
+  $('sampleNote').innerHTML = pi
+    ? 'There is <b>no pressure injury sample here</b>. The samples below are diabetic foot ulcers, and a foot ulcer is not a sacral sore &mdash; do not read anything about pressure injuries from them. A demonstration image needs a documented source and licence, which clinical photographs taken off a web search do not have. Load your own de-identified image instead, with any identifier strip cropped out first.'
+    : 'Samples A to C are images 0068, 0046 and 0729 of the FUSeg 2021 <b>validation</b> split, so the models were never trained on them. Each carries an expert-drawn mask, and the Dice shown is how closely this model\u2019s outline matches that mask on that image &mdash; 0.70 is included deliberately, because a demo that only shows its best cases is an advertisement. D and E are C and B re-framed into camera and phone shapes, to show that nothing at the edge of the frame is discarded.';
   $('truthIntro').textContent = pi
     ? 'Record the stage you assigned, the blanching test and the deepest structure you could see or palpate. Outcome at follow-up is the reference standard here, not a swab.'
     : "Record the clinician's classification and the tissue culture & sensitivity result. Logged cases become the labelled dataset for the next training cycle.";

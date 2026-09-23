@@ -85,6 +85,13 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .tissuelegend span{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .tissuelegend i{width:12px;height:12px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.15)}
 .tissuelegend b{color:var(--text);font-weight:600}
+.cropview{display:flex;gap:14px;align-items:flex-start;margin:12px 0;padding:12px;background:var(--cloud);border-radius:12px}
+.cropview canvas{width:104px;height:104px;flex:none;border-radius:8px;border:1px solid var(--line);background:#000;image-rendering:auto}
+.cropview b{display:block;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.cropview p{margin:0 0 8px}
+.viewer.boxing{cursor:crosshair}
+.viewer.boxing::after{content:"Drag a box around the wound";position:absolute;left:50%;top:10px;transform:translateX(-50%);
+  background:rgba(11,31,58,.86);color:#fff;font-size:11.5px;padding:5px 10px;border-radius:999px;pointer-events:none;z-index:5}
 .viewer .badge{position:absolute;left:10px;top:10px;font-family:var(--mono);font-size:11px;background:rgba(11,31,58,.75);color:#fff;padding:4px 9px;border-radius:999px;z-index:2}
 #segCanvas,#scaleCanvas{transition:opacity .25s}
 .viewer.picking{cursor:crosshair}
@@ -265,7 +272,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <header>
   <div class="wrap">
     <div>
-      <h1>DFU <span>Vision</span></h1>
+      <h1>Wound <span>Vision</span></h1>
       <small>Dr Naim Bin Abdul Malek · Deep Learning Healthcare Centre of Excellence</small>
     </div>
     <span class="pill" id="modelPill">model: loading…</span>
@@ -342,6 +349,14 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
         <div class="mrow"><span>Wound detected</span><b id="wArea">—</b></div>
         <div class="mrow"><span>Longest dimension</span><b id="wDiam">—</b></div>
         <div class="mrow"><span>Segmentation confidence</span><b id="wConf">—</b></div>
+      </div>
+      <div class="cropview" id="cropView">
+        <canvas id="cropCanvas" width="224" height="224"></canvas>
+        <div>
+          <b>What the classifier actually saw</b>
+          <p class="small" id="cropNote"></p>
+          <button class="btn btn-ghost btn-sm" id="boxBtn">Draw the wound area myself</button>
+        </div>
       </div>
       <div class="scalebar">
         <button class="btn btn-ghost btn-sm" id="scaleBtn">Set scale with the ruler</button>
@@ -485,7 +500,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       <dt>Labels — important caveat</dt><dd>Demonstrator labels are <b>weak labels</b> derived from expert wound masks (wound area for depth/severity) and wound‑bed colour features (slough, eschar for infection). They are not clinician‑adjudicated or culture‑confirmed. Step 3 and the Train tab exist precisely to replace them.</dd>
       <dt>Held‑out performance (against the weak labels)</dt><dd id="mcPerf">Loading…</dd>
       <dt>Data source</dt><dd>FUSeg 2021 / AZH Wound and Vascular Center dataset, Wang C. et al., <i>Sci Rep</i> 2020;10:21897, github.com/uwm-bigdata/wound-segmentation.</dd>
-      <dt>Author</dt><dd>Dr Naim Bin Abdul Malek. Built as a demonstrator for the Deep Learning Healthcare Centre of Excellence and as the technical pilot for a DrPH study on DFU infection classification.</dd>
+      <dt>Author</dt><dd>Dr Naim Bin Abdul Malek. Built as a demonstrator for the Deep Learning Healthcare Centre of Excellence and as the technical pilot for a DrPH study on diabetic foot ulcer infection classification, extended to pressure injury staging.</dd>
       <dt>Patient data</dt><dd>No patient image may be loaded into this tool until NMRR registration and MREC ethical approval are in place, and every image must be de&#8209;identified and consented under the Personal Data Protection Act 2010. Images processed here stay in this browser, which reduces the transmission risk but does not substitute for approval.</dd>
     </dl>
   </section>
@@ -635,6 +650,7 @@ let currentImg = null, currentName = '', lastPred = null, lastActs = null, isch 
 let segModel = null, segMetrics = null, lastSeg = null, lastBox = null;   // lastBox = the crop actually classified
 let lastTissue = null;                                                     // wound-bed colour composition
 let fit = null;            // how the photograph was letterboxed into the square view
+let manualBox = null, boxing = false, boxStart = null;   // clinician-drawn region of interest
 let pxPerCm = null, picking = false, pickPts = [];                        // optional ruler scale
 const VIEW = 448;                                                          // viewer canvas size
 
@@ -764,6 +780,8 @@ function useImage(img, name){
           frac: (dw * dh) / (c.width * c.height) };   // share of the square that is real photograph
   [$('camCanvas'), $('segCanvas'), $('tissueCanvas'), $('scaleCanvas')].forEach(k => k.getContext('2d').clearRect(0, 0, VIEW, VIEW));
   lastSeg = null; lastBox = null; lastTissue = null; pickPts = []; picking = false; $('viewer').classList.remove('picking');
+  manualBox = null; boxing = false; $('viewer').classList.remove('boxing');
+  $('boxBtn').textContent = 'Draw the wound area myself';
   pxPerCm = null; $('scaleBtn').textContent = 'Set scale with the ruler';   // a scale belongs to one photograph only
   setCam(segModel ? 1 : 0);
   $('analyse').classList.remove('hidden'); $('truth').classList.remove('hidden');
@@ -915,15 +933,19 @@ function preprocess(src, inputRange){
     return (inputRange === '0-255' ? t : t.div(127.5).sub(1)).expandDims(0);
   });
 }
-async function runInference(){
+async function runInference(reuseSeg){
   const t0 = performance.now();
-  $('statusText').textContent = segModel ? 'Segmenting the wound…' : 'Analysing on device…';
+  $('statusText').textContent = reuseSeg ? 'Re-classifying…' : (segModel ? 'Segmenting the wound…' : 'Analysing on device…');
   $('status').classList.remove('hidden');
   await sleep(30);
-  lastSeg = await segment();
-  lastBox = (active.wantsRoi && lastSeg && lastSeg.found) ? roiBox(lastSeg) : null;
+  if (!(reuseSeg && lastSeg)) lastSeg = await segment();
+  /* A clinician-drawn box overrides the segmenter's. On real photographs the segmenter
+     sometimes under-traces a large sloughy wound badly, and when it does, no amount of
+     downstream cleverness recovers it — but a finger can. */
+  lastBox = manualBox ? manualBox : ((active.wantsRoi && lastSeg && lastSeg.found) ? roiBox(lastSeg) : null);
   drawSegOverlay(lastSeg, lastBox); showWound(lastSeg);
   lastTissue = tissueMap(lastSeg); renderTissue(lastTissue);
+  showCrop(lastBox);
   if (DISEASE === 'pi' && active.kind === 'demo'){
     if (lastActs){ lastActs.dispose(); lastActs = null; }
     lastPred = { ms: performance.now() - t0, views: 0, piOnly: true };
@@ -1414,6 +1436,67 @@ function tissueText(t){
   return { how, what };
 }
 
+/* The single most useful diagnostic when a classification looks wrong: see the 224 px square the
+   model was actually given. A blurred smear explains a 50 % probability better than any metric. */
+function showCrop(box){
+  const wrap = $('cropView'), cv = $('cropCanvas'), ctx = cv.getContext('2d');
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, IMG, IMG);
+  if (!box){ wrap.classList.add('hidden'); return; }
+  wrap.classList.remove('hidden');
+  ctx.drawImage(cropCanvas(box), 0, 0);
+  const srcPx = fit ? Math.round(box.s / fit.scale) : null;
+  const upsampled = srcPx !== null && srcPx < IMG;
+  $('cropNote').innerHTML = (manualBox ? 'Your box. ' : 'From the outline, squared and widened by 60 %. ')
+    + (srcPx === null ? `${Math.round(box.s)} view pixels resized to ${IMG}.`
+       : `${srcPx}&nbsp;&times;&nbsp;${srcPx} pixels of the original file, resized to ${IMG}&nbsp;&times;&nbsp;${IMG}.`)
+    + (upsampled ? ' <b style="color:var(--rose);display:inline;text-transform:none;letter-spacing:0">Fewer source pixels than the model input, so this is an upsampled crop — re-shoot closer.</b>'
+                 : '');
+}
+
+/* Let the clinician draw the region of interest when the outline is wrong. */
+$('boxBtn').onclick = () => {
+  if (manualBox){ manualBox = null; $('boxBtn').textContent = 'Draw the wound area myself';
+                  toast('Back to the model’s own outline'); return runInference(true); }
+  boxing = !boxing; boxStart = null;
+  $('viewer').classList.toggle('boxing', boxing);
+  $('scaleCanvas').getContext('2d').clearRect(0, 0, VIEW, VIEW);
+  $('boxBtn').textContent = boxing ? 'Cancel' : 'Draw the wound area myself';
+};
+function viewerXY(e){
+  const r = $('viewer').getBoundingClientRect();
+  return [Math.max(0, Math.min(VIEW, (e.clientX - r.left) / r.width * VIEW)),
+          Math.max(0, Math.min(VIEW, (e.clientY - r.top) / r.height * VIEW))];
+}
+$('viewer').addEventListener('pointerdown', e => {
+  if (!boxing) return;
+  e.preventDefault(); boxStart = viewerXY(e); $('viewer').setPointerCapture(e.pointerId);
+});
+$('viewer').addEventListener('pointermove', e => {
+  if (!boxing || !boxStart) return;
+  const [x, y] = viewerXY(e), ctx = $('scaleCanvas').getContext('2d');
+  ctx.clearRect(0, 0, VIEW, VIEW);
+  ctx.strokeStyle = '#F4A623'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+  ctx.strokeRect(Math.min(boxStart[0], x), Math.min(boxStart[1], y), Math.abs(x - boxStart[0]), Math.abs(y - boxStart[1]));
+  ctx.setLineDash([]);
+});
+$('viewer').addEventListener('pointerup', e => {
+  if (!boxing || !boxStart) return;
+  const [x0, y0] = boxStart, [x1, y1] = viewerXY(e);
+  boxStart = null;
+  const w = Math.abs(x1 - x0), h = Math.abs(y1 - y0);
+  if (w < 12 || h < 12) return toast('That box is too small \u2014 drag across the wound');
+  /* Squared and clamped exactly as roiBox() does, so a drawn box and a derived box are the same
+     kind of object and the classifier only ever sees one geometry. No extra margin is added:
+     the clinician drew where they want it looked. */
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, sq = Math.min(Math.max(w, h), VIEW);
+  manualBox = { l: Math.max(0, Math.min(cx - sq/2, VIEW - sq)), t: Math.max(0, Math.min(cy - sq/2, VIEW - sq)),
+                s: sq, marginTruncated: false, manual: true };
+  boxing = false; $('viewer').classList.remove('boxing');
+  $('scaleCanvas').getContext('2d').clearRect(0, 0, VIEW, VIEW);
+  $('boxBtn').textContent = 'Use the model\u2019s outline instead';
+  runInference(true);
+});
+
 /* ═══════════════════════════ ruler scale (optional) ═══════════════════════════ */
 $('scaleBtn').onclick = () => {
   picking = !picking; pickPts = [];
@@ -1460,6 +1543,10 @@ $('saveCase').onclick = () => {
     p_severe: demo ? +lastPred.grade[1].toFixed(3) : null, p_infection: demo ? +lastPred.infection[1].toFixed(3) : null,
     probs: (!scored || active.kind === 'demo') ? null : Object.fromEntries(active.classes.map((c, i) => [c, +lastPred.probs[i].toFixed(3)])),
     wound_area_frac: lastSeg && lastSeg.found ? +(lastSeg.areaFrac / ((fit && fit.frac) || 1)).toFixed(4) : null,
+    /* Whether the clinician drew the region of interest matters: a hand-drawn box changes the
+       prediction, so a record that does not say which was used cannot be audited. */
+    roi_source: lastBox ? (lastBox.manual ? 'clinician-drawn' : 'model outline') : 'whole photograph',
+    roi_source_px: lastBox && fit ? Math.round(lastBox.s / fit.scale) : null,
     tissue: t ? { granulation: +t.frac.gran.toFixed(3), slough: +t.frac.slough.toFixed(3), necrosis: +t.frac.necro.toFixed(3),
                   pale: +t.frac.pale.toFixed(3), periwound_delta_a: t.dA === null ? null : +t.dA.toFixed(2) } : null,
     gt_grade: $('gtGrade').value, gt_stage: $('gtStage').value, gt_wagner: $('gtWagner').value, probe_to_bone: $('gtPtb').value, specimen_date: $('gtDate').value,
@@ -1491,7 +1578,7 @@ function renderLog(){
 }
 $('exportCsv').onclick = () => {
   const log = loadLog(); if (!log.length) return toast('Nothing to export');
-  const cols = ['id','when','image','disease','model','ai_label','p_severe','p_infection','probs','wound_area_frac','tissue',
+  const cols = ['id','when','image','disease','model','ai_label','p_severe','p_infection','probs','wound_area_frac','roi_source','roi_source_px','tissue',
                 'gt_grade','gt_stage','gt_wagner','probe_to_bone','specimen_date','organisms','sensitivity_notes','culture_positive',
                 'npiap_stage','blanching','deepest_structure','body_site','pi_date','outcome','pi_notes'];
   const esc = v => '"' + String(Array.isArray(v) ? v.join('; ') : (v && typeof v === 'object' ? JSON.stringify(v) : (v ?? ''))).replace(/"/g, '""') + '"';

@@ -537,7 +537,11 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 
   <!-- CASE LOG -->
   <section class="card" id="logCard">
-    <div class="step"><span class="n">4</span><h3>Case log · model vs ground truth</h3><button class="btn btn-ghost btn-sm" id="exportCsv" style="margin-left:auto">Export CSV</button></div>
+    <div class="step"><span class="n">4</span><h3>Case log · model vs ground truth</h3><div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" id="copyTsv">Copy for Sheets</button>
+        <button class="btn btn-ghost btn-sm" id="exportCsv">Export CSV</button>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer">Import CSV<input type="file" accept=".csv,text/csv" id="importCsv" hidden></label>
+      </div></div>
     <div class="kpis">
       <div class="kpi"><b id="kCases">0</b><span>cases logged</span></div>
       <div class="kpi"><b id="kInf">—</b><span>infection agreement</span></div>
@@ -545,6 +549,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     </div>
     <ul class="log-list" id="logList"></ul>
     <p id="logEmpty" class="small" style="margin-top:8px;color:var(--faint)">No cases logged yet.</p>
+    <div class="note" id="logStorage" style="margin-top:10px"></div>
   </section>
 
   <!-- MODEL CARD -->
@@ -1884,6 +1889,7 @@ function renderLog(){
   $('kInf').textContent = withCult.length ? `${Math.round(100*agree/withCult.length)} %` : '—';
   const cult = log.filter(r => r.culture_positive !== null);
   $('kCult').textContent = cult.length ? `${cult.filter(r => r.culture_positive).length}/${cult.length}` : '—';
+  renderStorage();
   $('logList').innerHTML = log.slice(0, 8).map(r => {
     const a = (r.culture_positive === null || r.p_infection === null) ? '' : `<span class="agree ${(r.p_infection>=0.5)===r.culture_positive?'':'no'}">${(r.p_infection>=0.5)===r.culture_positive?'agrees with C&S':'disagrees with C&S'}</span>`;
     const pi = r.disease === 'pressure injury';
@@ -1896,6 +1902,106 @@ function renderLog(){
     return `<li><img src="${r.thumb}" alt=""><div class="who"><b>${head}</b><small>${r.image} · ${new Date(r.when).toLocaleString()} · ${tail}</small></div>${a}</li>`;
   }).join('');
 }
+/* ═══════════════════════════ getting the log out, and back in ═══════════════════════════
+   The case log lives in this browser's localStorage, which is a weak place to keep a year of
+   data collection: clearing site data destroys it, the quota is a few megabytes, and each record
+   carries a 96 px thumbnail. So there are three things here rather than one export button.
+
+   "Copy for Sheets" puts the log on the clipboard as tab-separated text, which pastes straight
+   into a Google Sheet. Deliberately a copy rather than an automatic push: the app's strongest
+   claim is that the photograph never leaves the device, and a background POST to a consumer
+   cloud account would quietly end that. A paste is the clinician choosing, each time, what
+   leaves — and the thumbnails are left out of it, because a 96 px wound photograph pasted into a
+   spreadsheet is still a patient image. */
+const LOG_COLS = ['id','when','image','disease','model','ai_label','p_severe','p_infection','probs','wound_area_frac','roi_source','roi_source_px','tissue',
+                  'gt_grade','gt_stage','gt_wagner','probe_to_bone','specimen_date','organisms','sensitivity_notes','culture_positive',
+                  'npiap_stage','blanching','deepest_structure','body_site','pi_date','outcome','pi_notes'];
+const cellText = v => String(Array.isArray(v) ? v.join('; ') : (v && typeof v === 'object' ? JSON.stringify(v) : (v ?? '')));
+
+$('copyTsv').onclick = async () => {
+  const log = loadLog(); if (!log.length) return toast('Nothing to copy');
+  const tsv = [LOG_COLS.join('\t')]
+    .concat(log.map(r => LOG_COLS.map(c => cellText(r[c]).replace(/[\t\r\n]+/g, ' ')).join('\t'))).join('\n');
+  try {
+    await navigator.clipboard.writeText(tsv);
+    toast(`${log.length} case${log.length === 1 ? '' : 's'} copied — paste into your sheet`);
+    markExported();
+  } catch (e) {
+    // clipboard access is refused outside a secure context, so fall back to a selectable box
+    const ta = document.createElement('textarea');
+    ta.value = tsv; ta.style.cssText = 'position:fixed;inset:10% 5%;width:90%;height:70%;z-index:99;font-size:12px';
+    document.body.appendChild(ta); ta.select();
+    toast('Copy blocked by the browser — select all in the box and copy, then tap it to close');
+    ta.onclick = () => ta.remove();
+  }
+};
+
+/* Import expects the file this app exported. Rows are matched on id, so re-importing the same
+   export does not duplicate anything. */
+function parseCsv(text){
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    if (q){
+      if (c === '"' && text[i+1] === '"'){ cell += '"'; i++; }
+      else if (c === '"') q = false;
+      else cell += c;
+    } else if (c === '"') q = true;
+    else if (c === ','){ row.push(cell); cell = ''; }
+    else if (c === '\n'){ row.push(cell); rows.push(row); row = []; cell = ''; }
+    else if (c !== '\r') cell += c;
+  }
+  if (cell.length || row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r => r.length > 1);
+}
+$('importCsv').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rows = parseCsv(await f.text());
+  if (rows.length < 2) return toast('That file has no rows');
+  const head = rows[0].map(h => h.trim());
+  if (!head.includes('id') || !head.includes('when')) return toast('That does not look like a case log exported from this app');
+  const log = loadLog(), have = new Set(log.map(r => String(r.id)));
+  let added = 0;
+  rows.slice(1).forEach(r => {
+    const rec = {};
+    head.forEach((h, i) => rec[h] = r[i] ?? '');
+    if (!rec.id || have.has(String(rec.id))) return;
+    ['p_severe','p_infection','wound_area_frac','roi_source_px'].forEach(k => rec[k] = rec[k] === '' ? null : +rec[k]);
+    rec.culture_positive = rec.culture_positive === '' ? null : rec.culture_positive === 'true';
+    rec.organisms = rec.organisms ? rec.organisms.split(';').map(x => x.trim()).filter(Boolean) : [];
+    ['probs','tissue'].forEach(k => { try { rec[k] = rec[k] ? JSON.parse(rec[k]) : null; } catch(_){ rec[k] = null; } });
+    rec.thumb = rec.thumb || '';          // exports carry no thumbnail, so imported rows show none
+    log.push(rec); have.add(String(rec.id)); added++;
+  });
+  log.sort((a, b) => (b.id || 0) - (a.id || 0));
+  saveLog(log); renderLog();
+  toast(added ? `${added} case${added === 1 ? '' : 's'} imported` : 'Every row was already in the log');
+  e.target.value = '';
+};
+
+/* Say plainly where the log lives and how close it is to the limit, because silence here means
+   a year of collection disappears with a cleared browser and no warning. */
+function renderStorage(){
+  const log = loadLog();
+  const bytes = (() => { try { return (localStorage.getItem(LOG_KEY) || '').length; } catch(e){ return 0; } })();
+  const mb = bytes / 1048576, pct = Math.min(100, Math.round(mb / 5 * 100));
+  const el = $('logStorage');
+  if (!log.length){
+    el.className = 'note';
+    el.innerHTML = 'Cases are stored in this browser only. Nothing is sent anywhere. Export or copy them out regularly — clearing the browser’s site data deletes them, and there is no copy elsewhere.';
+    return;
+  }
+  const last = +(localStorage.getItem(LOG_KEY + '_exported') || 0);
+  const since = last ? Math.floor((Date.now() - last) / 86400000) : null;
+  const warn = pct >= 70 || since === null || since > 7;
+  el.className = 'note' + (pct >= 85 ? ' rose' : (warn ? '' : ' teal'));
+  el.innerHTML = `<b>${log.length} case${log.length === 1 ? '' : 's'} in this browser</b>, about ${mb.toFixed(2)} MB of a roughly 5 MB limit (${pct} %).`
+    + (pct >= 70 ? ' <b>Approaching the limit</b> — once it is reached a saved case is silently lost. Export, then clear older cases.' : '')
+    + (last ? ` Last exported ${since === 0 ? 'today' : since + ' day' + (since === 1 ? '' : 's') + ' ago'}.` : ' <b>Never exported.</b>')
+    + ' Thumbnails are the bulk of this, and they are not included in the export or the copy.';
+}
+const markExported = () => { try { localStorage.setItem(LOG_KEY + '_exported', String(Date.now())); } catch(e){} renderStorage(); };
+
 $('exportCsv').onclick = () => {
   const log = loadLog(); if (!log.length) return toast('Nothing to export');
   const cols = ['id','when','image','disease','model','ai_label','p_severe','p_infection','probs','wound_area_frac','roi_source','roi_source_px','tissue',
@@ -1904,6 +2010,7 @@ $('exportCsv').onclick = () => {
   const esc = v => '"' + String(Array.isArray(v) ? v.join('; ') : (v && typeof v === 'object' ? JSON.stringify(v) : (v ?? ''))).replace(/"/g, '""') + '"';
   const csv = [cols.join(',')].concat(log.map(r => cols.map(c => esc(r[c])).join(','))).join('\n');
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'wound_vision_cases.csv'; a.click();
+  markExported();
 };
 renderLog();
 setDisease('dfu');

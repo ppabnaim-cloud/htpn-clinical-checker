@@ -86,6 +86,18 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .tissuelegend span{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .tissuelegend i{width:12px;height:12px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.15)}
 .tissuelegend b{color:var(--text);font-weight:600}
+.labwrap{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+@media(min-width:720px){.labwrap{grid-template-columns:260px minmax(0,1fr)}}
+.labimg{position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:1;max-width:100%}
+.labimg img{width:100%;height:100%;object-fit:contain;display:block}
+.labform .lab em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--faint);font-weight:400}
+.labnav{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.filmstrip{display:flex;gap:6px;overflow-x:auto;margin-top:14px;padding-bottom:4px}
+.filmstrip button{flex:none;width:58px;height:58px;border-radius:8px;overflow:hidden;border:2px solid var(--line);background:#000;position:relative;padding:0}
+.filmstrip button.on{border-color:var(--navy)}
+.filmstrip button.done{border-color:var(--teal)}
+.filmstrip img{width:100%;height:100%;object-fit:cover;display:block;opacity:.85}
+.filmstrip button.done::after{content:"\2713";position:absolute;right:2px;bottom:1px;font-size:11px;color:#fff;background:var(--teal);border-radius:3px;padding:0 3px;line-height:1.35}
 .findlist{display:flex;flex-direction:column;gap:6px}
 .find{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;background:var(--cloud);border-radius:9px;padding:9px 12px}
 .find .k{font-size:13.5px;color:var(--text)}
@@ -561,60 +573,60 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <!-- ═══════════════════════════ TRAIN TAB ═══════════════════════════ -->
 <div id="tab-train" class="hidden">
   <section class="card">
-    <div class="step"><span class="n">A</span><h3>Bring your labelled images</h3><span class="hint">class = folder name</span></div>
-    <p class="small" style="margin-bottom:10px">Organise images into one folder per class, for example <code>wagner_0 … wagner_5</code>, or <code>1A, 1B, 3B</code> for Texas, or <code>infected / not_infected</code>. The class name is read from the folder. Images stay on this device unless you choose Google Drive.</p>
+    <div class="step"><span class="n">A</span><h3>Add your images</h3><span class="hint">stay on this device</span></div>
+    <p class="small" style="margin-bottom:10px">Add as many images as you like in one go, then tick what each one shows in step B. Nothing is uploaded anywhere — the files stay in this browser. If you already keep them in folders named after the class, the second option reads those names and pre-fills the labels for you.</p>
     <div class="src-tabs">
-      <button class="on" data-src="folder">Upload folder</button>
-      <button data-src="classes">Add per class</button>
-      <button data-src="drive">Google Drive</button>
-      <button data-src="colab">Load Colab model</button>
+      <button class="on" data-src="images">Add images and tick labels</button>
+      <button data-src="folder">Upload a sorted folder</button>
     </div>
-    <div id="src-folder">
+    <div id="src-images">
+      <label class="capture-btn" style="padding:16px">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/></svg>
+        Choose images — select as many as you like
+        <input type="file" accept="image/*" id="poolInput" multiple hidden>
+      </label>
+      <p class="small" style="margin-top:6px">Works on every browser, including iPhone. Select a whole album at once if you want.</p>
+    </div>
+    <div id="src-folder" class="hidden">
       <label class="capture-btn" style="padding:16px">
         <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-        Choose a dataset folder (subfolders = classes)
+        Choose a folder whose subfolders are class names
         <input type="file" id="dirInput" webkitdirectory directory multiple hidden>
       </label>
-      <p class="small" style="margin-top:6px">Folder upload works on desktop browsers and most Android browsers. On iPhone use "Add per class".</p>
-    </div>
-    <div id="src-classes" class="hidden">
-      <div class="row2" style="margin-bottom:8px">
-        <div class="field"><label>Label set</label>
-          <select id="labelScheme">
-            <option value="wagner">Meggitt–Wagner grade (0–5)</option>
-            <option value="npiap">NPIAP pressure injury stage</option>
-            <option value="texasGrade">Texas grade (depth, 0–3)</option>
-            <option value="texasStage">Texas stage (infection / ischaemia, A–D)</option>
-            <option value="tissue">Wound-bed feature</option>
-            <option value="custom">Custom names</option>
-          </select></div>
-        <div class="field" style="display:flex;align-items:flex-end">
-          <button class="btn btn-ghost btn-sm" id="seedClasses" style="width:100%">Create a row for every class</button></div>
-      </div>
-      <div class="note" id="labelNote" style="margin:0 0 10px"></div>
-      <div class="class-list" id="classList"></div>
-      <button class="btn btn-ghost btn-sm" id="addClass" style="margin-top:8px">+ Add class</button>
-    </div>
-    <div id="src-drive" class="hidden">
-      <div class="note rose" style="margin:0 0 10px"><b>Data governance.</b> Your DrPH protocol commits to storing images on an institution‑hosted, password‑protected server under the PDPA 2010. Consumer Google Drive is not that. Use this option only for de‑identified images, and prefer the institutional server or the Colab notebook run under an institutional Google Workspace account.</div>
-      <div class="field"><label>Google OAuth client ID (Web application, from Google Cloud Console)</label><input id="gClientId" placeholder="123456789-abc.apps.googleusercontent.com"></div>
-      <div class="field"><label>Drive folder ID (the part after <code>/folders/</code> in the URL). Subfolders are classes.</label><input id="gFolderId" placeholder="1AbCdEfGhIjKlMnOpQrStUvWxYz"></div>
-      <div class="row2">
-        <div class="field"><label>Max images per class</label><input id="gMax" type="number" value="200" min="5"></div>
-        <div class="field" style="display:flex;align-items:flex-end"><button class="btn btn-teal" id="gConnect" style="width:100%">Connect &amp; import</button></div>
-      </div>
-      <p class="small">Setup once: Google Cloud Console → APIs &amp; Services → enable <b>Google Drive API</b> → Credentials → OAuth client ID (Web application) with this page's origin as an authorised JavaScript origin. Scope used: <code>drive.readonly</code>.</p>
-    </div>
-    <div id="src-colab" class="hidden">
-      <p class="small" style="margin-bottom:8px">Trained the full backbone on a GPU with <code>ml/DFU_finetune_colab.ipynb</code>? Select the exported files: <code>model.json</code>, the <code>.bin</code> shards and <code>classes.json</code>.</p>
-      <label class="capture-btn" style="padding:16px">
-        <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v3h16v-3"/></svg>
-        Select exported model files
-        <input type="file" id="colabInput" multiple hidden>
-      </label>
-      <div class="small" id="colabStatus" style="margin-top:8px"></div>
+      <p class="small" style="margin-top:6px">Subfolder names such as <code>wagner_2</code> or <code>npiap_3</code> are recognised and pre-fill the label; anything else is added unlabelled for you to tick. Folder upload needs a desktop or Android browser.</p>
     </div>
     <div class="small" id="dataSummary" style="margin-top:12px"></div>
+  </section>
+
+  <!-- B: tick what each image shows -->
+  <section class="card hidden" id="labelCard">
+    <div class="step"><span class="n">B</span><h3>Tick what each image shows</h3><span class="hint" id="labelProg">0 of 0 labelled</span></div>
+    <div class="labwrap">
+      <div class="labimg"><img id="labImg" alt="the image being labelled"><span class="badge" id="labName">—</span></div>
+      <div class="labform">
+        <span class="lab">Meggitt–Wagner grade <em>one only</em></span>
+        <div class="chips" id="labWagner"></div>
+        <span class="lab" style="margin-top:10px">NPIAP pressure injury stage <em>one only</em></span>
+        <div class="chips" id="labNpiap"></div>
+        <span class="lab" style="margin-top:10px">Present in this image <em>tick all that apply</em></span>
+        <div class="chips" id="labFeats"></div>
+        <div class="labnav">
+          <button class="btn btn-ghost btn-sm" id="labPrev">&larr; Previous</button>
+          <button class="btn btn-ghost btn-sm" id="labSkip">Skip</button>
+          <button class="btn btn-teal btn-sm" id="labNext">Save &amp; next unlabelled &rarr;</button>
+        </div>
+        <p class="small" id="labHint" style="margin-top:8px"></p>
+      </div>
+    </div>
+    <div class="filmstrip" id="labStrip"></div>
+  </section>
+
+  <!-- what the model should learn from those ticks -->
+  <section class="card hidden" id="targetCard">
+    <div class="step"><span class="n">C</span><h3>What should the model learn?</h3><span class="hint">supervised learning</span></div>
+    <p class="small" style="margin-bottom:8px">Your ticks are the supervision. Choose which of them the model should predict, and the images carrying that label become the training set. A feature is trained as present against absent, which is why every image needs a tick either way for that feature to be usable.</p>
+    <div class="field"><label>Train to predict</label><select id="trainTarget"></select></div>
+    <div class="note" id="targetNote" style="margin-top:8px"></div>
   </section>
 
   <!-- dataset readiness: counts per class against a target -->
@@ -733,7 +745,7 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
 });
 document.querySelectorAll('.src-tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.src-tabs button').forEach(x => x.classList.toggle('on', x === b));
-  ['folder','classes','drive','colab'].forEach(s => $('src-'+s).classList.toggle('hidden', s !== b.dataset.src));
+  ['images','folder'].forEach(s => $('src-'+s).classList.toggle('hidden', s !== b.dataset.src));
 });
 
 /* ═══════════════════════════ model loading ═══════════════════════════ */
@@ -1901,7 +1913,7 @@ function refreshData(){
   const rows = [...data.classes.entries()].filter(([, v]) => v.length);
   $('dataSummary').innerHTML = rows.length ? `<b>${rows.reduce((n, [, v]) => n + v.length, 0)} images in ${rows.length} classes:</b> ` + rows.map(([k, v]) => `${k} (${v.length})`).join(' · ') + (rows.some(([, v]) => v.length < 4) ? ' — each class needs at least 4 images.' : '') : '';
   $('trainBtn').disabled = !dataReady();
-  renderClassRows();
+  if ($('trainTarget') && $('trainTarget').options.length) describeTarget();
   renderReadiness();
 }
 /* ── dataset readiness ──
@@ -1966,146 +1978,143 @@ $('dirInput').onchange = e => {
   const files = [...e.target.files].filter(f => IMG_RE.test(f.name));
   const byClass = {};
   files.forEach(f => { const parts = (f.webkitRelativePath || f.name).split('/'); const cls = parts.length >= 3 ? parts[parts.length - 2] : (parts.length === 2 ? parts[0] : 'unlabelled'); (byClass[cls] = byClass[cls] || []).push({ file: f, name: f.name }); });
-  Object.entries(byClass).forEach(([k, v]) => addSamples(k, v));
+  /* A folder name that matches a known class pre-fills that tick; anything else is added
+     unlabelled rather than inventing a class nobody asked for. */
+  const items = [];
+  Object.entries(byClass).forEach(([k, v]) => {
+    const key = String(k).toLowerCase();
+    const w = (key.match(/(?:wagner|grade|^w|^g)[\s_-]*([0-5])(?![0-9])/) || [])[1] || null;
+    const np = (key.match(/(?:npiap|npuap|stage)[\s_-]*([1-4])(?![0-9])/) || [])[1]
+             || (/unstage/.test(key) ? 'U' : (/deep[\s_-]*tissue|dtpi/.test(key) ? 'D' : null));
+    const feats = FEAT_OPTS.map(([id]) => id).filter(id => key.includes(id.split('_')[0]));
+    v.forEach(it => items.push({ file: it.file, name: it.name, wagner: w, npiap: np, feats }));
+  });
+  addToPool(items);
   if (!files.length) toast('No image files found in that folder');
   else toast(`Loaded ${files.length} images from ${Object.keys(byClass).length} folders`);
 };
-/* ═══════════════════════════ label vocabularies ═══════════════════════════
-   Typing folder names by hand produces wagner2, Wagner_2 and "wagner 2" as three different
-   classes, and no amount of training survives that. Picking from a fixed list makes the
-   taxonomy explicit and the counts comparable between people.
+/* ═══════════════════════════ per-image labelling ═══════════════════════════
+   Sorting photographs into folders before uploading them is work done in the wrong place: it
+   needs a desktop, it cannot express two labels at once, and a mistake means moving files. So
+   the images arrive as one flat pool and the labels are ticked here, one image at a time.
 
-   Every set here is single-label: one image, one class, because that is what the browser
-   trainer's softmax head can learn. Wound-bed features are genuinely multi-label — a wound
-   can be sloughy AND have pus — so that set is offered as present/absent pairs, which is a
-   set of honest binary tasks rather than a dishonest multi-class one. */
-const LABEL_SETS = {
-  wagner: { name: 'Meggitt–Wagner grade',
-    note: 'One grade per image, assigned by the clinician before upload. Grade 0 is intact skin at risk, so those photographs contain no wound to segment and train a different task from the rest — keep them out unless you mean to build a risk model.',
-    items: [['wagner_0','0 · intact skin, at risk'],['wagner_1','1 · superficial ulcer'],['wagner_2','2 · deep to tendon or capsule'],
-            ['wagner_3','3 · deep with abscess or osteomyelitis'],['wagner_4','4 · localised gangrene'],['wagner_5','5 · extensive gangrene']] },
-  npiap: { name: 'NPIAP pressure injury stage',
-    note: 'Stage 1 and deep tissue injury cannot be established from a photograph — they need the blanching test — so a model trained on them is learning your examination, not the image. Collect them if you wish, but expect them to perform worst, and worst of all on darker skin.',
-    items: [['npiap_1','1 · non-blanchable erythema, intact skin'],['npiap_2','2 · partial thickness, exposed dermis'],
-            ['npiap_3','3 · full thickness, adipose visible'],['npiap_4','4 · muscle, tendon or bone exposed'],
-            ['npiap_unstageable','Unstageable · obscured by slough or eschar'],['npiap_dtpi','Deep tissue injury']] },
-  texasGrade: { name: 'University of Texas grade',
-    note: 'Depth only. Grade 3 turns on probing to bone or joint, which is an examination finding rather than an image one.',
-    items: [['texas_g0','0 · epithelialised, pre or post-ulcerative'],['texas_g1','1 · superficial, not to tendon or bone'],
-            ['texas_g2','2 · penetrates to tendon or capsule'],['texas_g3','3 · penetrates to bone or joint']] },
-  texasStage: { name: 'University of Texas stage',
-    note: 'Ischaemia is not visible in a photograph, so stages C and D are labelled from the vascular assessment, not the image. A model trained on them will be predicting some correlate of ischaemia, which is worth knowing before you believe it.',
-    items: [['texas_a','A · clean, no infection or ischaemia'],['texas_b','B · infected'],['texas_c','C · ischaemic'],['texas_d','D · infected and ischaemic']] },
-  tissue: { name: 'Wound-bed feature',
-    note: 'These are not mutually exclusive — one wound can be sloughy and have pus — so each is offered as a present/absent pair, giving several honest binary models rather than one dishonest multi-class one. Train one pair at a time. Note also that your own acquisition protocol irrigates and blots the wound dry, which removes pus before the photograph; collect a before-cleaning image too if you want that class to exist.',
-    items: [['granulation_yes','Granulation present'],['granulation_no','Granulation absent'],
-            ['slough_yes','Slough present'],['slough_no','Slough absent'],
-            ['necrosis_yes','Necrosis present'],['necrosis_no','Necrosis absent'],
-            ['epithelialising_yes','Epithelialising present'],['epithelialising_no','Epithelialising absent'],
-            ['periwound_erythema_yes','Peri-wound erythema present'],['periwound_erythema_no','Peri-wound erythema absent'],
-            ['dry_gangrene_yes','Dry gangrene present'],['dry_gangrene_no','Dry gangrene absent'],
-            ['bleeding_yes','Bleeding present'],['bleeding_no','Bleeding absent'],
-            ['abscess_yes','Abscess present'],['abscess_no','Abscess absent'],
-            ['pus_yes','Pus present'],['pus_no','Pus absent']] },
-  custom: { name: 'Custom names', note: 'Type your own class names. Keep them consistent: wagner_2 and Wagner 2 are two different classes to the trainer.', items: null }
-};
-const labelSet = () => LABEL_SETS[$('labelScheme').value] || LABEL_SETS.custom;
+   Three groups per image. Wagner and NPIAP are single-choice because a wound has one grade and
+   one stage. The wound-bed features are multiple-choice because a wound genuinely has several
+   at once — that is the point of ticking rather than filing.
 
-$('labelScheme').onchange = () => { $('labelNote').textContent = labelSet().note; renderClassRows(); };
-$('seedClasses').onclick = () => {
-  const set = labelSet();
-  if (!set.items) return toast('Custom names have no fixed list — use “+ Add class”');
-  let added = 0;
-  set.items.forEach(([id]) => { if (!data.classes.has(id)){ data.classes.set(id, []); added++; } });
-  refreshData();
-  toast(added ? `${added} class rows ready — add images to each` : 'Those rows already exist');
-};
+   The pool is the source of truth. data.classes is derived from it for whichever label the model
+   is being asked to predict, so the trainer and the readiness dashboard need no changes: they
+   still see classes and counts, and a feature becomes two classes, present and absent.        */
+const WAGNER_OPTS = [['0','0 · intact skin'],['1','1 · superficial'],['2','2 · to tendon or capsule'],
+                     ['3','3 · abscess or osteomyelitis'],['4','4 · localised gangrene'],['5','5 · extensive gangrene']];
+const NPIAP_OPTS  = [['1','1 · non-blanchable erythema'],['2','2 · exposed dermis'],['3','3 · adipose visible'],
+                     ['4','4 · muscle, tendon or bone'],['U','Unstageable'],['D','Deep tissue injury']];
+const FEAT_OPTS   = [['granulation','Granulation'],['slough','Slough'],['necrosis','Necrosis'],
+                     ['epithelialising','Epithelialising'],['periwound_erythema','Peri-wound erythema'],
+                     ['dry_gangrene','Dry gangrene'],['bleeding','Bleeding'],['abscess','Abscess'],['pus','Pus']];
+let pool = [], cur = 0;
 
-function renderClassRows(){
-  const list = $('classList'); list.innerHTML = '';
-  const names = [...data.classes.keys()]; if (!names.length) names.push('');
-  const set = labelSet();
-  names.forEach(name => {
-    const row = document.createElement('div'); row.className = 'class-row';
-    let inp;
-    const rename = v => { const items = data.classes.get(name) || []; data.classes.delete(name);
-                          if (v && v.trim()) addSamples(v.trim(), items); else refreshData(); };
-    if (set.items){
-      inp = document.createElement('select');
-      inp.innerHTML = '<option value="">choose a class…</option>'
-        + set.items.map(([id, lbl]) => `<option value="${id}">${lbl}</option>`).join('')
-        + (set.items.some(([id]) => id === name) || !name ? '' : `<option value="${name}" selected>${name} (not in this set)</option>`);
-      inp.value = name || '';
-      inp.onchange = () => rename(inp.value);
-    } else {
-      inp = document.createElement('input'); inp.placeholder = 'class name, e.g. wagner_2'; inp.value = name;
-      inp.onchange = () => rename(inp.value);
-    }
-    const cnt = document.createElement('span'); cnt.className = 'cnt'; cnt.textContent = `${(data.classes.get(name) || []).length} images`;
-    const add = document.createElement('label'); add.className = 'addbtn'; add.textContent = '+ images';
-    const fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*'; fi.multiple = true; fi.hidden = true;
-    fi.onchange = () => { const cls = (inp.value || '').trim(); if (!cls) return toast('Choose the class first'); addSamples(cls, [...fi.files].map(f => ({ file: f, name: f.name }))); };
-    add.appendChild(fi);
-    row.append(inp, cnt, add);
-    const th = document.createElement('div'); th.className = 'thumbs';
-    (data.classes.get(name) || []).slice(0, 12).forEach(s => { const im = document.createElement('img'); im.src = s.url || (s.url = URL.createObjectURL(s.file)); th.appendChild(im); });
-    if (th.children.length) row.appendChild(th);
-    list.appendChild(row);
-  });
+const labelled = it => it.wagner || it.npiap || it.feats.size > 0;
+
+function addToPool(items){
+  items.forEach(it => pool.push({ file: it.file, name: it.name, url: null,
+                                  wagner: it.wagner || null, npiap: it.npiap || null,
+                                  feats: new Set(it.feats || []) }));
+  const firstUnlabelled = pool.findIndex(it => !labelled(it));
+  cur = firstUnlabelled < 0 ? 0 : firstUnlabelled;
+  projectClasses(); renderLabeller();
 }
-$('addClass').onclick = () => { const n = `class_${data.classes.size + 1}`; data.classes.set(n, []); renderClassRows(); };
-$('labelNote').textContent = LABEL_SETS.wagner.note;
-renderClassRows(); renderReadiness();
+const poolUrl = it => it.url || (it.url = URL.createObjectURL(it.file));
+
+/* Derive the training classes from the ticks, for the label the model is being asked to predict. */
+function projectClasses(){
+  data.classes = new Map();
+  const t = ($('trainTarget') && $('trainTarget').value) || 'wagner';
+  const put = (cls, it) => { if (!data.classes.has(cls)) data.classes.set(cls, []); data.classes.get(cls).push(it); };
+  pool.forEach(it => {
+    if (t === 'wagner'){ if (it.wagner) put('wagner_' + it.wagner, it); }
+    else if (t === 'npiap'){ if (it.npiap) put('npiap_' + it.npiap, it); }
+    else if (t.startsWith('feat:')){
+      const f = t.slice(5);
+      // an image counts as absent only if it was labelled at all; silence is not a negative
+      if (it.feats.has(f)) put(f + '_present', it);
+      else if (labelled(it)) put(f + '_absent', it);
+    }
+  });
+  refreshData();
+}
+
+function fillTargets(){
+  const sel = $('trainTarget'); if (!sel) return;
+  const keep = sel.value;
+  sel.innerHTML = '<option value="wagner">Meggitt–Wagner grade (0–5)</option>'
+    + '<option value="npiap">NPIAP pressure injury stage</option>'
+    + FEAT_OPTS.map(([id, l]) => `<option value="feat:${id}">${l} — present or absent</option>`).join('');
+  if (keep) sel.value = keep;
+}
+
+function renderLabeller(){
+  $('labelCard').classList.toggle('hidden', !pool.length);
+  $('targetCard').classList.toggle('hidden', !pool.length);
+  if (!pool.length) return;
+  cur = Math.max(0, Math.min(cur, pool.length - 1));
+  const it = pool[cur];
+  $('labImg').src = poolUrl(it);
+  $('labName').textContent = it.name;
+  const done = pool.filter(labelled).length;
+  $('labelProg').textContent = `${done} of ${pool.length} labelled`;
+
+  const chips = (host, opts, isOn, onPick) => {
+    $(host).innerHTML = opts.map(([v, l]) => `<button class="chip${isOn(v) ? ' on' : ''}" data-v="${v}">${l}</button>`).join('');
+    $(host).querySelectorAll('.chip').forEach(b => b.onclick = () => { onPick(b.dataset.v); projectClasses(); renderLabeller(); });
+  };
+  chips('labWagner', WAGNER_OPTS, v => it.wagner === v, v => { it.wagner = it.wagner === v ? null : v; });
+  chips('labNpiap',  NPIAP_OPTS,  v => it.npiap === v,  v => { it.npiap  = it.npiap  === v ? null : v; });
+  chips('labFeats',  FEAT_OPTS,   v => it.feats.has(v), v => { it.feats.has(v) ? it.feats.delete(v) : it.feats.add(v); });
+
+  $('labHint').textContent = labelled(it)
+    ? 'Ticked. A wound is either a foot ulcer or a pressure injury, so it normally carries a Wagner grade or an NPIAP stage, not both.'
+    : 'Nothing ticked yet. An image with no ticks is ignored by training — it is not treated as a negative.';
+
+  const strip = $('labStrip');
+  strip.innerHTML = pool.map((x, i) =>
+    `<button data-i="${i}" class="${i === cur ? 'on' : ''}${labelled(x) ? ' done' : ''}" title="${x.name}"><img src="${poolUrl(x)}" alt=""></button>`).join('');
+  strip.querySelectorAll('button').forEach(b => b.onclick = () => { cur = +b.dataset.i; renderLabeller(); });
+  const active = strip.querySelector('button.on'); if (active) active.scrollIntoView({block:'nearest', inline:'center'});
+}
+
+$('poolInput') && ($('poolInput').onchange = e => {
+  const files = [...e.target.files]; if (!files.length) return;
+  addToPool(files.map(f => ({ file: f, name: f.name })));
+  toast(`${files.length} image${files.length === 1 ? '' : 's'} added — tick what each one shows`);
+  $('labelCard').scrollIntoView({ behavior:'smooth', block:'start' });
+});
+$('labPrev') && ($('labPrev').onclick = () => { cur = (cur - 1 + pool.length) % pool.length; renderLabeller(); });
+$('labSkip') && ($('labSkip').onclick = () => { cur = (cur + 1) % pool.length; renderLabeller(); });
+$('labNext') && ($('labNext').onclick = () => {
+  const next = pool.findIndex((x, i) => i > cur && !labelled(x));
+  const wrap = next < 0 ? pool.findIndex(x => !labelled(x)) : next;
+  if (wrap < 0) return toast('Every image is labelled');
+  cur = wrap; renderLabeller();
+});
+$('trainTarget') && ($('trainTarget').onchange = () => { projectClasses(); describeTarget(); });
+
+function describeTarget(){
+  const t = $('trainTarget').value;
+  const rows = [...data.classes.entries()].filter(([, v]) => v.length);
+  const n = rows.reduce((a, [, v]) => a + v.length, 0);
+  const detail = rows.length ? rows.map(([k, v]) => `${k} (${v.length})`).join(' · ') : 'nothing yet';
+  let note = t.startsWith('feat:')
+    ? `Training <b>${t.slice(5).replace(/_/g, ' ')}</b> as present against absent. Only images you have ticked something on count as absent; an untouched image is left out entirely, because silence is not a negative. `
+    : `Training the <b>${t === 'wagner' ? 'Wagner grade' : 'NPIAP stage'}</b> as one class per grade. `;
+  note += `<br><b>${n} image${n === 1 ? '' : 's'}</b> usable for this label: ${detail}.`;
+  if (rows.length < 2) note += ' <br>At least two classes with four images each are needed before training can start.';
+  $('targetNote').innerHTML = note;
+}
+
+fillTargets(); describeTarget(); renderLabeller(); renderReadiness();
 
 /* ── Google Drive import (Drive API v3 + Google Identity Services) ── */
-function loadScript(src){ return new Promise((res, rej) => { if (document.querySelector(`script[src="${src}"]`)) return res(); const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('Could not load ' + src)); document.head.appendChild(s); }); }
-$('gConnect').onclick = async () => {
-  const clientId = $('gClientId').value.trim(), folderId = $('gFolderId').value.trim(), max = +$('gMax').value || 200;
-  if (!clientId || !folderId) return toast('Client ID and folder ID are both required');
-  try {
-    await loadScript('https://accounts.google.com/gsi/client');
-    const token = await new Promise((res, rej) => {
-      const tc = google.accounts.oauth2.initTokenClient({ client_id: clientId, scope: 'https://www.googleapis.com/auth/drive.readonly', callback: r => r.access_token ? res(r.access_token) : rej(new Error(r.error || 'no token')) });
-      tc.requestAccessToken();
-    });
-    const api = async (path, params) => { const u = new URL('https://www.googleapis.com/drive/v3/' + path); Object.entries(params || {}).forEach(([k, v]) => u.searchParams.set(k, v)); const r = await fetch(u, { headers: { Authorization: 'Bearer ' + token } }); if (!r.ok) throw new Error(`Drive API ${r.status}: ${await r.text()}`); return r; };
-    const listAll = async q => { let files = [], pageToken; do { const j = await (await api('files', { q, fields: 'nextPageToken,files(id,name,mimeType)', pageSize: 1000, pageToken: pageToken || '', supportsAllDrives: true, includeItemsFromAllDrives: true })).json(); files.push(...j.files); pageToken = j.nextPageToken; } while (pageToken); return files; };
-    const folders = await listAll(`'${folderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
-    if (!folders.length) return toast('No subfolders found: each class must be a subfolder');
-    let total = 0;
-    for (const f of folders){
-      const imgs = (await listAll(`'${f.id}' in parents and mimeType contains 'image/' and trashed=false`)).slice(0, max);
-      const items = [];
-      for (const im of imgs){ $('dataSummary').textContent = `Downloading ${f.name}: ${items.length + 1}/${imgs.length}…`; const blob = await (await api(`files/${im.id}`, { alt: 'media', supportsAllDrives: true })).blob(); items.push({ file: blob, name: im.name }); }
-      addSamples(f.name, items); total += items.length;
-    }
-    toast(`Imported ${total} images from ${folders.length} Drive folders`);
-  } catch(e){ console.error(e); toast('Drive import failed: ' + e.message); }
-};
-
-/* ── Colab-exported full model ── */
-$('colabInput').onchange = async e => {
-  const files = [...e.target.files];
-  const json = files.find(f => /model\.json$/i.test(f.name)), bins = files.filter(f => /\.bin$/i.test(f.name)), cls = files.find(f => /classes\.json$/i.test(f.name));
-  if (!json || !bins.length) return $('colabStatus').textContent = 'Need model.json and its .bin shard(s).';
-  try {
-    $('colabStatus').textContent = 'Loading…';
-    const meta = cls ? JSON.parse(await cls.text()) : {};
-    const model = await tf.loadLayersModel(tf.io.browserFiles([json, ...bins]));
-    const classes = meta.classes || Array.from({ length: model.outputs[0].shape[1] }, (_, i) => 'class_' + i);
-    const gradLayer = meta.gradcam_layer || guessGradLayer(model);
-    const { conv, tail } = splitAt(model, gradLayer);
-    const entry = { kind: 'full', name: meta.name || `Colab model (${meta.backbone || 'custom'})`, classes, conv, tail, inputRange: meta.input_range || '0-255', scheme: meta.scheme || guessScheme(classes), metrics: meta.metrics || null, when: new Date().toISOString() };
-    registry[entry.name] = entry; setActive(entry);
-    $('colabStatus').textContent = `Loaded ${entry.name}: ${classes.length} classes (${classes.join(', ')}), Grad-CAM on ${gradLayer}. Now active in Assess.`;
-    toast('Colab model active');
-  } catch(err){ console.error(err); $('colabStatus').textContent = 'Failed: ' + err.message; }
-};
-function guessGradLayer(model){ for (let i = model.layers.length - 1; i >= 0; i--){ const s = model.layers[i].outputShape; if (Array.isArray(s) && s.length === 4) return model.layers[i].name; } throw new Error('no 4-D layer found for Grad-CAM'); }
-function guessScheme(classes){ if (classes.every(c => wagnerOf(c) !== null)) return 'wagner'; if (classes.every(c => texasOf(c))) return 'texas'; return 'custom'; }
-
-/* ═══════════════════════════ TRAIN: embeddings + head ═══════════════════════════ */
-const log = (m, reset) => { const el = $('trainLog'); el.textContent = (reset ? '' : el.textContent + '\n') + m; el.scrollTop = el.scrollHeight; };
 function loadImg(item){ return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = item.url || (item.url = URL.createObjectURL(item.file)); }); }
 async function embed(img, flips){
   /* returns Float32Array[] of 1280-d embeddings (original + optional flips) */

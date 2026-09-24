@@ -186,8 +186,6 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .rung .src{display:block;margin-top:5px;font-size:8.5px;letter-spacing:.04em;text-transform:uppercase;opacity:.85}
 .rung.exam{background:repeating-linear-gradient(135deg,var(--cloud),var(--cloud) 6px,#e4ebf3 6px,#e4ebf3 12px)}
 .rung.exam.hit{background:var(--navy-mid)}
-#npiapLadder{grid-template-columns:repeat(3,1fr)}
-@media(min-width:620px){#npiapLadder{grid-template-columns:repeat(6,1fr)}}
 .class-out{display:flex;align-items:center;gap:14px;margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--navy);color:#fff}
 .class-out .big{font-family:var(--serif);font-size:40px;line-height:1;white-space:nowrap}
 .class-out .desc{font-size:12.5px;opacity:.85}
@@ -458,11 +456,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
         <h4>Meggitt–Wagner classification</h4>
         <div class="ladder" id="ladder"></div>
       </div>
-      <div class="wagner hidden" id="npiapPanel">
-        <h4>NPIAP pressure injury staging — tap the stage you assign</h4>
-        <div class="ladder" id="npiapLadder"></div>
-        <p class="small" id="npiapNote" style="margin-top:8px"></p>
-      </div>
+
       <div class="class-out">
         <div class="big" id="classBig">—</div>
         <div class="desc" id="classDesc"></div>
@@ -1367,26 +1361,26 @@ let answers = { dfu:{}, pi:{} };
 
 /* Wagner, from the findings that define it. */
 function ruleWagner(a){
-  const need = [];
-  if (a.gangrene === 'extensive') return { label:'Wagner 5', why:'Extensive gangrene of the foot.', need };
-  if (a.gangrene === 'local')     return { label:'Wagner 4', why:'Localised gangrene.', need };
+  const need = [], notes = [];
+  if (a.gangrene === 'extensive') return { label:'Wagner 5', why:'Extensive gangrene of the foot.', need , notes };
+  if (a.gangrene === 'local')     return { label:'Wagner 4', why:'Localised gangrene.', need , notes };
   if (!a.gangrene) need.push('gangrene');
   if (a.abscess === 'yes' || a.ptb === 'pos')
     return { label:'Wagner 3', why: a.abscess === 'yes' ? 'Deep ulcer with abscess, purulent collection or confirmed osteomyelitis.'
-                                                        : 'Probe-to-bone positive, which is the bedside finding for osteomyelitis.', need };
-  if (a.ulcer === 'no') return { label:'Wagner 0', why:'No break in the skin; an at-risk foot rather than an ulcer.', need };
-  if (!a.ulcer) { need.push('a break in the skin'); return { label:null, why:'', need }; }
+                                                        : 'Probe-to-bone positive, which is the bedside finding for osteomyelitis.', need , notes };
+  if (a.ulcer === 'no') return { label:'Wagner 0', why:'No break in the skin; an at-risk foot rather than an ulcer.', need , notes };
+  if (!a.ulcer) { need.push('a break in the skin'); return { label:null, why:'', need , notes }; }
   if (a.depth === 'tendon' || a.depth === 'bone')
-    return { label:'Wagner 2', why:'Ulcer penetrating to tendon, capsule or joint, with no abscess or osteomyelitis recorded.', need:need.concat(a.abscess?[]:['abscess or osteomyelitis']) };
+    return { label:'Wagner 2', why:'Ulcer penetrating to tendon, capsule or joint, with no abscess or osteomyelitis recorded.', need:need.concat(a.abscess?[]:['abscess or osteomyelitis']) , notes };
   if (a.depth === 'superficial')
-    return { label:'Wagner 1', why:'Superficial ulcer, not reaching tendon, capsule or bone.', need:need.concat(a.abscess?[]:['abscess or osteomyelitis']) };
+    return { label:'Wagner 1', why:'Superficial ulcer, not reaching tendon, capsule or bone.', need:need.concat(a.abscess?[]:['abscess or osteomyelitis']) , notes };
   need.push('depth on probing');
-  return { label:null, why:'', need };
+  return { label:null, why:'', need , notes };
 }
 
 /* Texas: grade from depth, stage from infection and ischaemia. Both axes are required. */
 function ruleTexas(a){
-  const need = [];
+  const need = [], notes = [];
   let g = null;
   if (a.ulcer === 'no') g = '0';
   else if (a.depth === 'superficial') g = '1';
@@ -1400,29 +1394,50 @@ function ruleTexas(a){
     if (!a.infection) need.push('clinical infection');
     if (!a.ischaemia || a.ischaemia === 'unk') need.push('perfusion');
   }
-  if (g === null || st === null) return { label:null, why:'', need };
+  if (g === null || st === null) return { label:null, why:'', need , notes };
   const gd = { '0':'pre or post-ulcerative, fully epithelialised', '1':'superficial', '2':'penetrating to tendon or capsule', '3':'penetrating to bone or joint' }[g];
   const sd = { A:'no infection or ischaemia', B:'infected', C:'ischaemic', D:'infected and ischaemic' }[st];
   return { label:`Texas ${g}${st}`, why:`Grade ${g}, ${gd}; stage ${st}, ${sd}.`, need };
 }
 
-/* NPIAP 2016 staging. Order matters: the definitions are not independent. */
+/* NPIAP 2016 staging. Precedence is the whole difficulty, and getting it wrong is easy: the
+   definitions are not independent, and one clause overrides several others.
+
+   "If necrotic tissue, subcutaneous tissue, granulation tissue, fascia, muscle or other
+   underlying structures are visible, this indicates a full thickness pressure injury
+   (Unstageable, Stage 3 or Stage 4)." So a visible deep structure settles the stage even when
+   the surrounding skin also shows the deep-red discolouration of a deep tissue injury. An
+   earlier version of this rule tested the discolouration first and returned "deep tissue
+   injury" for a wound with exposed bone, which is wrong. */
 function ruleNpiap(a){
-  const need = [];
-  if (a.persist === 'yes') return { label:'Deep tissue injury', why:'Persistent non-blanchable deep red, maroon or purple discolouration, or a blood-filled blister.', need };
+  const need = [], notes = [];
+  if (a.blanch === 'yes' && a.persist === 'yes')
+    notes.push('Erythema that blanches and a persistently non-blanchable discolouration are contradictory findings — check which one you mean.');
+
+  // full-thickness findings first: they override the deep tissue appearance
+  if (a.obscured === 'yes')
+    return { label:'Unstageable', why:'Full-thickness loss whose depth cannot be confirmed because slough or eschar obscures the base.', need, notes };
+  if (a.deepest === 'deep')
+    return { label:'NPIAP stage 4', why:'Muscle, tendon, cartilage or bone exposed or directly palpable. A visible deep structure makes this full thickness whatever the surrounding skin looks like.', need, notes };
+  if (a.deepest === 'adipose')
+    return { label:'NPIAP stage 3', why:'Full-thickness loss with adipose or fascia visible and no deeper structure exposed.', need, notes };
+
   if (a.intact === 'yes'){
-    if (a.blanch === 'no')  return { label:'NPIAP stage 1', why:'Intact skin with non-blanchable erythema.', need };
-    if (a.blanch === 'yes') return { label:'Not a pressure injury by stage', why:'Erythema that blanches is not a pressure injury; reassess and offload.', need };
-    need.push('the blanching test'); return { label:null, why:'', need };
+    if (a.persist === 'yes') return { label:'Deep tissue injury', why:'Intact skin with persistent non-blanchable deep red, maroon or purple discolouration.', need, notes };
+    if (a.blanch === 'no')   return { label:'NPIAP stage 1', why:'Intact skin with non-blanchable erythema and no deeper involvement.', need, notes };
+    if (a.blanch === 'yes')  return { label:'Not a pressure injury by stage', why:'Erythema that blanches is not a pressure injury. Offload and reassess.', need, notes };
+    need.push('the blanching test'); return { label:null, why:'', need, notes };
   }
-  if (!a.intact){ need.push('whether the skin is intact'); return { label:null, why:'', need }; }
-  if (a.obscured === 'yes') return { label:'Unstageable', why:'Full-thickness loss whose depth cannot be confirmed because slough or eschar obscures the base.', need };
-  if (!a.obscured){ need.push('whether slough or eschar obscures the base'); return { label:null, why:'', need }; }
-  if (a.deepest === 'deep')    return { label:'NPIAP stage 4', why:'Muscle, tendon, cartilage or bone exposed or directly palpable.', need };
-  if (a.deepest === 'adipose') return { label:'NPIAP stage 3', why:'Full-thickness loss with adipose or fascia visible, and no deeper structure exposed.', need };
-  if (a.deepest === 'dermis')  return { label:'NPIAP stage 2', why:'Partial-thickness loss with exposed dermis and no adipose visible.', need };
+  if (!a.intact){ need.push('whether the skin is intact'); return { label:null, why:'', need, notes }; }
+
+  // skin broken, nothing deeper than dermis seen
+  if (a.deepest === 'dermis')
+    return a.persist === 'yes'
+      ? { label:'Deep tissue injury', why:'Epidermal separation revealing a dark wound bed or a blood-filled blister, with no deeper structure visible.', need, notes }
+      : { label:'NPIAP stage 2', why:'Partial-thickness loss with exposed dermis, a viable pink or red bed, and no adipose visible.', need, notes };
+  if (!a.obscured) need.push('whether slough or eschar obscures the base');
   need.push('the deepest structure seen or palpated');
-  return { label:null, why:'', need };
+  return { label:null, why:'', need, notes };
 }
 
 /* The rows the photograph can fill in. Measured, model and colour-rule findings are separated,
@@ -1486,6 +1501,12 @@ function renderDecide(){
     renderDecide();
   });
 
+  if (DISEASE === 'pi'){
+    // a settled stage is the clinician's own conclusion, so it prefills the ground-truth field
+    const r = ruleNpiap(a), map = { 'NPIAP stage 1':'1','NPIAP stage 2':'2','NPIAP stage 3':'3','NPIAP stage 4':'4',
+                                    'Unstageable':'Unstageable','Deep tissue injury':'Deep tissue injury' };
+    if ($('gtNpiap')) $('gtNpiap').value = map[r.label] || '';
+  }
   const rules = DISEASE === 'pi' ? [['NPIAP stage', ruleNpiap(a)]]
                                  : [['Meggitt–Wagner', ruleWagner(a)], ['University of Texas', ruleTexas(a)]];
   $('ruleOut').innerHTML = rules.map(([name, r]) => {
@@ -1493,6 +1514,7 @@ function renderDecide(){
     return `<div class="rule${r.label ? '' : ' part'}">
       <div class="big">${r.label || name}</div>
       ${r.why ? `<div class="why">${r.why}</div>` : `<div class="why">Not yet determined — this is a definition, so it needs the findings it is defined by.</div>`}
+      ${(r.notes || []).map(n => `<div class="need">${n}</div>`).join('')}
       ${unresolved.length ? `<div class="need">Still needed: ${unresolved.join(', ')}.</div>`
         : `<div class="why" style="opacity:.7">Every finding this definition requires has been answered.</div>`}
     </div>`;
@@ -1509,53 +1531,37 @@ function renderDecide(){
    no camera can record: whether erythema blanches under finger pressure, whether muscle or bone is
    directly palpable, and whether a discolouration persists. Marking them is the same discipline the
    Texas ischaemia axis already follows — the model claims only what the modality supports.        */
-let DISEASE = 'dfu', npiapPick = null;
+let DISEASE = 'dfu';
 
-const NPIAP = [
-  { id:'1', name:'Stage 1', short:'Non-blanchable erythema, intact skin', from:'exam',
-    def:'Intact skin with non-blanchable erythema over a localised area.',
-    why:'Non-blanchable means the redness does not fade under finger pressure. A photograph cannot show that, and in darker skin tones the erythema itself may not be visible at all.' },
-  { id:'2', name:'Stage 2', short:'Partial thickness, exposed dermis', from:'camera',
-    def:'Partial-thickness skin loss with exposed dermis, presenting as a viable pink or red wound bed, or a fluid-filled blister.' },
-  { id:'3', name:'Stage 3', short:'Full thickness, adipose visible', from:'both',
-    def:'Full-thickness skin loss with adipose visible and granulation present; slough or eschar may be visible, but muscle, tendon and bone are not exposed.',
-    why:'The wound bed is photographable, but confirming that muscle, tendon and bone are NOT exposed is an inspection of depth.' },
-  { id:'4', name:'Stage 4', short:'Muscle, tendon or bone exposed', from:'exam',
-    def:'Full-thickness skin and tissue loss with exposed or directly palpable muscle, tendon, cartilage or bone.',
-    why:'"Directly palpable" is a finding of touch. A photograph showing deep tissue cannot distinguish stage 3 from stage 4 reliably.' },
-  { id:'U', name:'Unstageable', short:'Depth obscured by slough or eschar', from:'camera',
-    def:'Full-thickness skin and tissue loss where the extent of damage cannot be confirmed because it is obscured by slough or eschar.' },
-  { id:'DTPI', name:'Deep tissue', short:'Deep red, maroon or purple discolouration', from:'exam',
-    def:'Persistent non-blanchable deep red, maroon or purple discolouration, or a blood-filled blister revealing a dark wound bed.',
-    why:'Both "non-blanchable" and "persistent" need examination, the second over more than one occasion.' }
-];
-const SRC_LBL = { camera:'photo', exam:'examination', both:'photo + exam' };
 
-function renderNpiap(){
-  const l = $('npiapLadder'); l.innerHTML = '';
-  NPIAP.forEach(st => {
-    const r = document.createElement('button');
-    r.className = 'rung pick' + (st.from === 'exam' ? ' exam' : '') + (npiapPick === st.id ? ' hit' : '');
-    if (npiapPick === st.id && (st.id === '4' || st.id === 'U')) r.classList.add('sev');
-    r.innerHTML = `<b>${st.id === 'U' ? 'U' : st.id === 'DTPI' ? 'D' : st.id}</b>${st.short}<span class="src">${SRC_LBL[st.from]}</span>`;
-    r.title = st.def + (st.why ? '\n\n' + st.why : '');
-    r.onclick = () => { npiapPick = (npiapPick === st.id ? null : st.id); renderNpiap(); renderPiOut();
-                        $('gtNpiap').value = npiapPick ? (NPIAP.find(x => x.id === npiapPick).name === 'Deep tissue' ? 'Deep tissue injury' : (npiapPick === 'U' ? 'Unstageable' : npiapPick)) : ''; };
-    l.appendChild(r);
-  });
-  const exam = NPIAP.filter(x => x.from === 'exam').length, both = NPIAP.filter(x => x.from === 'both').length;
-  $('npiapNote').textContent = `Hatched stages cannot be established from a photograph at all — ${exam} of the ${NPIAP.length}, turning on whether erythema blanches under pressure, whether bone is directly palpable, or whether a discolouration persists. ${both === 1 ? 'Stage 3 is partly photographic: its bed is visible, but ruling out exposed muscle or bone is not.' : ''} Tap the stage you assign on examination; the app records it as yours, not the model's.`;
-}
-
+/* For a pressure injury, step 2 reports what the camera genuinely contributes and points at
+   step 2b for the stage. It used to carry the staging ladder as well, which meant the same job
+   was done twice and the panel read as four refusals in a row: cannot be established, nothing
+   is predicted, no classifier has been trained, do not rely on the image. All true, all
+   already said once in 2b, and stacked together they made a working tool sound broken. */
 function renderPiOut(){
-  const st = NPIAP.find(x => x.id === npiapPick);
-  $('classBig').textContent = st ? (st.id === 'U' ? 'U' : st.id === 'DTPI' ? 'DTI' : 'S' + st.id) : '—';
-  $('classDesc').textContent = st
-    ? `${st.name}: ${st.def}` + (st.why ? ' ' + st.why : '')
-    : 'Tap a stage above once you have examined the wound. Nothing here is predicted.';
-  $('howClass').textContent = 'The stage shown is the one you selected, not a model output. What the app contributes for a pressure injury is the wound outline, the measurement and the tissue composition, all of which are independent of wound type.';
-  $('whatClass').textContent = 'No pressure injury classifier has been trained: both heads were fitted on diabetic foot ulcer crops and have never seen a pressure injury, so they are not run on this image. They become available once you have collected and trained on pressure injury data.';
-  $('caution').textContent = 'Segmentation and tissue figures apply to any wound. Staging is yours. Stage 1 and deep tissue injury are the two most likely to be missed on a photograph, and both are harder to see in darker skin — examine, do not rely on the image.';
+  const seg = lastSeg && lastSeg.found, t = lastTissue;
+  const bits = [];
+  if (seg){
+    const inFrame = lastSeg.areaFrac / ((fit && fit.frac) || 1);
+    const k = VIEW / SEG;
+    bits.push(pxPerCm
+      ? `traced and measured at ${(lastSeg.sizePx*k*k/(pxPerCm*pxPerCm)).toFixed(2)} cm²`
+      : `traced, covering ${(inFrame*100).toFixed(1)} % of the frame`);
+  }
+  if (t && !t.sparse){
+    const f = t.frac, pct = x => `${(x*100).toFixed(0)} %`;
+    bits.push(`wound bed ${pct(f.gran)} granulation, ${pct(f.slough)} slough, ${pct(f.necro)} necrosis`);
+    if (f.slough + f.necro > 0.5) bits.push('base possibly obscured, which bears on Unstageable');
+    if (t.dA !== null) bits.push(`peri-wound skin ${t.dA >= 0 ? '+' : ''}${t.dA.toFixed(1)} a* against the patient's own skin`);
+  }
+  $('classBig').textContent = seg ? 'Traced' : '—';
+  $('classDesc').textContent = bits.length
+    ? bits.join('; ') + '. Staging is in step 2b, from these findings plus your examination.'
+    : 'No wound was outlined here — check the photograph, or draw the area yourself above.';
+  $('howClass').textContent = 'Everything above is wound-type agnostic: the outline, the size and the tissue breakdown mean the same on a sacrum as on a heel, which is why they are reported for a pressure injury exactly as for a foot ulcer.';
+  $('whatClass').textContent = 'Serial comparison is what these numbers are for. The same wound photographed under the same protocol next week gives an area and a tissue split you can put beside today’s, which is more than "looks a bit better" and is available now, with no pressure injury model needed.';
+  $('caution').textContent = 'Step 2b turns these findings plus your examination into an NPIAP stage by the published definition.';
 }
 
 function setDisease(d){
@@ -1564,7 +1570,6 @@ function setDisease(d){
   const pi = d === 'pi';
   $('schemeRow').classList.toggle('hidden', pi);
   $('ischField').classList.toggle('hidden', pi);
-  $('npiapPanel').classList.toggle('hidden', !pi);
   $('gtDfu').classList.toggle('hidden', pi);
   $('gtPi').classList.toggle('hidden', !pi);
   /* Each tile declares the wound type it belongs to; a foot ulcer must not be offered to someone
@@ -1579,7 +1584,6 @@ function setDisease(d){
   $('truthNote').textContent = pi
     ? 'The clinician’s NPIAP stage, under adjudication, is the reference standard for this arm, with outcome at follow-up as the clinical endpoint. Stored locally in this browser only for the prototype.'
     : "Culture & sensitivity is the reference standard for infection. The clinician's Texas or Wagner class is the reference standard for the classification head. Stored locally in this browser only for the prototype.";
-  if (pi) renderNpiap();
   if (currentImg) renderDecide();
   // the built-in heads are diabetic-foot-ulcer heads; re-run so the right path is taken
   if (currentImg && backbone) runInference();
@@ -1594,7 +1598,7 @@ function showPiResults(){
   $('texasPanel').classList.add('hidden'); $('wagnerPanel').classList.add('hidden');
   $('camToggle').querySelector('[data-v="2"]').disabled = true;
   if (+$('camToggle').querySelector('.on').dataset.v === 2) setCam(1);
-  renderNpiap(); renderPiOut(); renderDecide();
+  renderPiOut(); renderDecide();
 }
 
 /* ═══════════════════════════ wound-bed tissue composition ═══════════════════════════

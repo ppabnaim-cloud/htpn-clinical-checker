@@ -98,6 +98,11 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .filmstrip button.done{border-color:var(--teal)}
 .filmstrip img{width:100%;height:100%;object-fit:cover;display:block;opacity:.85}
 .filmstrip button.done::after{content:"\2713";position:absolute;right:2px;bottom:1px;font-size:11px;color:#fff;background:var(--teal);border-radius:3px;padding:0 3px;line-height:1.35}
+.sheetsync{margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:10px 14px;background:var(--card)}
+.sheetsync summary{cursor:pointer;font-weight:700;font-size:13.5px;color:var(--navy)}
+.sheetsync .field{margin-top:8px}
+.tickrow{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:8px;color:var(--text)}
+.tickrow input{width:17px;height:17px;accent-color:var(--teal)}
 .findlist{display:flex;flex-direction:column;gap:6px}
 .find{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;background:var(--cloud);border-radius:9px;padding:9px 12px}
 .find .k{font-size:13.5px;color:var(--text)}
@@ -550,6 +555,18 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <ul class="log-list" id="logList"></ul>
     <p id="logEmpty" class="small" style="margin-top:8px;color:var(--faint)">No cases logged yet.</p>
     <div class="note" id="logStorage" style="margin-top:10px"></div>
+    <details class="sheetsync" id="sheetSync">
+      <summary>Send straight to a Google Sheet</summary>
+      <p class="small">Paste the web app URL of the Apps Script bound to your sheet. It is stored in this browser only, never in the code. Until a URL is set, nothing is sent anywhere and the copy button remains the way data leaves.</p>
+      <div class="field"><label>Apps Script web app URL</label><input id="sheetUrl" placeholder="https://script.google.com/macros/s/AKfy…/exec"></div>
+      <label class="tickrow"><input type="checkbox" id="sheetAuto"> Send each case automatically when it is saved</label>
+      <div class="labnav">
+        <button class="btn btn-ghost btn-sm" id="sheetTest">Test connection</button>
+        <button class="btn btn-teal btn-sm" id="sheetPush">Send all cases now</button>
+      </div>
+      <div class="small" id="sheetStatus" style="margin-top:8px"></div>
+      <div class="note rose" style="margin-top:10px"><b>What leaves the device.</b> The clinical columns only — grades, stage, probe-to-bone, culture, tissue percentages. Never the photograph and never the thumbnail. Once a URL is set the tool no longer holds to "nothing leaves this device", so the destination belongs in your MREC submission by name.</div>
+    </details>
   </section>
 
   <!-- MODEL CARD -->
@@ -1880,6 +1897,7 @@ $('saveCase').onclick = () => {
     npiap_stage: $('gtNpiap').value, blanching: $('gtBlanch').value, deepest_structure: $('gtDeep').value,
     body_site: $('gtSite').value, pi_date: $('gtPiDate').value, outcome: $('gtOutcome').value, pi_notes: $('gtPiNotes').value.trim() };
   const log = loadLog(); log.unshift(rec); saveLog(log); renderLog(); toast('Case saved to log');
+  if ($('sheetAuto') && $('sheetAuto').checked && sheetUrl()) pushToSheet([rec], 'Auto-sent');
   $('logCard').scrollIntoView({behavior:'smooth', block:'start'});
 };
 function renderLog(){
@@ -1917,6 +1935,55 @@ const LOG_COLS = ['id','when','image','disease','model','ai_label','p_severe','p
                   'gt_grade','gt_stage','gt_wagner','probe_to_bone','specimen_date','organisms','sensitivity_notes','culture_positive',
                   'npiap_stage','blanching','deepest_structure','body_site','pi_date','outcome','pi_notes'];
 const cellText = v => String(Array.isArray(v) ? v.join('; ') : (v && typeof v === 'object' ? JSON.stringify(v) : (v ?? '')));
+
+/* ═══════════════════════════ optional push to a Google Sheet ═══════════════════════════
+   The page is static and has no backend, so it cannot hold a Google credential. The only route
+   that does not need a Cloud Console client ID — which this user's institution blocks — is an
+   Apps Script web app bound to the sheet: the owner deploys it, the URL is the capability, and
+   the app POSTs to it.
+
+   Two details make it work rather than fail silently. The body is sent with no explicit
+   Content-Type, so it goes as text/plain and counts as a simple CORS request; setting
+   application/json triggers a preflight that Apps Script does not answer. And the script must
+   dedupe on id, because a clinician pressing "send all" twice should not double the sheet.
+
+   The URL lives in localStorage, never in the repository: it is a capability, and anyone holding
+   it can write to that sheet. */
+const SHEET_KEY = 'wound_vision_sheet_url', SHEET_AUTO = 'wound_vision_sheet_auto';
+const sheetUrl = () => { try { return localStorage.getItem(SHEET_KEY) || ''; } catch(e){ return ''; } };
+
+async function pushToSheet(rows, label){
+  const url = sheetUrl();
+  if (!url) { $('sheetStatus').textContent = 'No URL set, so nothing was sent.'; return false; }
+  const send = rows.map(r => { const o = {}; LOG_COLS.forEach(c => o[c] = cellText(r[c])); return o; });
+  $('sheetStatus').textContent = `Sending ${send.length} row${send.length === 1 ? '' : 's'}…`;
+  try {
+    // no Content-Type header on purpose: keeps it a simple request, which Apps Script accepts
+    const res = await fetch(url, { method:'POST', body: JSON.stringify({ rows: send }) });
+    const txt = await res.text();
+    let j = null; try { j = JSON.parse(txt); } catch(_){}
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    $('sheetStatus').textContent = j && typeof j.added === 'number'
+      ? `${label}: ${j.added} new row${j.added === 1 ? '' : 's'} written, ${send.length - j.added} already there.`
+      : `${label}: sent, but the script did not reply with a row count — check the sheet.`;
+    markExported();
+    return true;
+  } catch (e) {
+    $('sheetStatus').innerHTML = `<b>Failed:</b> ${e.message}. Check the deployment is set to “Anyone” and that the URL ends in <code>/exec</code>. If your administrator blocks Apps Script this will never succeed — use Copy for Sheets instead.`;
+    return false;
+  }
+}
+$('sheetUrl').value = sheetUrl();
+$('sheetUrl').onchange = () => {
+  const v = $('sheetUrl').value.trim();
+  try { localStorage.setItem(SHEET_KEY, v); } catch(e){}
+  $('sheetStatus').textContent = v ? 'URL saved in this browser.' : 'URL cleared — nothing will be sent.';
+};
+try { $('sheetAuto').checked = localStorage.getItem(SHEET_AUTO) === '1'; } catch(e){}
+$('sheetAuto').onchange = () => { try { localStorage.setItem(SHEET_AUTO, $('sheetAuto').checked ? '1' : '0'); } catch(e){} };
+$('sheetTest').onclick = () => pushToSheet([{ id:'test-' + Date.now(), when:new Date().toISOString(),
+  image:'connection test', disease:'test row — delete me', model:'none' }], 'Test');
+$('sheetPush').onclick = () => { const log = loadLog(); if (!log.length) return toast('Nothing to send'); pushToSheet(log, 'Sent'); };
 
 $('copyTsv').onclick = async () => {
   const log = loadLog(); if (!log.length) return toast('Nothing to copy');

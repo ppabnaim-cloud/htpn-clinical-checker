@@ -86,6 +86,30 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .tissuelegend span{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .tissuelegend i{width:12px;height:12px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.15)}
 .tissuelegend b{color:var(--text);font-weight:600}
+.findlist{display:flex;flex-direction:column;gap:6px}
+.find{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;background:var(--cloud);border-radius:9px;padding:9px 12px}
+.find .k{font-size:13.5px;color:var(--text)}
+.find .k em{font-style:normal;color:var(--muted);font-size:12px;display:block;margin-top:2px}
+.find .v{font-family:var(--mono);font-size:12.5px;font-weight:500;text-align:right;white-space:normal;overflow-wrap:anywhere}
+/* Long tissue readouts clip against a fixed value column, so below tablet width the row
+   becomes one column: label, then value on its own line, then provenance. */
+@media(max-width:620px){
+  .find{grid-template-columns:1fr}
+  .find .v{text-align:left;font-size:13px;margin-top:4px}
+  .find .src{grid-column:1/2}
+}
+.find .v.yes{color:var(--rose)}.find .v.no{color:var(--teal-dim)}.find .v.unk{color:var(--faint)}
+.find .src{grid-column:1/3;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.find.ask{grid-template-columns:1fr;background:#fff;border:1.5px solid var(--line)}
+.find.ask .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.find.ask .chip{font-size:12px;padding:5px 10px}
+.find.ask.done{border-color:var(--teal);background:var(--teal-glow)}
+.ruleout{display:flex;flex-direction:column;gap:8px}
+.rule{background:var(--navy);color:#fff;border-radius:12px;padding:12px 14px}
+.rule .big{font-family:var(--serif);font-size:26px;line-height:1.1}
+.rule .why{font-size:12.5px;opacity:.9;margin-top:5px}
+.rule .need{font-size:12.5px;margin-top:6px;color:var(--amber)}
+.rule.part{background:var(--navy-mid)}
 .sample span{overflow-wrap:anywhere}
 .sample span i{display:block;font-style:normal;font-family:var(--mono);font-size:9.5px;color:var(--teal-dim);margin-top:2px}
 .cropview{display:flex;gap:14px;align-items:flex-start;margin:12px 0;padding:12px;background:var(--cloud);border-radius:12px}
@@ -437,6 +461,21 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       </div>
       <div class="note" id="caution"></div>
     </div>
+  </section>
+
+  <!-- STEP 2b: FINDINGS -> CLASSIFICATION BY RULE -->
+  <section class="card hidden" id="decide">
+    <div class="step"><span class="n">2b</span><h3>Findings and classification</h3><span class="hint">rule-based, shows its working</span></div>
+    <p class="small" style="margin-bottom:10px">These classifications are not predicted. Each one is a defined function of findings, so the app lists what the photograph supplies, asks you for what it cannot see, and then applies the published definition. Every answer changes the result below immediately.</p>
+
+    <span class="lab">What the photograph supplies</span>
+    <div class="findlist" id="autoFind"></div>
+
+    <span class="lab" style="margin-top:14px">What only your examination supplies</span>
+    <div class="findlist" id="askFind"></div>
+
+    <span class="lab" style="margin-top:14px">Classification</span>
+    <div class="ruleout" id="ruleOut"></div>
   </section>
 
   <!-- STEP 3: GROUND TRUTH -->
@@ -813,7 +852,7 @@ function useImage(img, name){
   pxPerCm = null; $('scaleBtn').textContent = 'Set scale with the ruler';   // a scale belongs to one photograph only
   setCam(segModel ? 1 : 0);
   $('analyse').classList.remove('hidden'); $('truth').classList.remove('hidden');
-  $('results').classList.add('hidden'); $('woundPanel').classList.add('hidden'); $('status').classList.remove('hidden');
+  $('results').classList.add('hidden'); $('woundPanel').classList.add('hidden'); $('decide').classList.add('hidden'); $('status').classList.remove('hidden');
   $('analyse').scrollIntoView({behavior:'smooth', block:'start'});
   if (backbone) runInference(); else $('statusText').textContent = 'Loading models…';
 }
@@ -1083,6 +1122,7 @@ function showResults(){
   }
   renderClass();
   fillClassReadout();
+  renderDecide();
 }
 function fillClassReadout(){
   const twoHead = active.kind === 'demo';
@@ -1166,7 +1206,7 @@ function renderClass(){
     $('ischField').classList.add('hidden');
     $('classBig').textContent = '—';
     const which = it.gradeOut && it.infOut ? 'Neither head is' : it.gradeOut ? 'The depth head is not' : 'The infection head is not';
-    $('classDesc').textContent = `${which} confident enough to classify this image. No grade or stage is offered. Refer for clinical assessment.` + whyAbstain();
+    $('classDesc').textContent = `${which} confident enough to name a class from the photograph alone, so none is guessed here. Step 2b below still reaches a Wagner grade and a Texas class from your examination findings — the definitions do not need this model to agree.` + whyAbstain();
     $('caution').textContent = `The tool declines below ${(ABSTAIN_AT*100).toFixed(0)} % confidence rather than report a number it cannot support. On the held-out set, declining the least confident third of images raised accuracy on the remainder from 83 % to 89 %.`;
     return;
   }
@@ -1259,6 +1299,194 @@ $('camAlpha').oninput = () => { const v = +$('camToggle').querySelector('.on').d
   if (v === 2) $('camCanvas').style.opacity = a; if (v === 3) $('tissueCanvas').style.opacity = a; };
 $('camTarget').onchange = async () => { camManual = true; await drawGradCam(); setCam(2); };
 
+/* ═══════════════════════════ findings → classification, by rule ═══════════════════════════
+   Wagner, Texas and NPIAP are not predictions. Each is a defined function of findings, so the
+   honest design is to collect the findings and apply the definition, rather than ask a network
+   to guess the answer end to end. Three consequences, all improvements:
+
+     · the model's uncertainty stops being a dead end. "Not confident about infection" becomes
+       one unanswered line on a checklist instead of "declines to classify".
+     · the result is auditable. It says which findings produced it, so a clinician can disagree
+       with a finding rather than with a black box.
+     · pressure injury staging works today, with no pressure injury model at all, because the
+       rule does the work and the camera only contributes what it can see.
+
+   Definitions used, not invented:
+     Wagner  — Meggitt 1976 / Wagner 1981, grades 0-5.
+     Texas   — Armstrong, Lavery & Harkless 1998: grade 0-3 by depth, stage A-D by infection
+               and ischaemia.
+     NPIAP   — 2016 staging system (the definitions in the app's own staging panel).
+
+   What the app may contribute is limited on purpose. Segmentation and measurement are measured.
+   Tissue percentages come from a colour rule with no validation data behind it, so they are
+   offered as a prompt to look, never as a finding, and are labelled that way.                */
+
+const ASK = {
+  dfu: [
+    { id:'ulcer', q:'Is there a break in the skin?', why:'Wagner 0 and Texas grade 0 are intact or fully epithelialised skin.',
+      opts:[['yes','Ulcer present'],['no','Intact or healed']] },
+    { id:'depth', q:'How deep does it probe?', why:'This alone separates Texas grade 1, 2 and 3, and Wagner 1 from 2.',
+      opts:[['superficial','Superficial'],['tendon','To tendon, capsule or joint'],['bone','To bone']] },
+    { id:'ptb', q:'Probe-to-bone?', why:'Positive probing raises the probability of osteomyelitis sharply, and is what makes an ulcer Wagner 3.',
+      opts:[['pos','Positive'],['neg','Negative'],['nd','Not done']] },
+    { id:'abscess', q:'Abscess, purulent collection or confirmed osteomyelitis?', why:'Any of these makes it Wagner 3 regardless of depth.',
+      opts:[['yes','Present'],['no','Absent']] },
+    { id:'infection', q:'Clinically infected?', why:'Two or more of local warmth, erythema, tenderness, swelling or purulent discharge. Sets the Texas stage to B or D.',
+      opts:[['yes','Infected'],['no','Not infected']] },
+    { id:'ischaemia', q:'Ischaemic limb?', why:'Absent pulses, ABPI below 0.9 or toe pressure below 30 mmHg. Sets the Texas stage to C or D, and no photograph can show it.',
+      opts:[['yes','Ischaemia'],['no','Perfused'],['unk','Not assessed']] },
+    { id:'gangrene', q:'Gangrene?', why:'Localised gangrene is Wagner 4; gangrene of the whole foot is Wagner 5.',
+      opts:[['none','None'],['local','Localised'],['extensive','Extensive / whole foot']] }
+  ],
+  pi: [
+    { id:'intact', q:'Is the skin intact?', why:'Intact skin restricts the answer to stage 1 or a deep tissue injury.',
+      opts:[['yes','Intact'],['no','Broken']] },
+    { id:'blanch', q:'Does the erythema blanch under finger pressure?', why:'Non-blanchable erythema over intact skin is stage 1. A photograph cannot test this.',
+      opts:[['no','Non-blanchable'],['yes','Blanches'],['na','Not applicable']] },
+    { id:'persist', q:'Persistent deep red, maroon or purple discolouration, or a blood-filled blister?', why:'This is a deep tissue injury rather than stage 1.',
+      opts:[['yes','Yes'],['no','No']] },
+    { id:'obscured', q:'Is the depth obscured by slough or eschar?', why:'If the base cannot be seen, the injury is Unstageable and no stage may be assigned.',
+      opts:[['yes','Obscured'],['no','Base visible']] },
+    { id:'deepest', q:'Deepest structure seen or palpated?', why:'Dermis only is stage 2; adipose or fascia is stage 3; muscle, tendon, cartilage or bone is stage 4.',
+      opts:[['dermis','Dermis only'],['adipose','Adipose or fascia'],['deep','Muscle, tendon, cartilage or bone']] }
+  ]
+};
+let answers = { dfu:{}, pi:{} };
+
+/* Wagner, from the findings that define it. */
+function ruleWagner(a){
+  const need = [];
+  if (a.gangrene === 'extensive') return { label:'Wagner 5', why:'Extensive gangrene of the foot.', need };
+  if (a.gangrene === 'local')     return { label:'Wagner 4', why:'Localised gangrene.', need };
+  if (!a.gangrene) need.push('gangrene');
+  if (a.abscess === 'yes' || a.ptb === 'pos')
+    return { label:'Wagner 3', why: a.abscess === 'yes' ? 'Deep ulcer with abscess, purulent collection or confirmed osteomyelitis.'
+                                                        : 'Probe-to-bone positive, which is the bedside finding for osteomyelitis.', need };
+  if (a.ulcer === 'no') return { label:'Wagner 0', why:'No break in the skin; an at-risk foot rather than an ulcer.', need };
+  if (!a.ulcer) { need.push('a break in the skin'); return { label:null, why:'', need }; }
+  if (a.depth === 'tendon' || a.depth === 'bone')
+    return { label:'Wagner 2', why:'Ulcer penetrating to tendon, capsule or joint, with no abscess or osteomyelitis recorded.', need:need.concat(a.abscess?[]:['abscess or osteomyelitis']) };
+  if (a.depth === 'superficial')
+    return { label:'Wagner 1', why:'Superficial ulcer, not reaching tendon, capsule or bone.', need:need.concat(a.abscess?[]:['abscess or osteomyelitis']) };
+  need.push('depth on probing');
+  return { label:null, why:'', need };
+}
+
+/* Texas: grade from depth, stage from infection and ischaemia. Both axes are required. */
+function ruleTexas(a){
+  const need = [];
+  let g = null;
+  if (a.ulcer === 'no') g = '0';
+  else if (a.depth === 'superficial') g = '1';
+  else if (a.depth === 'tendon') g = '2';
+  else if (a.depth === 'bone') g = '3';
+  else need.push(a.ulcer ? 'depth on probing' : 'a break in the skin');
+  let st = null;
+  if (a.infection && a.ischaemia && a.ischaemia !== 'unk')
+    st = a.infection === 'yes' ? (a.ischaemia === 'yes' ? 'D' : 'B') : (a.ischaemia === 'yes' ? 'C' : 'A');
+  else {
+    if (!a.infection) need.push('clinical infection');
+    if (!a.ischaemia || a.ischaemia === 'unk') need.push('perfusion');
+  }
+  if (g === null || st === null) return { label:null, why:'', need };
+  const gd = { '0':'pre or post-ulcerative, fully epithelialised', '1':'superficial', '2':'penetrating to tendon or capsule', '3':'penetrating to bone or joint' }[g];
+  const sd = { A:'no infection or ischaemia', B:'infected', C:'ischaemic', D:'infected and ischaemic' }[st];
+  return { label:`Texas ${g}${st}`, why:`Grade ${g}, ${gd}; stage ${st}, ${sd}.`, need };
+}
+
+/* NPIAP 2016 staging. Order matters: the definitions are not independent. */
+function ruleNpiap(a){
+  const need = [];
+  if (a.persist === 'yes') return { label:'Deep tissue injury', why:'Persistent non-blanchable deep red, maroon or purple discolouration, or a blood-filled blister.', need };
+  if (a.intact === 'yes'){
+    if (a.blanch === 'no')  return { label:'NPIAP stage 1', why:'Intact skin with non-blanchable erythema.', need };
+    if (a.blanch === 'yes') return { label:'Not a pressure injury by stage', why:'Erythema that blanches is not a pressure injury; reassess and offload.', need };
+    need.push('the blanching test'); return { label:null, why:'', need };
+  }
+  if (!a.intact){ need.push('whether the skin is intact'); return { label:null, why:'', need }; }
+  if (a.obscured === 'yes') return { label:'Unstageable', why:'Full-thickness loss whose depth cannot be confirmed because slough or eschar obscures the base.', need };
+  if (!a.obscured){ need.push('whether slough or eschar obscures the base'); return { label:null, why:'', need }; }
+  if (a.deepest === 'deep')    return { label:'NPIAP stage 4', why:'Muscle, tendon, cartilage or bone exposed or directly palpable.', need };
+  if (a.deepest === 'adipose') return { label:'NPIAP stage 3', why:'Full-thickness loss with adipose or fascia visible, and no deeper structure exposed.', need };
+  if (a.deepest === 'dermis')  return { label:'NPIAP stage 2', why:'Partial-thickness loss with exposed dermis and no adipose visible.', need };
+  need.push('the deepest structure seen or palpated');
+  return { label:null, why:'', need };
+}
+
+/* The rows the photograph can fill in. Measured, model and colour-rule findings are separated,
+   because they do not carry the same weight and should not look as though they do. */
+function autoFindings(){
+  const rows = [];
+  const add = (k, v, cls, src, why) => rows.push({ k, v, cls, src, why });
+  if (lastSeg && lastSeg.found){
+    const inFrame = lastSeg.areaFrac / ((fit && fit.frac) || 1);
+    add('Break in the skin, outlined', 'yes', 'yes', 'measured · segmentation',
+        `${(inFrame*100).toFixed(1)} % of the frame, mean outline confidence ${(lastSeg.conf*100).toFixed(0)} %`);
+    const k = VIEW / SEG;
+    if (pxPerCm){
+      add('Wound size', `${(lastSeg.sizePx*k*k/(pxPerCm*pxPerCm)).toFixed(2)} cm²`, '', 'measured · your ruler scale',
+          `longest dimension ${(lastSeg.diamPx*k/pxPerCm).toFixed(1)} cm`);
+    } else {
+      add('Wound size', 'set a scale', 'unk', 'measured · needs the ruler', 'Tap the two ends of a known length to get centimetres.');
+    }
+  } else {
+    add('Break in the skin, outlined', 'none found', 'unk', 'measured · segmentation',
+        'Either there is no wound, or it was missed — check the outline before trusting this.');
+  }
+  if (lastTissue && !lastTissue.sparse){
+    const f = lastTissue.frac, pct = x => `${(x*100).toFixed(0)} %`;
+    add('Wound bed appearance', `${pct(f.gran)} gran · ${pct(f.slough)} slough · ${pct(f.necro)} necrosis`, '',
+        'colour rule · not validated', 'A prompt to look, not a finding. No dataset here labels tissue, so these thresholds are unvalidated.');
+    if (f.slough + f.necro > 0.5)
+      add('Base may be obscured', 'consider', 'yes', 'colour rule · not validated',
+          `Slough and necrosis together cover ${pct(f.slough + f.necro)} of the bed. If the base truly cannot be seen, a pressure injury is Unstageable.`);
+    if (lastTissue.dA !== null)
+      add('Peri-wound redness', `${lastTissue.dA >= 0 ? '+' : ''}${lastTissue.dA.toFixed(1)} a*`, lastTissue.dA >= 3 ? 'yes' : '',
+          'colour rule · not validated', 'Compared with the patient’s own skin further out, so it does not depend on skin tone. Erythema is one of the infection criteria, but this number does not establish it.');
+  }
+  if (DISEASE === 'dfu' && lastPred && !lastPred.piOnly && active.kind === 'demo'){
+    const inf = lastPred.infection, gr = lastPred.grade;
+    add('Infection appearance', abstains(inf) ? 'not confident' : (inf[1] >= 0.5 ? 'suspected' : 'none'),
+        abstains(inf) ? 'unk' : (inf[1] >= 0.5 ? 'yes' : 'no'), 'model · weak labels, AUC 0.86',
+        `P = ${(inf[1]*100).toFixed(0)} %. Appearance only — clinical infection is a bedside diagnosis, which is why it is asked below.`);
+    add('Depth appearance', abstains(gr) ? 'not confident' : (gr[1] >= 0.5 ? 'deep or extensive' : 'superficial'),
+        abstains(gr) ? 'unk' : (gr[1] >= 0.5 ? 'yes' : 'no'), 'model · weak labels, AUC 0.96',
+        `P = ${(gr[1]*100).toFixed(0)} %. A proxy for depth from the surface, not a substitute for probing.`);
+  }
+  return rows;
+}
+
+function renderDecide(){
+  if (!currentImg){ $('decide').classList.add('hidden'); return; }
+  $('decide').classList.remove('hidden');
+  $('autoFind').innerHTML = autoFindings().map(r =>
+    `<div class="find"><div class="k">${r.k}<em>${r.why}</em></div><div class="v ${r.cls||''}">${r.v}</div><div class="src">${r.src}</div></div>`).join('');
+
+  const spec = ASK[DISEASE], a = answers[DISEASE];
+  $('askFind').innerHTML = spec.map(f =>
+    `<div class="find ask${a[f.id] ? ' done' : ''}" data-f="${f.id}">
+       <div class="k">${f.q}<em>${f.why}</em></div>
+       <div class="chips">${f.opts.map(([v, l]) => `<button class="chip${a[f.id]===v?' on':''}" data-f="${f.id}" data-v="${v}">${l}</button>`).join('')}</div>
+     </div>`).join('');
+  $('askFind').querySelectorAll('.chip').forEach(b => b.onclick = () => {
+    const f = b.dataset.f;
+    a[f] = a[f] === b.dataset.v ? undefined : b.dataset.v;
+    renderDecide();
+  });
+
+  const rules = DISEASE === 'pi' ? [['NPIAP stage', ruleNpiap(a)]]
+                                 : [['Meggitt–Wagner', ruleWagner(a)], ['University of Texas', ruleTexas(a)]];
+  $('ruleOut').innerHTML = rules.map(([name, r]) => {
+    const unresolved = [...new Set(r.need)].filter(Boolean);
+    return `<div class="rule${r.label ? '' : ' part'}">
+      <div class="big">${r.label || name}</div>
+      ${r.why ? `<div class="why">${r.why}</div>` : `<div class="why">Not yet determined — this is a definition, so it needs the findings it is defined by.</div>`}
+      ${unresolved.length ? `<div class="need">Still needed: ${unresolved.join(', ')}.</div>`
+        : `<div class="why" style="opacity:.7">Every finding this definition requires has been answered.</div>`}
+    </div>`;
+  }).join('');
+}
+
 /* ═══════════════════════════ wound type: DFU or pressure injury ═══════════════════════════
    One app, one selector. Segmentation, measurement and the tissue map are wound-type agnostic —
    granulation and eschar look the same on a sacrum as on a heel — so those are shared. Staging is
@@ -1340,6 +1568,7 @@ function setDisease(d){
     ? 'The clinician’s NPIAP stage, under adjudication, is the reference standard for this arm, with outcome at follow-up as the clinical endpoint. Stored locally in this browser only for the prototype.'
     : "Culture & sensitivity is the reference standard for infection. The clinician's Texas or Wagner class is the reference standard for the classification head. Stored locally in this browser only for the prototype.";
   if (pi) renderNpiap();
+  if (currentImg) renderDecide();
   // the built-in heads are diabetic-foot-ulcer heads; re-run so the right path is taken
   if (currentImg && backbone) runInference();
 }
@@ -1353,7 +1582,7 @@ function showPiResults(){
   $('texasPanel').classList.add('hidden'); $('wagnerPanel').classList.add('hidden');
   $('camToggle').querySelector('[data-v="2"]').disabled = true;
   if (+$('camToggle').querySelector('.on').dataset.v === 2) setCam(1);
-  renderNpiap(); renderPiOut();
+  renderNpiap(); renderPiOut(); renderDecide();
 }
 
 /* ═══════════════════════════ wound-bed tissue composition ═══════════════════════════

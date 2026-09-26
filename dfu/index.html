@@ -242,6 +242,7 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .modelcard dd{margin:0}
 footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 30px;max-width:600px;margin:0 auto;line-height:1.7}
 footer b{color:var(--muted)}
+.labimg .badge.case{left:auto;right:8px;background:rgba(19,38,60,.78)}
 .labsaved{margin-top:10px;font-size:13px;line-height:1.5;padding:9px 12px;border-radius:9px;
   background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}
 .labsaved.none{background:var(--slate-soft);border-color:var(--rule);color:var(--ink-3)}
@@ -249,6 +250,21 @@ footer b{color:var(--muted)}
 .labdone{margin-top:10px;font-size:13px;line-height:1.55;padding:11px 13px;border-radius:9px;
   background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a}
 .labdone.hidden{display:none}
+.occ{margin-top:14px;border:1px solid var(--rule);border-radius:11px;padding:12px 14px;background:var(--slate-soft)}
+.occhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.occhead b{font-size:14px}
+.occhead .btn{margin-left:auto}
+.occgrid{display:flex;gap:12px;margin-top:11px;flex-wrap:wrap}
+.occgrid figure{margin:0;flex:1 1 130px;min-width:118px}
+.occgrid img,.occgrid canvas{width:100%;border-radius:8px;display:block;border:1px solid var(--rule)}
+.occgrid figcaption{font-size:11.5px;color:var(--muted);margin-top:4px;text-align:center}
+.occrow{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--rule)}
+.occrow:last-child{border-bottom:0}
+.occrow b{font-variant-numeric:tabular-nums}
+.occverdict{margin-top:10px;padding:10px 12px;border-radius:8px;font-size:13px;line-height:1.55}
+.occverdict.good{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}
+.occverdict.warn{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412}
+.occverdict.bad{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:999px;font-size:13px;box-shadow:var(--shadow-lg);z-index:999;opacity:0;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.show{opacity:1}
 
@@ -319,6 +335,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <h2>Wound Vision — before you take a photograph</h2>
     <p style="font-family:var(--mono);font-size:12px;color:var(--faint);margin-bottom:12px">A prototype by Dr Naim Bin Abdul Malek</p>
     <p>This demonstrator analyses wound photographs with a deep learning model: <b>diabetic foot ulcers</b>, where it outlines the wound and classifies depth and infection appearance, and <b>pressure injuries</b>, where it outlines and measures the wound but does <b>not</b> stage it &mdash; no pressure injury classifier has been trained yet, so NPIAP staging is yours to enter. It is for education and Centre of Excellence demonstration only. It does <b>not</b> replace clinical assessment, probe-to-bone testing, vascular assessment or microbiology, and must not be used to make treatment decisions.</p>
+    <p><b>Why this exists.</b> Earlier and more consistent recognition of a severe diabetic foot ulcer or a deteriorating pressure injury, so that debridement, offloading, vascular assessment and referral happen sooner. The intended benefit is a reduction in major amputation and in permanent disability. That is the aim of the study, not a demonstrated result: no outcome data exist yet, and nothing in this prototype has been shown to change any clinical outcome.</p>
     <p>A model is only as good as its inputs. Photographs taken under different distances, lighting and angles are the single biggest source of error in wound image AI. Please follow the standardised image acquisition protocol:</p>
     <div class="protocol">
       <h4>Standardised image acquisition protocol</h4>
@@ -490,6 +507,16 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
         <p><b>What this shows:</b> <span id="whatClass"></span></p>
       </div>
       <div class="note" id="caution"></div>
+
+      <!-- occlusion / perturbation test -->
+      <div class="occ" id="occBox">
+        <div class="occhead">
+          <b>Does the wound actually drive this prediction?</b>
+          <button class="btn btn-ghost btn-sm" id="occBtn">Run occlusion test</button>
+        </div>
+        <p class="small" style="margin:6px 0 0">Grad-CAM shows where the model looked, which is a correlation. This masks the segmented wound out of the image, classifies it again, and reports how far the prediction moves — a causal check the heatmap cannot give.</p>
+        <div id="occOut"></div>
+      </div>
     </div>
   </section>
 
@@ -513,6 +540,22 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <div class="step"><span class="n">3</span><h3>Record this case</h3><span class="hint">what you know now</span></div>
     <p class="small" style="margin-bottom:6px" id="truthIntro"></p>
     <div class="note" style="margin:0 0 10px">Fill in whatever you have. A culture usually takes three to five days, so the microbiology is often blank at this point — that is expected. The case then appears in the log below under <b>cases waiting for a culture result</b>, and tapping it there completes the organism, the sensitivity and the outcome whenever they arrive.</div>
+    <!-- Applies to both wound types: the patient and the camera, not the wound. -->
+    <div class="row3">
+      <div class="field"><label>Study ID <em style="font-style:normal;color:var(--faint);font-weight:400">no name, no I.C.</em></label>
+        <input id="gtCase" placeholder="P014" autocomplete="off"></div>
+      <div class="field"><label>Fitzpatrick skin type</label>
+        <select id="gtSkin"><option value="">—</option><option>I</option><option>II</option><option>III</option><option>IV</option><option>V</option><option>VI</option><option>Not assessed</option></select></div>
+      <div class="field"><label>Grader <em style="font-style:normal;color:var(--faint);font-weight:400">initials</em></label>
+        <input id="gtRater" placeholder="NBM" autocomplete="off" maxlength="6"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Capture device</label>
+        <select id="gtDevice"><option value="">—</option><option>Mobile phone</option><option>Digital camera</option><option>Tablet</option><option>Dermatoscope</option><option>Other</option></select></div>
+      <div class="field"><label>Lighting / distance protocol followed</label>
+        <select id="gtProto"><option value="">—</option><option>Yes</option><option>Partly</option><option>No</option></select></div>
+    </div>
+    <div class="note" style="margin:0 0 10px">Skin type is recorded because the public training sets are predominantly lighter skin. Without it, performance in a Malaysian population cannot be reported by skin type, and a reviewer will assume it degrades. The device and protocol fields are what make an external validation possible later. Grader and device stay between photographs; the study ID and skin type clear with each new one.</div>
     <div id="gtDfu">
     <div class="row3">
       <div class="field"><label>Clinician Texas grade</label>
@@ -523,6 +566,8 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
         <select id="gtWagner"><option value="">—</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
     </div>
     <div class="row2">
+      <div class="field"><label>Ulcer site</label>
+        <select id="gtSiteDfu"><option value="">—</option><option>Plantar forefoot</option><option>Plantar midfoot</option><option>Heel</option><option>Hallux</option><option>Lesser toe</option><option>Dorsum of foot</option><option>Medial malleolus</option><option>Lateral malleolus</option><option>Amputation stump</option><option>Other</option></select></div>
       <div class="field"><label>Probe‑to‑bone</label>
         <select id="gtPtb"><option value="">—</option><option>Negative</option><option>Positive</option><option>Not done</option></select></div>
       <div class="field"><label>Specimen date</label><input type="date" id="gtDate"></div>
@@ -605,7 +650,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <div class="step"><span class="n">B</span><h3>Tick what each image shows</h3><span class="hint" id="labelProg">0 of 0 labelled</span>
       <button class="btn btn-ghost btn-sm" id="labExport" style="margin-left:auto">Export labels CSV</button></div>
     <div class="labwrap">
-      <div class="labimg"><img id="labImg" alt="the image being labelled"><span class="badge" id="labName">—</span></div>
+      <div class="labimg"><img id="labImg" alt="the image being labelled"><span class="badge" id="labName">—</span><span class="badge case" id="labCase"></span></div>
       <div class="labform">
         <span class="lab">Meggitt–Wagner grade <em>one only</em></span>
         <div class="chips" id="labWagner"></div>
@@ -613,6 +658,8 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
         <div class="chips" id="labNpiap"></div>
         <span class="lab" style="margin-top:10px">Present in this image <em>tick all that apply</em></span>
         <div class="chips" id="labFeats"></div>
+        <span class="lab" style="margin-top:10px">Fitzpatrick skin type <em>so performance can be reported by skin tone</em></span>
+        <div class="chips" id="labSkin"></div>
         <p class="labsaved" id="labSaved"></p>
         <div class="labnav">
           <button class="btn btn-ghost btn-sm" id="labPrev">&larr; Previous</button>
@@ -636,7 +683,9 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       <div class="kpi"><b id="kCases">0</b><span>cases logged</span></div>
       <div class="kpi"><b id="kInf">—</b><span>infection agreement</span></div>
       <div class="kpi"><b id="kCult">—</b><span>culture positive</span></div>
+      <div class="kpi"><b id="kKappa">—</b><span>inter-rater κ</span></div>
     </div>
+    <div class="note" id="kappaNote" style="margin:0 0 10px"></div>
     <div id="pending"></div>
     <p class="small" style="margin:2px 0 8px;color:var(--muted)">Tap a case to complete what was not known at the bedside — the culture result, and the outcome at follow-up.</p>
     <ul class="log-list" id="logList"></ul>
@@ -681,7 +730,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     </div>
     <div id="rBars"></div>
     <div class="verdict" id="rVerdict"></div>
-    <div class="note" id="rNote">Counts are of images. Your protocol's precision calculations are in <b>patients</b>, so record how many patients these images come from &mdash; four images of one ulcer are not four independent cases.</div>
+    <div class="note" id="rNote"></div>
   </section>
 
   <section class="card">
@@ -721,7 +770,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
   Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
-  <b id="buildStamp">build 2026-09-26 &middot; v0.9</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=9</code><br>
+  <b id="buildStamp">build 2026-09-26 &middot; v1.0</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=10</code><br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>
@@ -906,8 +955,15 @@ function useImage(img, name){
   // a culture result belongs to one specimen, so it must not carry over to the next image
   renderOrgChips($('gtOrgs'), []);
   ['gtDate','gtNotes'].forEach(k => $(k).value = '');
-  ['gtGrade','gtStage','gtWagner','gtPtb','gtOutcome','gtNpiap','gtBlanch','gtDeep','gtSite'].forEach(k => { if ($(k)) $(k).value = ''; });
+  /* Everything that belongs to the patient or the wound clears with the photograph, so one
+     specimen's result can never attach to the next case. The grader's initials and the camera
+     stay, because they are properties of the clinic session and re-typing them 40 times is how
+     a field ends up empty. */
+  ['gtGrade','gtStage','gtWagner','gtPtb','gtOutcome','gtNpiap','gtBlanch','gtDeep','gtSite','gtSiteDfu','gtSkin']
+    .forEach(k => { if ($(k)) $(k).value = ''; });
   if ($('gtPiNotes')) $('gtPiNotes').value = '';
+  if ($('gtCase')){ const cid = caseIdOf(name);
+    $('gtCase').value = cid === String(name || '').replace(/\.[^.]+$/, '').toUpperCase() ? '' : cid; }
   setCam(segModel ? 1 : 0);
   $('analyse').classList.remove('hidden'); $('truth').classList.remove('hidden');
   $('results').classList.add('hidden'); $('woundPanel').classList.add('hidden'); $('decide').classList.add('hidden'); $('status').classList.remove('hidden');
@@ -1160,6 +1216,7 @@ async function runInference(reuseSeg){
 }
 function showResults(){
   const p = lastPred;
+  if ($('occBox')){ $('occBox').classList.remove('hidden'); $('occOut').innerHTML = ''; }
   $('camToggle').querySelector('[data-v="2"]').disabled = false;
   $('timing').textContent = `${p.ms.toFixed(0)} ms on ${tf.getBackend()}`;
   $('status').classList.add('hidden'); $('results').classList.remove('hidden');
@@ -1650,6 +1707,7 @@ function showPiResults(){
   $('texasPanel').classList.add('hidden'); $('wagnerPanel').classList.add('hidden');
   $('camToggle').querySelector('[data-v="2"]').disabled = true;
   if (+$('camToggle').querySelector('.on').dataset.v === 2) setCam(1);
+  if ($('occBox')) $('occBox').classList.add('hidden');   // no classifier ran, so nothing to perturb
   renderPiOut(); renderDecide();
 }
 
@@ -1894,6 +1952,133 @@ $('viewer').addEventListener('click', e => {
   }
 });
 
+/* ═══════════════════════════ occlusion test ═══════════════════════════
+   Grad-CAM answers "where did the activations concentrate", which is a correlation and is easy to
+   over-read: a heatmap can sit on the wound while the decision is being made on the bed sheet, and
+   on this model's own measurement the heatmap's peak fell inside the true ulcer in only 13 % of
+   held-out images. Masking the wound and re-classifying asks a different, causal question: if the
+   lesion is removed and the answer does not change, the answer was never about the lesion.
+
+   The fill is the mean colour of everything outside the wound in the same crop, which keeps the
+   image plausible. It is still a perturbation the model never saw in training, so a large drop
+   is good evidence the wound matters and a small drop is strong evidence it does not — the test
+   is more trustworthy when it fails than when it passes, and the verdict says so.             */
+function occludeCanvas(src, box, invert){
+  const S = src.width;
+  const c = document.createElement('canvas'); c.width = c.height = S;
+  const ctx = c.getContext('2d'); ctx.drawImage(src, 0, 0);
+  const im = ctx.getImageData(0, 0, S, S), d = im.data;
+  const m = dilate(lastSeg.mask, SEG, 2);            // a little wider than the outline, to cover its edge
+  const inWound = (x, y) => {
+    const vx = box.l + x * box.s / S, vy = box.t + y * box.s / S;
+    const mx = (vx / VIEW * SEG) | 0, my = (vy / VIEW * SEG) | 0;
+    return mx >= 0 && my >= 0 && mx < SEG && my < SEG && !!m[my * SEG + mx];
+  };
+  let r = 0, g = 0, b = 0, k = 0;
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++){
+    if (inWound(x, y)) continue;
+    const o = (y * S + x) * 4;
+    if (d[o] + d[o+1] + d[o+2] < 12) continue;       // letterbox padding is not skin
+    r += d[o]; g += d[o+1]; b += d[o+2]; k++;
+  }
+  if (!k) return null;
+  r = Math.round(r / k); g = Math.round(g / k); b = Math.round(b / k);
+  let wound = 0, painted = 0;
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++){
+    const w = inWound(x, y); if (w) wound++;
+    if (w === !!invert) continue;                    // invert: paint everything EXCEPT the wound
+    const o = (y * S + x) * 4; d[o] = r; d[o+1] = g; d[o+2] = b; painted++;
+  }
+  ctx.putImageData(im, 0, 0);
+  return { canvas: c, covered: painted / (S * S), woundShare: wound / (S * S) };
+}
+
+async function classifyCanvas(src){
+  const x = preprocess(src, active.inputRange);
+  const acts = active.conv.predict(x);
+  const out = active.tail.predict(acts);
+  const heads = Array.isArray(out) ? out : [out];
+  const vals = [];
+  for (const h of heads) vals.push(Array.from(await h.data()));
+  heads.forEach(t => t.dispose()); acts.dispose(); x.dispose();
+  return vals;
+}
+
+$('occBtn') && ($('occBtn').onclick = async () => {
+  if (!lastPred || lastPred.piOnly) return toast('Analyse an image first');
+  if (!lastSeg || !lastSeg.found) return toast('No wound outline — the test needs a region to mask');
+  const btn = $('occBtn'); btn.disabled = true; btn.textContent = 'Running…';
+  try {
+    const box = lastBox || { l: 0, t: 0, s: VIEW };
+    const base = lastBox ? cropCanvas(lastBox) : $('imgCanvas');
+    const occ = occludeCanvas(base, box, false);     // wound removed — is it NECESSARY?
+    const inv = occludeCanvas(base, box, true);      // wound only    — is it SUFFICIENT?
+    if (!occ || !inv){ toast('The wound fills the whole crop — nothing left to fill it with'); return; }
+    const [b0, b1] = await classifyCanvas(base);
+    const [o0, o1] = await classifyCanvas(occ.canvas);
+    const [i0, i1] = await classifyCanvas(inv.canvas);
+
+    let rows;                                        // [label, original, wound removed, wound only]
+    if (active.kind === 'demo'){
+      const cal = v => (CALIB.severity && CALIB.severity.apply) ? platt(v, CALIB.severity) : v;
+      rows = [['Depth / severity — p(severe)', cal(b0)[1], cal(o0)[1], cal(i0)[1]],
+              ['Infection — p(infected)', b1[1], o1[1], i1[1]]];
+    } else {
+      const k = b0.indexOf(Math.max(...b0));
+      rows = [[`p(${active.classes[k]})`, b0[k], o0[k], i0[k]]];
+    }
+    /* Necessity: how far the answer moves when the lesion is taken away.
+       Sufficiency: how far it moves when everything BUT the lesion is taken away. A model that is
+       reading the wound scores high on the first and low on the second. Asking only the first
+       question is what makes a small ulcer look like a failure: removing 8 % of the pixels moves
+       any model very little, so the second question is what separates "small lesion" from
+       "not looking at the lesion". */
+    const need = Math.max(...rows.map(r => Math.abs(r[1] - r[2])));
+    const suff = Math.max(...rows.map(r => Math.abs(r[1] - r[3])));
+    const share = occ.woundShare, small = share < 0.12;
+
+    let cls, verdict;
+    if (need >= 0.20){
+      cls = 'good';
+      verdict = `<b>The wound drives this prediction.</b> Removing it moved the model by ${need.toFixed(2)}`
+        + (suff < 0.15 ? `, and the wound alone reproduces the answer to within ${suff.toFixed(2)}. Necessary and sufficient — the behaviour you want.`
+                       : `. Keeping only the wound changed it by ${suff.toFixed(2)}, so the surrounding skin contributes too, which is clinically reasonable.`);
+    } else if (suff >= 0.20){
+      cls = 'bad';
+      verdict = `<b>The prediction is coming from outside the wound.</b> Removing the lesion barely moved it `
+        + `(${need.toFixed(2)}), but removing everything except the lesion moved it a great deal (${suff.toFixed(2)}). `
+        + `The decision rests on the peri-wound skin, the dressing, the ruler, the drape or the skin tone. `
+        + `Do not use this output clinically, and treat the heatmap above as unreliable for this case.`;
+    } else {
+      cls = small ? 'warn' : 'bad';
+      verdict = `<b>Neither half of the image changes the answer.</b> Removing the wound moved it ${need.toFixed(2)}; `
+        + `removing everything else moved it ${suff.toFixed(2)}. The model gives much the same answer to three `
+        + `different images, which points at something global — overall colour, exposure or skin tone — rather than `
+        + `at this wound.`
+        + (small ? ` The lesion is only ${(share*100).toFixed(0)} % of the crop, so a small movement is weaker evidence `
+                 + `than it looks. Check the outline in step 1 covers the whole lesion, and repeat on an image where `
+                 + `the wound is larger before concluding anything.`
+                 : ` The lesion occupies ${(share*100).toFixed(0)} % of the crop, so this is not a size artefact.`);
+    }
+
+    const fig = (c, cap) => `<figure><img src="${c.toDataURL('image/jpeg', 0.85)}" alt="${cap}"><figcaption>${cap}</figcaption></figure>`;
+    $('occOut').innerHTML = `<div class="occgrid">
+        ${fig(base, 'what the model saw')}
+        ${fig(occ.canvas, 'wound removed')}
+        ${fig(inv.canvas, 'wound only')}
+      </div>
+      <div style="margin-top:10px">
+        <div class="occrow" style="color:var(--muted);font-size:11.5px"><span>probability</span><b>original → wound removed → wound only</b></div>
+        ${rows.map(([label, x, y, z]) =>
+          `<div class="occrow"><span>${label}</span><b>${x.toFixed(2)} → ${y.toFixed(2)} → ${z.toFixed(2)}</b></div>`).join('')}
+      </div>
+      <div class="occverdict ${cls}">${verdict}</div>
+      <p class="small" style="margin-top:8px;color:var(--muted)">Mean-fill occlusion; the lesion is ${(share*100).toFixed(0)} % of the crop. Both masked images are unlike anything in training, so read this as evidence rather than proof, and run it on several cases — one image is an anecdote.</p>`;
+  } catch(e){
+    $('occOut').innerHTML = `<p class="small" style="color:#991b1b">The test could not run: ${e.message}</p>`;
+  } finally { btn.disabled = false; btn.textContent = 'Run occlusion test'; }
+});
+
 /* ═══════════════════════════ ground truth + case log ═══════════════════════════ */
 const LOG_KEY = 'dfu_vision_cases_v1';
 const loadLog = () => { try { return JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); } catch(e){ return []; } };
@@ -1920,13 +2105,19 @@ $('saveCase').onclick = () => {
     roi_source_px: lastBox && fit ? Math.round(lastBox.s / fit.scale) : null,
     tissue: t ? { granulation: +t.frac.gran.toFixed(3), slough: +t.frac.slough.toFixed(3), necrosis: +t.frac.necro.toFixed(3),
                   pale: +t.frac.pale.toFixed(3), periwound_delta_a: t.dA === null ? null : +t.dA.toFixed(2) } : null,
+    /* The study ID is what makes a patient-level split possible later; if the clinician leaves it
+       blank it is derived from the filename, by the same rule the trainer uses. */
+    case_id: $('gtCase').value.trim().toUpperCase() || caseIdOf(currentName),
+    skin_type: $('gtSkin').value, device: $('gtDevice').value, protocol: $('gtProto').value,
+    grader: $('gtRater').value.trim().toUpperCase(),
+    rater2: '', rater2_wagner: '', rater2_npiap: '',
     gt_grade: $('gtGrade').value, gt_stage: $('gtStage').value, gt_wagner: $('gtWagner').value, probe_to_bone: $('gtPtb').value,
     /* Usually blank at the bedside, because a culture takes days — the log's follow-up editor
        writes the same fields later. Either route is fine; neither is guessed. */
     specimen_date: $('gtDate').value, organisms: orgs, sensitivity_notes: $('gtNotes').value.trim(),
     culture_positive: culturePositive(orgs), outcome: $('gtOutcome').value, pi_date: '',
     npiap_stage: $('gtNpiap').value, blanching: $('gtBlanch').value, deepest_structure: $('gtDeep').value,
-    body_site: $('gtSite').value, pi_notes: $('gtPiNotes').value.trim() };
+    body_site: (DISEASE === 'pi' ? $('gtSite').value : $('gtSiteDfu').value), pi_notes: $('gtPiNotes').value.trim() };
   const log = loadLog(); log.unshift(rec); saveLog(log); renderLog(); toast('Case saved to log');
   if ($('sheetAuto') && $('sheetAuto').checked && sheetUrl()) pushToSheet([rec], 'Auto-sent');
   $('logCard').scrollIntoView({behavior:'smooth', block:'start'});
@@ -2010,6 +2201,16 @@ function followupHtml(r){
     <div class="field" style="margin-top:8px;max-width:320px"><label>Outcome at follow-up</label>
       <select data-role="outcome">${['','Healed','Improving','Static','Deteriorated','Not yet known']
         .map(o => `<option value="${o}"${(r.outcome || '') === o ? ' selected' : ''}>${o || '—'}</option>`).join('')}</select></div>
+    <span class="lab" style="margin-top:12px">Second grader <em>independent — grade from the image before reading the row above</em></span>
+    <div class="row3">
+      <div class="field"><label>Initials</label><input data-role="r2" value="${(r.rater2 || '').replace(/"/g, '&quot;')}" placeholder="e.g. SAH" maxlength="6"></div>
+      ${pi
+        ? `<div class="field"><label>NPIAP stage</label><select data-role="r2npiap">${['','1','2','3','4','Unstageable','Deep tissue injury']
+            .map(o => `<option value="${o}"${(r.rater2_npiap || '') === o ? ' selected' : ''}>${o || '—'}</option>`).join('')}</select></div>`
+        : `<div class="field"><label>Wagner grade</label><select data-role="r2wagner">${['','0','1','2','3','4','5']
+            .map(o => `<option value="${o}"${(r.rater2_wagner || '') === o ? ' selected' : ''}>${o || '—'}</option>`).join('')}</select></div>`}
+      <div class="field"><label>First grader</label><input value="${(r.grader || '—').replace(/"/g, '&quot;')}" disabled></div>
+    </div>
     <div class="labnav"><button class="btn btn-teal btn-sm" data-role="save">Save follow-up</button>
       <button class="btn btn-ghost btn-sm" data-role="close">Close</button></div>
   </div>`;
@@ -2042,6 +2243,9 @@ function wireFollowup(li, r){
     rec.specimen_date = g('date') || rec.specimen_date || '';
     rec.sensitivity_notes = g('notes') || '';
     rec.outcome = g('outcome') || '';
+    rec.rater2 = (g('r2') || '').trim().toUpperCase();
+    rec.rater2_wagner = g('r2wagner') || '';
+    rec.rater2_npiap = g('r2npiap') || '';
     saveLog(log); openCase = null; renderLog();
     toast('Follow-up saved');
     if ($('sheetAuto') && $('sheetAuto').checked && sheetUrl()) pushToSheet([rec], 'Auto-sent');
@@ -2070,6 +2274,46 @@ function renderPending(){
   });
 }
 
+/* ── inter-rater agreement ─────────────────────────────────────────────────────────────────
+   Every accuracy figure in this app is agreement with one clinician's opinion. Wagner grading
+   and NPIAP staging both have documented disagreement between observers, so without a second
+   grader on a subset there is no way to say whether a model that "disagrees" is wrong or simply
+   reading the wound the way the other grader would have. Cohen's kappa is the statistic a
+   reviewer expects; it corrects the raw agreement for the agreement that chance alone produces,
+   which is why 85 % raw can still be a kappa of 0.3 when one grade dominates.                */
+function cohenKappa(pairs){
+  const n = pairs.length; if (n < 2) return null;
+  const cats = [...new Set(pairs.reduce((a, p) => a.concat(p), []))];
+  const po = pairs.filter(([a, b]) => a === b).length / n;
+  let pe = 0;
+  cats.forEach(c => { pe += (pairs.filter(p => p[0] === c).length / n) * (pairs.filter(p => p[1] === c).length / n); });
+  return pe === 1 ? null : (po - pe) / (1 - pe);
+}
+const kappaWord = k => k < 0.21 ? 'slight' : k < 0.41 ? 'fair' : k < 0.61 ? 'moderate' : k < 0.81 ? 'substantial' : 'almost perfect';
+
+function renderKappa(log){
+  const pairsOf = (a, b) => log.filter(r => r[a] && r[b]).map(r => [String(r[a]), String(r[b])]);
+  const sets = [['Wagner', pairsOf('gt_wagner', 'rater2_wagner')], ['NPIAP', pairsOf('npiap_stage', 'rater2_npiap')]];
+  const best = sets.slice().sort((x, y) => y[1].length - x[1].length)[0];
+  const k = cohenKappa(best[1]);
+  $('kKappa').textContent = (k === null || best[1].length < 10) ? '—' : k.toFixed(2);
+  const done = sets.reduce((a, s) => a + s[1].length, 0);
+  if (!done){
+    $('kappaNote').innerHTML = '<b>No second grading yet.</b> Every figure above is agreement with a single '
+      + 'grader. Open any case and fill in <b>second grader</b> to start building the subset — 100 to 150 '
+      + 'double-graded cases is the usual ask, and it is what turns "the model agrees with me" into a '
+      + 'measured reference standard.';
+  } else {
+    $('kappaNote').innerHTML = sets.filter(s => s[1].length).map(([name, ps]) => {
+      const kk = cohenKappa(ps);
+      const raw = Math.round(100 * ps.filter(([a, b]) => a === b).length / ps.length);
+      return `<b>${name}:</b> ${ps.length} case${ps.length === 1 ? '' : 's'} double-graded, raw agreement ${raw} %`
+        + (kk === null ? ', κ undefined (both graders used one category only)'
+                       : `, κ ${kk.toFixed(2)}${ps.length < 10 ? ' — too few cases to report' : ' (' + kappaWord(kk) + ')'}`);
+    }).join('<br>');
+  }
+}
+
 function renderLog(){
   const log = loadLog(); $('kCases').textContent = log.length; $('logEmpty').classList.toggle('hidden', log.length > 0);
   const withCult = log.filter(r => r.culture_positive !== null && r.p_infection !== null);
@@ -2077,6 +2321,7 @@ function renderLog(){
   $('kInf').textContent = withCult.length ? `${Math.round(100*agree/withCult.length)} %` : '—';
   const cult = log.filter(r => r.culture_positive !== null);
   $('kCult').textContent = cult.length ? `${cult.filter(r => r.culture_positive).length}/${cult.length}` : '—';
+  renderKappa(log);
   renderStorage(); renderPending();
   $('logList').innerHTML = log.slice(0, 8).map(r => {
     const a = (r.culture_positive === null || r.p_infection === null) ? '' : `<span class="agree ${(r.p_infection>=0.5)===r.culture_positive?'':'no'}">${(r.p_infection>=0.5)===r.culture_positive?'agrees with C&S':'disagrees with C&S'}</span>`;
@@ -2109,9 +2354,10 @@ function renderLog(){
    cloud account would quietly end that. A paste is the clinician choosing, each time, what
    leaves — and the thumbnails are left out of it, because a 96 px wound photograph pasted into a
    spreadsheet is still a patient image. */
-const LOG_COLS = ['id','when','image','disease','model','ai_label','p_severe','p_infection','probs','wound_area_frac','roi_source','roi_source_px','tissue',
+const LOG_COLS = ['id','when','case_id','image','disease','skin_type','device','protocol','grader','model','ai_label','p_severe','p_infection','probs','wound_area_frac','roi_source','roi_source_px','tissue',
                   'gt_grade','gt_stage','gt_wagner','probe_to_bone','specimen_date','organisms','sensitivity_notes','culture_positive',
-                  'npiap_stage','blanching','deepest_structure','body_site','pi_date','outcome','pi_notes'];
+                  'npiap_stage','blanching','deepest_structure','body_site','pi_date','outcome','pi_notes',
+                  'rater2','rater2_wagner','rater2_npiap'];
 const cellText = v => String(Array.isArray(v) ? v.join('; ') : (v && typeof v === 'object' ? JSON.stringify(v) : (v ?? '')));
 
 /* ═══════════════════════════ optional push to a Google Sheet ═══════════════════════════
@@ -2276,7 +2522,20 @@ function refreshData(){
    One bar per class against a per-class target, coloured by status and labelled in words.
    Status colour is never the only signal: every row carries an icon and a text verdict. */
 const MIN_PER_CLASS = 100;
+function readinessNote(){
+  const el = $('rNote'); if (!el) return;
+  const nImg = pool.length, nCase = poolCases().size;
+  if (!nImg){ el.innerHTML = "Counts are of images. Your protocol's precision calculations are in <b>patients</b>, "
+    + "so the split below is made by case, never by image &mdash; four photographs of one ulcer are not four independent cases."; return; }
+  const grouped = nCase < nImg;
+  el.innerHTML = `<b>${nImg} image${nImg === 1 ? '' : 's'} from ${nCase} case${nCase === 1 ? '' : 's'}.</b> `
+    + (grouped
+        ? `The held-out split is made by case, so no patient can appear on both sides. Sample size for a confidence interval is ${nCase}, not ${nImg}.`
+        : `Every filename produced its own case id, so this is being treated as ${nImg} separate patients. If any two of these photographs are of the same wound, name them <code>CASEID_rest.jpg</code> (<code>P014_v2_pre.jpg</code>) and load the folder again &mdash; otherwise the accuracy reported below will be optimistic by an amount nobody can estimate afterwards.`);
+}
+
 function renderReadiness(){
+  readinessNote();
   const target = +$('targetPreset').value || 250;
   const rows = [...data.classes.entries()].filter(([, v]) => v.length).sort((a, b) => b[1].length - a[1].length);
   const counts = rows.map(([, v]) => v.length);
@@ -2365,12 +2624,39 @@ const WAGNER_OPTS = [['0','0 · intact skin'],['1','1 · superficial'],['2','2 �
                      ['3','3 · abscess or osteomyelitis'],['4','4 · localised gangrene'],['5','5 · extensive gangrene']];
 const NPIAP_OPTS  = [['1','1 · non-blanchable erythema'],['2','2 · exposed dermis'],['3','3 · adipose visible'],
                      ['4','4 · muscle, tendon or bone'],['U','Unstageable'],['D','Deep tissue injury']];
+const SKIN_OPTS   = [['I','I'],['II','II'],['III','III'],['IV','IV'],['V','V'],['VI','VI']];
 const FEAT_OPTS   = [['granulation','Granulation'],['slough','Slough'],['necrosis','Necrosis'],
                      ['epithelialising','Epithelialising'],['periwound_erythema','Peri-wound erythema'],
                      ['dry_gangrene','Dry gangrene'],['bleeding','Bleeding'],['abscess','Abscess'],['pus','Pus']];
 let pool = [], cur = 0;
 
 const labelled = it => it.wagner || it.npiap || it.feats.size > 0;
+
+/* ── patient identity ──────────────────────────────────────────────────────────────────────
+   Serial photographs of one ulcer are not independent observations. If two views of the same
+   wound fall on opposite sides of the train/validation split, the model can score well by
+   recognising the patient rather than the pathology, and the reported accuracy is inflated by
+   an amount nobody can estimate after the fact. Reviewers ask about this first.
+
+   The case identity has to come from somewhere, and a browser cannot see a patient register, so
+   it comes from the filename: everything before the first underscore or hyphen. P014_v2_pre.jpg
+   and P014_v3_post.jpg are then one case. A filename with no separator becomes its own case,
+   which is the old image-level behaviour — correct when every photograph really is a
+   different patient, and stated plainly in the interface when it happens, because silently
+   treating 40 images of 9 patients as 40 patients is the failure this exists to prevent.     */
+const CASE_RE = /^[A-Za-z]{0,6}\d{1,5}[A-Za-z]?$/;   // P014, 0012, HTPN12 — but not IMG, not 20260508
+function caseIdOf(name){
+  const stem = String(name || '').replace(/\.[^.]+$/, '');
+  const m = stem.match(/^([^_\-]+)[_\-]/);
+  /* A prefix is only treated as a case id if it looks like one. Phone cameras produce
+     IMG_2451.jpg and 20260508_104409.jpg by the thousand; accepting "IMG" or a date as the
+     patient would silently collapse a whole clinic into one case and put every photograph on the
+     same side of the split — a worse error than the image-level split this replaces, and a
+     completely invisible one. When the prefix fails the test the whole filename is the case, so
+     the image stands alone.                                                                    */
+  return (m && CASE_RE.test(m[1]) ? m[1] : stem).toUpperCase();
+}
+const poolCases = () => new Set(pool.map(it => caseIdOf(it.name)));
 
 /* A tick is recorded the moment it is tapped — there is no separate save step. The ticks also
    survive a reload: the image files themselves cannot be kept (the browser will not hand a
@@ -2383,7 +2669,7 @@ function loadLabels(){ try { return JSON.parse(localStorage.getItem(LABELS_KEY) 
 function saveLabels(){
   const m = loadLabels();
   pool.forEach(it => { const k = labKey(it);
-    if (labelled(it)) m[k] = { w: it.wagner, n: it.npiap, f: [...it.feats] };
+    if (labelled(it) || it.skin) m[k] = { w: it.wagner, n: it.npiap, f: [...it.feats], s: it.skin || null };
     else delete m[k]; });
   try { localStorage.setItem(LABELS_KEY, JSON.stringify(m)); }
   catch(e){ toast('Labels could not be stored \u2014 export the CSV before reloading'); }
@@ -2393,18 +2679,18 @@ function addToPool(items){
   const store = loadLabels();
   items.forEach(it => {
     const rec = { file: it.file, name: it.name, url: null,
-                  wagner: it.wagner || null, npiap: it.npiap || null,
+                  wagner: it.wagner || null, npiap: it.npiap || null, skin: it.skin || null,
                   feats: new Set(it.feats || []) };
     const prev = store[labKey(rec)];                 // ticks from an earlier session
     if (prev && !labelled(rec)){ rec.wagner = prev.w || null; rec.npiap = prev.n || null;
-                                 rec.feats = new Set(prev.f || []); }
+                                 rec.feats = new Set(prev.f || []); rec.skin = prev.s || null; }
     pool.push(rec);
   });
   const firstUnlabelled = pool.findIndex(it => !labelled(it));
   cur = firstUnlabelled < 0 ? 0 : firstUnlabelled;
   const restored = pool.filter(labelled).length;
   if (restored) toast(`${restored} image${restored === 1 ? '' : 's'} already labelled \u2014 ticks restored`);
-  saveLabels(); autoTarget(); projectClasses(); describeTarget(); renderLabeller();
+  saveLabels(); autoTarget(); projectClasses(); describeTarget(); renderLabeller(); readinessNote();
 }
 const poolUrl = it => it.url || (it.url = URL.createObjectURL(it.file));
 
@@ -2455,7 +2741,9 @@ function renderLabeller(){
   $('labImg').src = poolUrl(it);
   $('labName').textContent = it.name;
   const done = pool.filter(labelled).length;
-  $('labelProg').textContent = `${done} of ${pool.length} labelled`;
+  const nCase = poolCases().size;
+  $('labelProg').textContent = `${done} of ${pool.length} labelled · ${nCase} case${nCase === 1 ? '' : 's'}`;
+  $('labCase').textContent = 'case ' + caseIdOf(it.name);
 
   const chips = (host, opts, isOn, onPick) => {
     $(host).innerHTML = opts.map(([v, l]) => `<button class="chip${isOn(v) ? ' on' : ''}" data-v="${v}">${l}</button>`).join('');
@@ -2465,6 +2753,7 @@ function renderLabeller(){
   chips('labWagner', WAGNER_OPTS, v => it.wagner === v, v => { it.wagner = it.wagner === v ? null : v; });
   chips('labNpiap',  NPIAP_OPTS,  v => it.npiap === v,  v => { it.npiap  = it.npiap  === v ? null : v; });
   chips('labFeats',  FEAT_OPTS,   v => it.feats.has(v), v => { it.feats.has(v) ? it.feats.delete(v) : it.feats.add(v); });
+  chips('labSkin',   SKIN_OPTS,   v => it.skin === v,   v => { it.skin = it.skin === v ? null : v; });
 
   $('labHint').textContent = labelled(it)
     ? 'A wound is either a foot ulcer or a pressure injury, so it normally carries a Wagner grade or an NPIAP stage, not both.'
@@ -2479,6 +2768,7 @@ function renderLabeller(){
     if (it.wagner) bits.push('Wagner ' + optLabel(WAGNER_OPTS, it.wagner));
     if (it.npiap)  bits.push('NPIAP ' + optLabel(NPIAP_OPTS, it.npiap));
     if (it.feats.size) bits.push(FEAT_OPTS.filter(o => it.feats.has(o[0])).map(o => o[1].toLowerCase()).join(', '));
+    if (it.skin) bits.push('skin type ' + it.skin);
     sv.classList.remove('none');
     sv.innerHTML = '\u2713 <b>Saved for this image:</b> ' + bits.join(' &middot; ')
       + '<br>Recorded as you tick — there is no save button. It survives a reload if you choose the same folder again.';
@@ -2528,8 +2818,8 @@ $('labNext') && ($('labNext').onclick = () => {
    built on. One click gets them out of the browser. */
 $('labExport') && ($('labExport').onclick = () => {
   if (!pool.length) return toast('No images loaded');
-  const head = ['filename', 'wagner', 'npiap'].concat(FEAT_OPTS.map(o => o[0]));
-  const rows = pool.map(it => [it.name, it.wagner || '', it.npiap || '']
+  const head = ['filename', 'case_id', 'wagner', 'npiap', 'skin_type'].concat(FEAT_OPTS.map(o => o[0]));
+  const rows = pool.map(it => [it.name, caseIdOf(it.name), it.wagner || '', it.npiap || '', it.skin || '']
     .concat(FEAT_OPTS.map(o => it.feats.has(o[0]) ? '1' : '0')));
   const esc = v => /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
   const csv = [head].concat(rows).map(r => r.map(v => esc(String(v))).join(',')).join('\r\n');
@@ -2578,6 +2868,48 @@ async function embed(img, flips){
   }
   return outs;
 }
+/* Assign whole cases to training or validation, never individual images. The 20 % target is on
+   images, because that is what the confidence interval depends on, but the unit that moves is the
+   case. Two passes then repair the edges: a class with no validation image cannot be scored, and a
+   class with no training image cannot be learnt, so the smallest case carrying that class is moved
+   across. With very few cases both repairs can fight each other; when that happens the split is
+   reported as it actually fell rather than quietly patched.                                     */
+function splitByCase(classes){
+  const rows = [];
+  classes.forEach((c, ci) => data.classes.get(c).forEach(it => rows.push({ it, ci, cid: caseIdOf(it.name) })));
+  const byCase = new Map();
+  rows.forEach(r => { if (!byCase.has(r.cid)) byCase.set(r.cid, []); byCase.get(r.cid).push(r); });
+  const cases = [...byCase.keys()];
+  for (let i = cases.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [cases[i], cases[j]] = [cases[j], cases[i]]; }
+
+  const target = Math.max(1, Math.round(rows.length * 0.2));
+  const val = new Set(); let nVal = 0;
+  for (const cid of cases){ if (nVal >= target) break; val.add(cid); nVal += byCase.get(cid).length; }
+
+  const smallest = list => list.slice().sort((a, b) => byCase.get(a).length - byCase.get(b).length)[0];
+  classes.forEach((c, ci) => {                       // every class needs something to score on
+    if (rows.some(r => r.ci === ci && val.has(r.cid))) return;
+    const cand = smallest(cases.filter(cid => byCase.get(cid).some(r => r.ci === ci)));
+    if (cand) val.add(cand);
+  });
+  classes.forEach((c, ci) => {                       // and something to learn from
+    if (rows.some(r => r.ci === ci && !val.has(r.cid))) return;
+    const cand = smallest([...val].filter(cid => byCase.get(cid).some(r => r.ci === ci)));
+    if (cand) val.delete(cand);
+  });
+
+  const nv = rows.filter(r => val.has(r.cid)).length;
+  const notes = [`Split by case: ${cases.length - val.size} case(s) / ${rows.length - nv} images for training, `
+    + `${val.size} case(s) / ${nv} images held out. No case appears on both sides.`];
+  if (cases.length === rows.length) notes.push(
+    'Every filename produced its own case id, so this is an image-level split. That is correct only if no two '
+    + 'photographs are of the same wound. If you have serial or multi-view images, name them CASEID_rest.jpg '
+    + '(P014_v2_pre.jpg) and re-load the folder, or the held-out accuracy below will be optimistic.');
+  const unscored = classes.filter((c, ci) => !rows.some(r => r.ci === ci && val.has(r.cid)));
+  if (unscored.length) notes.push(`No held-out image for: ${unscored.join(', ')} — those rows of the table below are empty by construction, not by failure.`);
+  return { val, rows, notes, nCases: cases.length, nValCases: val.size, nVal: nv };
+}
+
 let trained = null;   // { head, classes, metrics, cm }
 $('trainBtn').onclick = async () => {
   if (!dataReady()) return;
@@ -2586,19 +2918,18 @@ $('trainBtn').onclick = async () => {
   const epochs = +$('tEpochs').value || 40, hidden = +$('tHidden').value || 128, aug = $('tAug').value === '1';
   const t0 = performance.now();
   log(`Classes: ${classes.join(', ')}\nExtracting MobileNetV2 embeddings on ${tf.getBackend()}…`, true);
-  // stratified 80/20 split
+  // 80/20 split by CASE, not by image — see splitByCase
+  const sp = splitByCase(classes);
+  sp.notes.forEach(log);
   const trX = [], trY = [], vaX = [], vaY = [];
-  let done = 0; const total = classes.reduce((n, c) => n + data.classes.get(c).length, 0);
-  for (const [ci, c] of classes.entries()){
-    const items = [...data.classes.get(c)]; for (let i = items.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [items[i], items[j]] = [items[j], items[i]]; }
-    const nVal = Math.max(1, Math.round(items.length * 0.2));
-    for (const [k, it] of items.entries()){
-      try { const img = await loadImg(it); const isVal = k < nVal; const embs = await embed(img, aug && !isVal);
-        embs.forEach(e => { (isVal ? vaX : trX).push(e); (isVal ? vaY : trY).push(ci); }); }
-      catch(e){ log(`skipped ${it.name}: ${e.message}`); }
-      done++; $('trainProg').style.width = (done / total * 60) + '%';
-      if (done % 5 === 0){ log(`  ${done}/${total} images embedded`); await sleep(0); }
-    }
+  let done = 0; const total = sp.rows.length;
+  for (const r of sp.rows){
+    const isVal = sp.val.has(r.cid);
+    try { const img = await loadImg(r.it); const embs = await embed(img, aug && !isVal);
+      embs.forEach(e => { (isVal ? vaX : trX).push(e); (isVal ? vaY : trY).push(r.ci); }); }
+    catch(e){ log(`skipped ${r.it.name}: ${e.message}`); }
+    done++; $('trainProg').style.width = (done / total * 60) + '%';
+    if (done % 5 === 0){ log(`  ${done}/${total} images embedded`); await sleep(0); }
   }
   log(`Training head on ${trX.length} embeddings (${trY.length ? classes.length : 0} classes), validating on ${vaX.length} held-out images…`);
   const xs = tf.tensor2d(trX), ys = tf.oneHot(tf.tensor1d(trY, 'int32'), classes.length), xv = tf.tensor2d(vaX), yv = tf.oneHot(tf.tensor1d(vaY, 'int32'), classes.length);
@@ -2614,7 +2945,8 @@ $('trainBtn').onclick = async () => {
   const per = classes.map((c, i) => { const tp = cm[i][i], fp = cm.reduce((s, r, j) => s + (j !== i ? r[i] : 0), 0), fn = cm[i].reduce((s, v, j) => s + (j !== i ? v : 0), 0); const p = tp / (tp + fp || 1), r = tp / (tp + fn || 1); return { c, p, r, f1: (p + r) ? 2*p*r/(p+r) : 0, n: cm[i].reduce((a, b) => a + b, 0) }; });
   const acc = yp.filter((p, i) => p === vaY[i]).length / vaY.length, f1 = per.reduce((s, x) => s + x.f1, 0) / n;
   xs.dispose(); ys.dispose(); xv.dispose(); yv.dispose();
-  trained = { head, classes, metrics: { accuracy: acc, macro_f1: f1, n_val: vaY.length, n_train_images: total - vaY.length, epochs, hidden, aug }, cm, per };
+  trained = { head, classes, metrics: { accuracy: acc, macro_f1: f1, n_val: vaY.length, n_train_images: total - sp.nVal,
+                                       split: 'by case', n_cases: sp.nCases, n_cases_val: sp.nValCases, epochs, hidden, aug }, cm, per };
   $('mAcc').textContent = (acc*100).toFixed(0) + ' %'; $('mF1').textContent = f1.toFixed(2); $('mN').textContent = vaY.length; $('mTime').textContent = ((performance.now() - t0)/1000).toFixed(0) + ' s';
   $('cmTable').innerHTML = `<tr><th>true ⟍ predicted</th>${classes.map(c => `<th>${c}</th>`).join('')}</tr>` + cm.map((r, i) => `<tr><th>${classes[i]}</th>${r.map((v, j) => `<td class="${i===j?'diag':''}">${v}</td>`).join('')}</tr>`).join('');
   $('prTable').innerHTML = `<tr><th>class</th><th>n</th><th>precision</th><th>recall</th><th>F1</th></tr>` + per.map(x => `<tr><th>${x.c}</th><td>${x.n}</td><td>${(x.p*100).toFixed(0)} %</td><td>${(x.r*100).toFixed(0)} %</td><td>${x.f1.toFixed(2)}</td></tr>`).join('');

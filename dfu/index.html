@@ -98,6 +98,12 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .filmstrip button.done{border-color:var(--teal)}
 .filmstrip img{width:100%;height:100%;object-fit:cover;display:block;opacity:.85}
 .filmstrip button.done::after{content:"\2713";position:absolute;right:2px;bottom:1px;font-size:11px;color:#fff;background:var(--teal);border-radius:3px;padding:0 3px;line-height:1.35}
+.pending{background:var(--amber);color:var(--navy);border-radius:11px;padding:11px 13px;margin:4px 0 12px}
+.pending b{display:block;font-size:13.5px;margin-bottom:6px}
+.pending ul{list-style:none;display:flex;flex-direction:column;gap:4px}
+.pending li{display:flex;gap:8px;align-items:baseline;font-size:12.5px;cursor:pointer}
+.pending li:hover{text-decoration:underline}
+.pending .d{font-family:var(--mono);font-weight:700;flex:none}
 .log-list li.open{background:var(--cloud)}
 .followup{padding:10px 12px;background:var(--cloud);border-radius:10px;margin:6px 0 2px}
 .followup .chips{margin-top:6px}
@@ -532,7 +538,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 
   <!-- CASE LOG -->
   <!-- MODEL CARD -->
-  <section class="card">
+  <section class="card" id="modelCardSection">
     <div class="step"><span class="n">i</span><h3>Model card (abridged)</h3></div>
     <dl class="modelcard" id="modelCard">
       <dt>Approach</dt><dd>Two models run in sequence, both transfer‑learned from ImageNet and both executed in the browser, so no image leaves the device. <b>Segmentation</b>: a MobileNetV2‑UNet trained on the FUSeg expert wound masks outlines the ulcer and measures it. <b>Classification</b>: a MobileNetV2 with two softmax heads, trained on wound crops taken from those masks, then fine‑tuned over its top 30 layers.</dd>
@@ -610,6 +616,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       <div class="kpi"><b id="kInf">—</b><span>infection agreement</span></div>
       <div class="kpi"><b id="kCult">—</b><span>culture positive</span></div>
     </div>
+    <div id="pending"></div>
     <p class="small" style="margin:2px 0 8px;color:var(--muted)">Tap a case to complete what was not known at the bedside — the culture result, and the outcome at follow-up.</p>
     <ul class="log-list" id="logList"></ul>
     <p id="logEmpty" class="small" style="margin-top:8px;color:var(--faint)">No cases logged yet.</p>
@@ -746,8 +753,14 @@ $('ack1').onchange = $('ack2').onchange = gateCheck;
 $('enter').onclick = () => $('gate').classList.add('hidden');
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
-  $('tab-assess').classList.toggle('hidden', b.dataset.tab !== 'assess');
-  $('tab-train').classList.toggle('hidden', b.dataset.tab !== 'train');
+  const assess = b.dataset.tab === 'assess';
+  $('tab-assess').classList.toggle('hidden', !assess);
+  $('tab-train').classList.toggle('hidden', assess);
+  /* The case log belongs in both journeys — after recording a case, and again when completing it
+     days later — but it is ONE element, moved, not two. Two copies would mean duplicate ids, and
+     getElementById would silently return whichever came first in the document. */
+  const log = $('logCard');
+  if (assess) $('modelCardSection').before(log); else $('targetCard').before(log);
   window.scrollTo({top:0});
 });
 document.querySelectorAll('.src-tabs button').forEach(b => b.onclick = () => {
@@ -1939,6 +1952,28 @@ function wireFollowup(li, r){
   };
 }
 
+/* A worklist of cases whose microbiology has not come back. The hard part of closing this loop is
+   not typing an organism name — it is remembering, three days later, that a swab was sent. */
+function renderPending(){
+  const log = loadLog();
+  const waiting = log.filter(r => r.disease !== 'pressure injury' && !(r.organisms || []).length)
+    .map(r => ({ r, days: Math.floor((Date.now() - new Date(r.when).getTime()) / 86400000) }))
+    .sort((a, b) => b.days - a.days);
+  const el = $('pending');
+  if (!waiting.length){ el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="pending"><b>${waiting.length} case${waiting.length === 1 ? '' : 's'} waiting for a culture result</b>
+    <ul>${waiting.slice(0, 6).map(({ r, days }) =>
+      `<li data-id="${r.id}"><span class="d">${days === 0 ? 'today' : days + 'd'}</span><span>${r.image} · clinician ${
+        [r.gt_grade && r.gt_stage ? r.gt_grade + r.gt_stage : '', r.gt_wagner ? 'W' + r.gt_wagner : ''].filter(Boolean).join(' / ') || 'ungraded'
+      }</span></li>`).join('')}</ul>
+    ${waiting.length > 6 ? `<p class="small" style="margin-top:6px;color:var(--navy);opacity:.75">and ${waiting.length - 6} more.</p>` : ''}</div>`;
+  el.querySelectorAll('li').forEach(li => li.onclick = () => {
+    openCase = li.dataset.id; renderLog();
+    const row = $('logList').querySelector(`li[data-id="${li.dataset.id}"]`);
+    if (row) row.scrollIntoView({ behavior:'smooth', block:'center' });
+  });
+}
+
 function renderLog(){
   const log = loadLog(); $('kCases').textContent = log.length; $('logEmpty').classList.toggle('hidden', log.length > 0);
   const withCult = log.filter(r => r.culture_positive !== null && r.p_infection !== null);
@@ -1946,7 +1981,7 @@ function renderLog(){
   $('kInf').textContent = withCult.length ? `${Math.round(100*agree/withCult.length)} %` : '—';
   const cult = log.filter(r => r.culture_positive !== null);
   $('kCult').textContent = cult.length ? `${cult.filter(r => r.culture_positive).length}/${cult.length}` : '—';
-  renderStorage();
+  renderStorage(); renderPending();
   $('logList').innerHTML = log.slice(0, 8).map(r => {
     const a = (r.culture_positive === null || r.p_infection === null) ? '' : `<span class="agree ${(r.p_infection>=0.5)===r.culture_positive?'':'no'}">${(r.p_infection>=0.5)===r.culture_positive?'agrees with C&S':'disagrees with C&S'}</span>`;
     const pi = r.disease === 'pressure injury';
@@ -2338,6 +2373,10 @@ function describeTarget(){
 }
 
 fillTargets(); describeTarget(); renderLabeller(); renderReadiness();
+/* Place the case log for whichever tab is showing at load, so it is not stranded in the hidden
+   one until the first tab click. */
+(() => { const t = document.querySelector('.tabs button.on');
+         if (t && t.dataset.tab === 'assess') $('modelCardSection').before($('logCard')); })();
 
 /* ── Google Drive import (Drive API v3 + Google Identity Services) ── */
 function loadImg(item){ return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = item.url || (item.url = URL.createObjectURL(item.file)); }); }

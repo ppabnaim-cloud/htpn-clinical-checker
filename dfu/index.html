@@ -505,7 +505,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   <section class="card hidden" id="truth">
     <div class="step"><span class="n">3</span><h3>Record this case</h3><span class="hint">what you know now</span></div>
     <p class="small" style="margin-bottom:6px" id="truthIntro"></p>
-    <div class="note" style="margin:0 0 10px">A culture result takes three to five days, so it is not entered here. Save what you know at the bedside; the case waits in the log under <b>Train on your data</b>, and you complete the microbiology there when it comes back.</div>
+    <div class="note" style="margin:0 0 10px">Fill in whatever you have. A culture usually takes three to five days, so the microbiology is often blank at this point — that is expected. The case then appears in the log below under <b>cases waiting for a culture result</b>, and tapping it there completes the organism, the sensitivity and the outcome whenever they arrive.</div>
     <div id="gtDfu">
     <div class="row3">
       <div class="field"><label>Clinician Texas grade</label>
@@ -515,8 +515,17 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       <div class="field"><label>Wagner grade</label>
         <select id="gtWagner"><option value="">—</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
     </div>
-    <div class="field" style="max-width:320px"><label>Probe‑to‑bone</label>
-      <select id="gtPtb"><option value="">—</option><option>Negative</option><option>Positive</option><option>Not done</option></select></div>
+    <div class="row2">
+      <div class="field"><label>Probe‑to‑bone</label>
+        <select id="gtPtb"><option value="">—</option><option>Negative</option><option>Positive</option><option>Not done</option></select></div>
+      <div class="field"><label>Specimen date</label><input type="date" id="gtDate"></div>
+    </div>
+    <div class="field"><label>Tissue culture &amp; sensitivity — organism(s) isolated <em style="font-style:normal;color:var(--faint);font-weight:400">leave blank if not back yet</em></label>
+      <div id="gtOrgs"></div>
+    </div>
+    <div class="field"><label>Sensitivity pattern / notes</label><textarea id="gtNotes" placeholder="e.g. sensitive to co-amoxiclav, resistant to ciprofloxacin; ESBL negative"></textarea></div>
+    <div class="field" style="max-width:320px"><label>Outcome at follow-up</label>
+      <select id="gtOutcome"><option value="">—</option><option>Healed</option><option>Improving</option><option>Static</option><option>Deteriorated</option><option>Not yet known</option></select></div>
     </div>
     <div id="gtPi" class="hidden">
       <div class="row3">
@@ -702,7 +711,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
   Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
-  <b id="buildStamp">build 2026-09-23 &middot; v0.7</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=7</code><br>
+  <b id="buildStamp">build 2026-09-26 &middot; v0.8</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=7</code><br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>
@@ -884,6 +893,11 @@ function useImage(img, name){
   manualBox = null; boxing = false; $('viewer').classList.remove('boxing');
   $('boxBtn').textContent = 'Draw the wound area myself';
   pxPerCm = null; $('scaleBtn').textContent = 'Set scale with the ruler';   // a scale belongs to one photograph only
+  // a culture result belongs to one specimen, so it must not carry over to the next image
+  renderOrgChips($('gtOrgs'), []);
+  ['gtDate','gtNotes'].forEach(k => $(k).value = '');
+  ['gtGrade','gtStage','gtWagner','gtPtb','gtOutcome','gtNpiap','gtBlanch','gtDeep','gtSite'].forEach(k => { if ($(k)) $(k).value = ''; });
+  if ($('gtPiNotes')) $('gtPiNotes').value = '';
   setCam(segModel ? 1 : 0);
   $('analyse').classList.remove('hidden'); $('truth').classList.remove('hidden');
   $('results').classList.add('hidden'); $('woundPanel').classList.add('hidden'); $('decide').classList.add('hidden'); $('status').classList.remove('hidden');
@@ -1877,6 +1891,7 @@ const saveLog = l => { try { localStorage.setItem(LOG_KEY, JSON.stringify(l)); }
 $('saveCase').onclick = () => {
   if (!lastPred) return toast('Analyse an image first');
   const thumb = (() => { const c = document.createElement('canvas'); c.width = c.height = 96; c.getContext('2d').drawImage($('imgCanvas'), 0, 0, 96, 96); return c.toDataURL('image/jpeg', 0.6); })();
+  const orgs = orgChosen($('gtOrgs'));
   /* piOnly cases carry no model prediction by design: the heads are not run on a wound type they
      were never trained on, so the record must not imply one was produced. */
   const scored = !lastPred.piOnly;
@@ -1896,9 +1911,10 @@ $('saveCase').onclick = () => {
     tissue: t ? { granulation: +t.frac.gran.toFixed(3), slough: +t.frac.slough.toFixed(3), necrosis: +t.frac.necro.toFixed(3),
                   pale: +t.frac.pale.toFixed(3), periwound_delta_a: t.dA === null ? null : +t.dA.toFixed(2) } : null,
     gt_grade: $('gtGrade').value, gt_stage: $('gtStage').value, gt_wagner: $('gtWagner').value, probe_to_bone: $('gtPtb').value,
-    /* Left empty on purpose: a culture takes days, so it is completed later from the case log
-       rather than guessed at the bedside. Same for the follow-up outcome. */
-    specimen_date: '', organisms: [], sensitivity_notes: '', culture_positive: null, outcome: '', pi_date: '',
+    /* Usually blank at the bedside, because a culture takes days — the log's follow-up editor
+       writes the same fields later. Either route is fine; neither is guessed. */
+    specimen_date: $('gtDate').value, organisms: orgs, sensitivity_notes: $('gtNotes').value.trim(),
+    culture_positive: culturePositive(orgs), outcome: $('gtOutcome').value, pi_date: '',
     npiap_stage: $('gtNpiap').value, blanching: $('gtBlanch').value, deepest_structure: $('gtDeep').value,
     body_site: $('gtSite').value, pi_notes: $('gtPiNotes').value.trim() };
   const log = loadLog(); log.unshift(rec); saveLog(log); renderLog(); toast('Case saved to log');
@@ -1945,6 +1961,26 @@ function culturePositive(orgs){
 }
 
 let openCase = null;
+
+/* The bedside card and the log's follow-up editor offer the same organism list and the same
+   mutual exclusion, because they write the same fields — one at the trolley if the result
+   happens to be back, one days later when it is not. */
+function renderOrgChips(host, selected){
+  const chosen = new Set(selected || []);
+  host.innerHTML = ORG_GROUPS.map(([g, list]) =>
+    `<div class="orggroup"><span>${g}</span><div class="chips">${list.map(o =>
+      `<button type="button" class="chip${chosen.has(o) ? ' on' : ''}" data-v="${o}">${o}</button>`).join('')}</div></div>`).join('');
+  host.querySelectorAll('.chip').forEach(b => b.onclick = () => {
+    const v = b.dataset.v, wasOn = b.classList.contains('on'), all = [...host.querySelectorAll('.chip')];
+    if (!wasOn){
+      if (ORG_SENTINELS.includes(v)) all.forEach(x => x.classList.remove('on'));
+      else all.filter(x => ORG_SENTINELS.includes(x.dataset.v)).forEach(x => x.classList.remove('on'));
+    }
+    b.classList.toggle('on', !wasOn);
+  });
+}
+const orgChosen = host => [...host.querySelectorAll('.chip.on')].map(b => b.dataset.v);
+renderOrgChips($('gtOrgs'), []);
 
 function followupHtml(r){
   const orgs = new Set(r.organisms || []);

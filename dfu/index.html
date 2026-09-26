@@ -98,6 +98,10 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .filmstrip button.done{border-color:var(--teal)}
 .filmstrip img{width:100%;height:100%;object-fit:cover;display:block;opacity:.85}
 .filmstrip button.done::after{content:"\2713";position:absolute;right:2px;bottom:1px;font-size:11px;color:#fff;background:var(--teal);border-radius:3px;padding:0 3px;line-height:1.35}
+.log-list li.open{background:var(--cloud)}
+.followup{padding:10px 12px;background:var(--cloud);border-radius:10px;margin:6px 0 2px}
+.followup .chips{margin-top:6px}
+.followup .chip{font-size:12px;padding:5px 10px}
 .sheetsync{margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:10px 14px;background:var(--card)}
 .sheetsync summary{cursor:pointer;font-weight:700;font-size:13.5px;color:var(--navy)}
 .sheetsync .field{margin-top:8px}
@@ -491,8 +495,9 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 
   <!-- STEP 3: GROUND TRUTH -->
   <section class="card hidden" id="truth">
-    <div class="step"><span class="n">3</span><h3>Ground truth &amp; feedback loop</h3><span class="hint">closes the learning loop</span></div>
+    <div class="step"><span class="n">3</span><h3>Record this case</h3><span class="hint">what you know now</span></div>
     <p class="small" style="margin-bottom:6px" id="truthIntro"></p>
+    <div class="note" style="margin:0 0 10px">A culture result takes three to five days, so it is not entered here. Save what you know at the bedside; the case waits in the log under <b>Train on your data</b>, and you complete the microbiology there when it comes back.</div>
     <div id="gtDfu">
     <div class="row3">
       <div class="field"><label>Clinician Texas grade</label>
@@ -502,20 +507,8 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       <div class="field"><label>Wagner grade</label>
         <select id="gtWagner"><option value="">—</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
     </div>
-    <div class="row2">
-      <div class="field"><label>Probe‑to‑bone</label>
-        <select id="gtPtb"><option value="">—</option><option>Negative</option><option>Positive</option><option>Not done</option></select></div>
-      <div class="field"><label>Specimen date</label><input type="date" id="gtDate"></div>
-    </div>
-    <div class="field"><label>Tissue culture &amp; sensitivity — organism(s) isolated</label>
-      <div class="chips" id="orgChips">
-        <button class="chip" data-v="No growth">No growth</button><button class="chip" data-v="MSSA">MSSA</button><button class="chip" data-v="MRSA">MRSA</button>
-        <button class="chip" data-v="Streptococcus">Streptococcus spp.</button><button class="chip" data-v="Pseudomonas">Pseudomonas</button>
-        <button class="chip" data-v="E. coli">E. coli</button><button class="chip" data-v="Klebsiella">Klebsiella</button><button class="chip" data-v="Proteus">Proteus</button>
-        <button class="chip" data-v="Enterococcus">Enterococcus</button><button class="chip" data-v="Anaerobes">Anaerobes</button><button class="chip" data-v="Polymicrobial">Polymicrobial</button>
-      </div>
-    </div>
-    <div class="field"><label>Sensitivity pattern / notes</label><textarea id="gtNotes" placeholder="e.g. sensitive to co-amoxiclav, resistant to ciprofloxacin; ESBL negative"></textarea></div>
+    <div class="field" style="max-width:320px"><label>Probe‑to‑bone</label>
+      <select id="gtPtb"><option value="">—</option><option>Negative</option><option>Positive</option><option>Not done</option></select></div>
     </div>
     <div id="gtPi" class="hidden">
       <div class="row3">
@@ -529,46 +522,15 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       <div class="row3">
         <div class="field"><label>Body site</label>
           <select id="gtSite"><option value="">—</option><option>Sacrum</option><option>Coccyx</option><option>Ischial tuberosity</option><option>Heel</option><option>Lateral malleolus</option><option>Greater trochanter</option><option>Occiput</option><option>Ear</option><option>Elbow</option><option>Device-related</option><option>Other</option></select></div>
-        <div class="field"><label>Assessment date</label><input type="date" id="gtPiDate"></div>
-        <div class="field"><label>Outcome at follow-up</label>
-          <select id="gtOutcome"><option value="">—</option><option>Healed</option><option>Improving</option><option>Static</option><option>Deteriorated</option><option>Not yet known</option></select></div>
       </div>
       <div class="field"><label>Notes</label><textarea id="gtPiNotes" placeholder="e.g. device-related under mask strap; offloading in place; Braden 12"></textarea></div>
-      <div class="note">There is deliberately no culture and sensitivity field here. Every chronic wound is colonised, so a swab does not establish infection in a pressure injury and swabbing is discouraged; infection is a clinical diagnosis. The reference standard for this arm is the clinician's stage under adjudication, together with the outcome at follow-up.</div>
+      <div class="note">There is deliberately no culture and sensitivity field for a pressure injury. Every chronic wound is colonised, so a swab does not establish infection and swabbing is discouraged; infection is a clinical diagnosis. The reference standard for this arm is the adjudicated stage plus the outcome at follow-up, and the outcome is recorded in the case log when it is known.</div>
     </div>
     <button class="btn btn-teal" id="saveCase" style="width:100%">Save ground truth to case log</button>
     <div class="note teal" id="truthNote"></div>
   </section>
 
   <!-- CASE LOG -->
-  <section class="card" id="logCard">
-    <div class="step"><span class="n">4</span><h3>Case log · model vs ground truth</h3><div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-ghost btn-sm" id="copyTsv">Copy for Sheets</button>
-        <button class="btn btn-ghost btn-sm" id="exportCsv">Export CSV</button>
-        <label class="btn btn-ghost btn-sm" style="cursor:pointer">Import CSV<input type="file" accept=".csv,text/csv" id="importCsv" hidden></label>
-      </div></div>
-    <div class="kpis">
-      <div class="kpi"><b id="kCases">0</b><span>cases logged</span></div>
-      <div class="kpi"><b id="kInf">—</b><span>infection agreement</span></div>
-      <div class="kpi"><b id="kCult">—</b><span>culture positive</span></div>
-    </div>
-    <ul class="log-list" id="logList"></ul>
-    <p id="logEmpty" class="small" style="margin-top:8px;color:var(--faint)">No cases logged yet.</p>
-    <div class="note" id="logStorage" style="margin-top:10px"></div>
-    <details class="sheetsync" id="sheetSync">
-      <summary>Send straight to a Google Sheet</summary>
-      <p class="small">Paste the web app URL of the Apps Script bound to your sheet. It is stored in this browser only, never in the code. Until a URL is set, nothing is sent anywhere and the copy button remains the way data leaves.</p>
-      <div class="field"><label>Apps Script web app URL</label><input id="sheetUrl" placeholder="https://script.google.com/macros/s/AKfy…/exec"></div>
-      <label class="tickrow"><input type="checkbox" id="sheetAuto"> Send each case automatically when it is saved</label>
-      <div class="labnav">
-        <button class="btn btn-ghost btn-sm" id="sheetTest">Test connection</button>
-        <button class="btn btn-teal btn-sm" id="sheetPush">Send all cases now</button>
-      </div>
-      <div class="small" id="sheetStatus" style="margin-top:8px"></div>
-      <div class="note rose" style="margin-top:10px"><b>What leaves the device.</b> The clinical columns only — grades, stage, probe-to-bone, culture, tissue percentages. Never the photograph and never the thumbnail. Once a URL is set the tool no longer holds to "nothing leaves this device", so the destination belongs in your MREC submission by name.</div>
-    </details>
-  </section>
-
   <!-- MODEL CARD -->
   <section class="card">
     <div class="step"><span class="n">i</span><h3>Model card (abridged)</h3></div>
@@ -637,9 +599,38 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <div class="filmstrip" id="labStrip"></div>
   </section>
 
+  <section class="card" id="logCard">
+    <div class="step"><span class="n">C</span><h3>Case log · model vs ground truth</h3><div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" id="copyTsv">Copy for Sheets</button>
+        <button class="btn btn-ghost btn-sm" id="exportCsv">Export CSV</button>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer">Import CSV<input type="file" accept=".csv,text/csv" id="importCsv" hidden></label>
+      </div></div>
+    <div class="kpis">
+      <div class="kpi"><b id="kCases">0</b><span>cases logged</span></div>
+      <div class="kpi"><b id="kInf">—</b><span>infection agreement</span></div>
+      <div class="kpi"><b id="kCult">—</b><span>culture positive</span></div>
+    </div>
+    <p class="small" style="margin:2px 0 8px;color:var(--muted)">Tap a case to complete what was not known at the bedside — the culture result, and the outcome at follow-up.</p>
+    <ul class="log-list" id="logList"></ul>
+    <p id="logEmpty" class="small" style="margin-top:8px;color:var(--faint)">No cases logged yet.</p>
+    <div class="note" id="logStorage" style="margin-top:10px"></div>
+    <details class="sheetsync" id="sheetSync">
+      <summary>Send straight to a Google Sheet</summary>
+      <p class="small">Paste the web app URL of the Apps Script bound to your sheet. It is stored in this browser only, never in the code. Until a URL is set, nothing is sent anywhere and the copy button remains the way data leaves.</p>
+      <div class="field"><label>Apps Script web app URL</label><input id="sheetUrl" placeholder="https://script.google.com/macros/s/AKfy…/exec"></div>
+      <label class="tickrow"><input type="checkbox" id="sheetAuto"> Send each case automatically when it is saved</label>
+      <div class="labnav">
+        <button class="btn btn-ghost btn-sm" id="sheetTest">Test connection</button>
+        <button class="btn btn-teal btn-sm" id="sheetPush">Send all cases now</button>
+      </div>
+      <div class="small" id="sheetStatus" style="margin-top:8px"></div>
+      <div class="note rose" style="margin-top:10px"><b>What leaves the device.</b> The clinical columns only — grades, stage, probe-to-bone, culture, tissue percentages. Never the photograph and never the thumbnail. Once a URL is set the tool no longer holds to "nothing leaves this device", so the destination belongs in your MREC submission by name.</div>
+    </details>
+  </section>
+
   <!-- what the model should learn from those ticks -->
   <section class="card hidden" id="targetCard">
-    <div class="step"><span class="n">C</span><h3>What should the model learn?</h3><span class="hint">supervised learning</span></div>
+    <div class="step"><span class="n">D</span><h3>What should the model learn?</h3><span class="hint">supervised learning</span></div>
     <p class="small" style="margin-bottom:8px">Your ticks are the supervision. Choose which of them the model should predict, and the images carrying that label become the training set. A feature is trained as present against absent, which is why every image needs a tick either way for that feature to be usable.</p>
     <div class="field"><label>Train to predict</label><select id="trainTarget"></select></div>
     <div class="note" id="targetNote" style="margin-top:8px"></div>
@@ -666,7 +657,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   </section>
 
   <section class="card">
-    <div class="step"><span class="n">B</span><h3>Transfer learning on this device</h3><span class="hint">frozen backbone · new head</span></div>
+    <div class="step"><span class="n">E</span><h3>Transfer learning on this device</h3><span class="hint">frozen backbone · new head</span></div>
     <p class="small" style="margin-bottom:8px">Every image is passed once through the ImageNet‑pre‑trained MobileNetV2 backbone to obtain a 1,280‑number embedding. A new classification head is then trained on those embeddings, here in the browser. A stratified 20 % of images is held out to estimate performance. Fine‑tuning the backbone itself needs a GPU: use the Colab notebook.</p>
     <div class="row3">
       <div class="field"><label>Epochs</label><input id="tEpochs" type="number" value="40" min="5" max="300"></div>
@@ -694,7 +685,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   </section>
 
   <section class="card">
-    <div class="step"><span class="n">C</span><h3>Models on this device</h3></div>
+    <div class="step"><span class="n">F</span><h3>Models on this device</h3></div>
     <div id="modelList"></div>
   </section>
 </div>
@@ -1868,10 +1859,8 @@ $('viewer').addEventListener('click', e => {
 const LOG_KEY = 'dfu_vision_cases_v1';
 const loadLog = () => { try { return JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); } catch(e){ return []; } };
 const saveLog = l => { try { localStorage.setItem(LOG_KEY, JSON.stringify(l)); } catch(e){ toast('Could not save (storage blocked)'); } };
-$('orgChips').querySelectorAll('.chip').forEach(b => b.onclick = () => b.classList.toggle('on'));
 $('saveCase').onclick = () => {
   if (!lastPred) return toast('Analyse an image first');
-  const orgs = [...$('orgChips').querySelectorAll('.chip.on')].map(b => b.dataset.v);
   const thumb = (() => { const c = document.createElement('canvas'); c.width = c.height = 96; c.getContext('2d').drawImage($('imgCanvas'), 0, 0, 96, 96); return c.toDataURL('image/jpeg', 0.6); })();
   /* piOnly cases carry no model prediction by design: the heads are not run on a wound type they
      were never trained on, so the record must not imply one was produced. */
@@ -1891,15 +1880,65 @@ $('saveCase').onclick = () => {
     roi_source_px: lastBox && fit ? Math.round(lastBox.s / fit.scale) : null,
     tissue: t ? { granulation: +t.frac.gran.toFixed(3), slough: +t.frac.slough.toFixed(3), necrosis: +t.frac.necro.toFixed(3),
                   pale: +t.frac.pale.toFixed(3), periwound_delta_a: t.dA === null ? null : +t.dA.toFixed(2) } : null,
-    gt_grade: $('gtGrade').value, gt_stage: $('gtStage').value, gt_wagner: $('gtWagner').value, probe_to_bone: $('gtPtb').value, specimen_date: $('gtDate').value,
-    organisms: orgs, sensitivity_notes: $('gtNotes').value.trim(),
-    culture_positive: orgs.length ? !(orgs.length === 1 && orgs[0] === 'No growth') : null,
+    gt_grade: $('gtGrade').value, gt_stage: $('gtStage').value, gt_wagner: $('gtWagner').value, probe_to_bone: $('gtPtb').value,
+    /* Left empty on purpose: a culture takes days, so it is completed later from the case log
+       rather than guessed at the bedside. Same for the follow-up outcome. */
+    specimen_date: '', organisms: [], sensitivity_notes: '', culture_positive: null, outcome: '', pi_date: '',
     npiap_stage: $('gtNpiap').value, blanching: $('gtBlanch').value, deepest_structure: $('gtDeep').value,
-    body_site: $('gtSite').value, pi_date: $('gtPiDate').value, outcome: $('gtOutcome').value, pi_notes: $('gtPiNotes').value.trim() };
+    body_site: $('gtSite').value, pi_notes: $('gtPiNotes').value.trim() };
   const log = loadLog(); log.unshift(rec); saveLog(log); renderLog(); toast('Case saved to log');
   if ($('sheetAuto') && $('sheetAuto').checked && sheetUrl()) pushToSheet([rec], 'Auto-sent');
   $('logCard').scrollIntoView({behavior:'smooth', block:'start'});
 };
+/* ═══════════════════════════ completing a case later ═══════════════════════════
+   The photograph and the bedside findings are recorded on the day. The culture result is not
+   available for three to five days, and the healing outcome not for weeks, so neither belongs on
+   a form the clinician fills in at the trolley. Tapping a row in the log opens the fields that
+   arrive later and writes them back to that case. */
+const ORG_LIST = ["No growth", "MSSA", "MRSA", "Streptococcus", "Pseudomonas", "E. coli", "Klebsiella", "Proteus", "Enterococcus", "Anaerobes", "Polymicrobial"];
+let openCase = null;
+
+function followupHtml(r){
+  const orgs = new Set(r.organisms || []);
+  const pi = r.disease === 'pressure injury';
+  return `<div class="followup" data-id="${r.id}">
+    ${pi ? '' : `<span class="lab">Tissue culture &amp; sensitivity <em>reference standard for infection</em></span>
+    <div class="chips" data-role="orgs">${ORG_LIST.map(o => `<button class="chip${orgs.has(o) ? ' on' : ''}" data-v="${o}">${o}</button>`).join('')}</div>
+    <div class="row2" style="margin-top:8px">
+      <div class="field"><label>Specimen date</label><input type="date" data-role="date" value="${r.specimen_date || ''}"></div>
+      <div class="field"><label>Sensitivity / notes</label><input data-role="notes" value="${(r.sensitivity_notes || '').replace(/"/g, '&quot;')}" placeholder="sensitive to co-amoxiclav; ESBL negative"></div>
+    </div>`}
+    <div class="field" style="margin-top:8px;max-width:320px"><label>Outcome at follow-up</label>
+      <select data-role="outcome">${['','Healed','Improving','Static','Deteriorated','Not yet known']
+        .map(o => `<option value="${o}"${(r.outcome || '') === o ? ' selected' : ''}>${o || '—'}</option>`).join('')}</select></div>
+    <div class="labnav"><button class="btn btn-teal btn-sm" data-role="save">Save follow-up</button>
+      <button class="btn btn-ghost btn-sm" data-role="close">Close</button></div>
+  </div>`;
+}
+
+function wireFollowup(li, r){
+  const box = li.querySelector('.followup'); if (!box) return;
+  box.querySelectorAll('[data-role="orgs"] .chip').forEach(b => b.onclick = e => { e.stopPropagation(); b.classList.toggle('on'); });
+  box.onclick = e => e.stopPropagation();
+  box.querySelector('[data-role="close"]').onclick = () => { openCase = null; renderLog(); };
+  box.querySelector('[data-role="save"]').onclick = () => {
+    const log = loadLog(), rec = log.find(x => String(x.id) === String(r.id));
+    if (!rec) return;
+    const org = [...box.querySelectorAll('[data-role="orgs"] .chip.on')].map(b => b.dataset.v);
+    if (org.length){
+      rec.organisms = org;
+      rec.culture_positive = !(org.length === 1 && org[0] === 'No growth');
+    }
+    const g = k => { const el = box.querySelector(`[data-role="${k}"]`); return el ? el.value : ''; };
+    rec.specimen_date = g('date') || rec.specimen_date || '';
+    rec.sensitivity_notes = g('notes') || '';
+    rec.outcome = g('outcome') || '';
+    saveLog(log); openCase = null; renderLog();
+    toast('Follow-up saved');
+    if ($('sheetAuto') && $('sheetAuto').checked && sheetUrl()) pushToSheet([rec], 'Auto-sent');
+  };
+}
+
 function renderLog(){
   const log = loadLog(); $('kCases').textContent = log.length; $('logEmpty').classList.toggle('hidden', log.length > 0);
   const withCult = log.filter(r => r.culture_positive !== null && r.p_infection !== null);
@@ -1917,8 +1956,16 @@ function renderLog(){
     const tail = pi ? [r.body_site, r.outcome].filter(Boolean).join(' · ') || 'no site recorded'
                     : ((r.organisms || []).join(', ') || 'no C&S yet');
     const head = pi ? `clinician ${gt} · no model` : `AI ${r.ai_label || '?'} · clinician ${gt}`;
-    return `<li><img src="${r.thumb}" alt=""><div class="who"><b>${head}</b><small>${r.image} · ${new Date(r.when).toLocaleString()} · ${tail}</small></div>${a}</li>`;
+    const isOpen = String(openCase) === String(r.id);
+    return `<li class="${isOpen ? 'open' : ''}" data-id="${r.id}"><img src="${r.thumb || ''}" alt=""><div class="who"><b>${head}</b><small>${r.image} · ${new Date(r.when).toLocaleString()} · ${tail}</small></div>${a}${isOpen ? followupHtml(r) : ''}</li>`;
   }).join('');
+  // tapping a row opens the fields that only arrive days later
+  const shown = log.slice(0, 8);
+  $('logList').querySelectorAll('li').forEach((li, i) => {
+    const r = shown[i]; if (!r) return;
+    li.onclick = () => { openCase = String(openCase) === String(r.id) ? null : r.id; renderLog(); };
+    wireFollowup(li, r);
+  });
 }
 /* ═══════════════════════════ getting the log out, and back in ═══════════════════════════
    The case log lives in this browser's localStorage, which is a weak place to keep a year of

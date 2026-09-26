@@ -250,6 +250,18 @@ footer b{color:var(--muted)}
 .labdone{margin-top:10px;font-size:13px;line-height:1.55;padding:11px 13px;border-radius:9px;
   background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a}
 .labdone.hidden{display:none}
+details.correct{margin-top:12px;border:1px solid var(--rule);border-radius:9px;padding:9px 12px;background:var(--slate-soft)}
+details.correct>summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--navy);list-style:revert}
+details.correct[open]>summary{margin-bottom:4px}
+.labfilter{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.labfilter label{font-size:12px;color:var(--muted);font-weight:600}
+.labfilter select{padding:6px 8px;border-radius:8px;border:1px solid var(--line);font-size:12.5px;max-width:100%}
+.btn.danger{color:#b91c1c;border-color:#fecaca}
+.btn.danger:hover{background:#fef2f2}
+.btn.on{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
+.filmstrip button.flag::after{content:"\2691";position:absolute;top:2px;left:3px;font-size:11px;color:#f97316;
+  text-shadow:0 0 2px #fff,0 0 2px #fff}
+.filmstrip button{position:relative}
 .journey{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
 .journey li{display:flex;gap:11px;align-items:flex-start;padding:9px 0;position:relative}
 .journey li:not(:last-child)::before{content:"";position:absolute;left:13px;top:31px;bottom:-3px;width:2px;background:var(--line)}
@@ -715,11 +727,22 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
           <button class="btn btn-ghost btn-sm" id="labSkip">Skip</button>
           <button class="btn btn-teal btn-sm" id="labNext">Next unlabelled &rarr;</button>
         </div>
+        <div class="labnav" style="margin-top:6px">
+          <button class="btn btn-ghost btn-sm" id="labFlag">&#9873; Flag for review</button>
+          <button class="btn btn-ghost btn-sm" id="labClear">Clear all ticks</button>
+          <button class="btn btn-ghost btn-sm danger" id="labRemove">Remove this image</button>
+        </div>
         <p class="small" id="labHint" style="margin-top:8px"></p>
         <p class="labdone hidden" id="labDone"></p>
       </div>
     </div>
+    <div class="labfilter">
+      <label for="labFilter">Show</label>
+      <select id="labFilter"></select>
+      <span class="small" id="labFilterN"></span>
+    </div>
     <div class="filmstrip" id="labStrip"></div>
+    <p class="small" style="margin-top:6px;color:var(--muted)">Tap any thumbnail to go back to that image. Tapping a chip that is already on turns it off, so a wrong label is corrected in place &mdash; there is nothing to undo and nothing to re-upload.</p>
   </section>
 
   <section class="card" id="logCard">
@@ -819,7 +842,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
   Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
-  <b id="buildStamp">build 2026-09-26 &middot; v1.1</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=11</code><br>
+  <b id="buildStamp">build 2026-09-26 &middot; v1.2</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=12</code><br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>
@@ -2232,6 +2255,9 @@ function renderOrgChips(host, selected){
 const orgChosen = host => [...host.querySelectorAll('.chip.on')].map(b => b.dataset.v);
 renderOrgChips($('gtOrgs'), []);
 
+const sel = (opts, cur) => opts.map(o =>
+  `<option value="${o}"${String(cur || '') === o ? ' selected' : ''}>${o || '—'}</option>`).join('');
+
 function followupHtml(r){
   const orgs = new Set(r.organisms || []);
   const pi = r.disease === 'pressure injury';
@@ -2260,8 +2286,27 @@ function followupHtml(r){
             .map(o => `<option value="${o}"${(r.rater2_wagner || '') === o ? ' selected' : ''}>${o || '—'}</option>`).join('')}</select></div>`}
       <div class="field"><label>First grader</label><input value="${(r.grader || '—').replace(/"/g, '&quot;')}" disabled></div>
     </div>
-    <div class="labnav"><button class="btn btn-teal btn-sm" data-role="save">Save follow-up</button>
-      <button class="btn btn-ghost btn-sm" data-role="close">Close</button></div>
+    <details class="correct">
+      <summary>Correct the bedside grading</summary>
+      <p class="small" style="margin:6px 0 8px">Changing a grade here rewrites the reference standard this model is measured against, so every change is stamped with the date and kept in the record. Nothing is overwritten silently.</p>
+      ${pi ? `<div class="row3">
+          <div class="field"><label>NPIAP stage</label><select data-role="c_npiap">${sel(['','1','2','3','4','Unstageable','Deep tissue injury'], r.npiap_stage)}</select></div>
+          <div class="field"><label>Blanching test</label><select data-role="c_blanch">${sel(['','Blanchable','Non-blanchable','Not tested'], r.blanching)}</select></div>
+          <div class="field"><label>Deepest structure</label><select data-role="c_deep">${sel(['','Dermis','Adipose','Fascia','Muscle','Tendon','Bone','Obscured by slough or eschar'], r.deepest_structure)}</select></div>
+        </div>`
+        : `<div class="row3">
+          <div class="field"><label>Texas grade</label><select data-role="c_grade">${sel(['','0','1','2','3'], r.gt_grade)}</select></div>
+          <div class="field"><label>Texas stage</label><select data-role="c_stage">${sel(['','A','B','C','D'], r.gt_stage)}</select></div>
+          <div class="field"><label>Wagner grade</label><select data-role="c_wagner">${sel(['','0','1','2','3','4','5'], r.gt_wagner)}</select></div>
+        </div>
+        <div class="field" style="max-width:260px"><label>Probe-to-bone</label><select data-role="c_ptb">${sel(['','Negative','Positive','Not done'], r.probe_to_bone)}</select></div>`}
+      <div class="field"><label>Who is making this correction <em style="font-style:normal;color:var(--faint);font-weight:400">initials</em></label>
+        <input data-role="c_by" maxlength="6" placeholder="${(r.grader || 'NBM').replace(/"/g, '&quot;')}"></div>
+      ${(r.revisions || []).length ? `<div class="note" style="margin-top:8px"><b>Already corrected ${r.revisions.length} time${r.revisions.length === 1 ? '' : 's'}:</b><br>${r.revisions.map(v => `${v.when.slice(0,10)} ${v.by || '?'}: ${v.what}`).join('<br>')}</div>` : ''}
+    </details>
+    <div class="labnav"><button class="btn btn-teal btn-sm" data-role="save">Save changes</button>
+      <button class="btn btn-ghost btn-sm" data-role="close">Close</button>
+      <button class="btn btn-ghost btn-sm danger" data-role="del" style="margin-left:auto">Delete this case</button></div>
   </div>`;
 }
 
@@ -2280,6 +2325,11 @@ function wireFollowup(li, r){
   });
   box.onclick = e => e.stopPropagation();
   box.querySelector('[data-role="close"]').onclick = () => { openCase = null; renderLog(); };
+  box.querySelector('[data-role="del"]').onclick = () => {
+    if (!confirm(`Delete this case permanently?\n\n${r.image} · ${new Date(r.when).toLocaleString()}\n\nIf it has already been sent to your Google Sheet, the row there is not removed — delete it there as well.`)) return;
+    const log = loadLog().filter(x => String(x.id) !== String(r.id));
+    saveLog(log); openCase = null; renderLog(); toast('Case deleted');
+  };
   box.querySelector('[data-role="save"]').onclick = () => {
     const log = loadLog(), rec = log.find(x => String(x.id) === String(r.id));
     if (!rec) return;
@@ -2295,8 +2345,31 @@ function wireFollowup(li, r){
     rec.rater2 = (g('r2') || '').trim().toUpperCase();
     rec.rater2_wagner = g('r2wagner') || '';
     rec.rater2_npiap = g('r2npiap') || '';
+
+    /* A grade in this log IS the reference standard. Overwriting one silently would leave no way
+       to tell a corrected transcription error from a changed clinical opinion, and no way to
+       answer a reviewer who asks how many gradings were revised after the fact. So each change
+       is stamped and kept, and the CSV carries both the count and the trail. */
+    const fields = rec.disease === 'pressure injury'
+      ? [['c_npiap', 'npiap_stage', 'NPIAP stage'], ['c_blanch', 'blanching', 'blanching'], ['c_deep', 'deepest_structure', 'deepest structure']]
+      : [['c_grade', 'gt_grade', 'Texas grade'], ['c_stage', 'gt_stage', 'Texas stage'],
+         ['c_wagner', 'gt_wagner', 'Wagner grade'], ['c_ptb', 'probe_to_bone', 'probe-to-bone']];
+    const changes = [];
+    fields.forEach(([role, key, label]) => {
+      const el = box.querySelector(`[data-role="${role}"]`); if (!el) return;
+      const was = String(rec[key] || ''), now = String(el.value || '');
+      if (was !== now) changes.push({ key, label, was, now });
+    });
+    if (changes.length){
+      const by = (g('c_by') || rec.grader || '').trim().toUpperCase();
+      const what = changes.map(c => `${c.label} ${c.was || 'blank'} → ${c.now || 'blank'}`).join('; ');
+      changes.forEach(c => rec[c.key] = c.now);
+      rec.revisions = (rec.revisions || []).concat([{ when: new Date().toISOString(), by, what }]);
+      rec.revised = rec.revisions.length;
+      rec.revision_log = rec.revisions.map(v => `${v.when.slice(0,10)} ${v.by || '?'}: ${v.what}`).join(' | ');
+    }
     saveLog(log); openCase = null; renderLog();
-    toast('Follow-up saved');
+    toast(changes.length ? `Saved — ${changes.length} grading change${changes.length === 1 ? '' : 's'} recorded` : 'Follow-up saved');
     if ($('sheetAuto') && $('sheetAuto').checked && sheetUrl()) pushToSheet([rec], 'Auto-sent');
   };
 }
@@ -2382,7 +2455,8 @@ function renderLog(){
                     : ((r.organisms || []).join(', ') || 'no C&S yet');
     const head = pi ? `clinician ${gt} · no model` : `AI ${r.ai_label || '?'} · clinician ${gt}`;
     const isOpen = String(openCase) === String(r.id);
-    return `<li class="${isOpen ? 'open' : ''}" data-id="${r.id}"><img src="${r.thumb || ''}" alt=""><div class="who"><b>${head}</b><small>${r.image} · ${new Date(r.when).toLocaleString()} · ${tail}</small></div>${a}${isOpen ? followupHtml(r) : ''}</li>`;
+    const rev = r.revised ? ` · corrected ×${r.revised}` : '';
+    return `<li class="${isOpen ? 'open' : ''}" data-id="${r.id}"><img src="${r.thumb || ''}" alt=""><div class="who"><b>${head}</b><small>${r.image} · ${new Date(r.when).toLocaleString()} · ${tail}${rev}</small></div>${a}${isOpen ? followupHtml(r) : ''}</li>`;
   }).join('');
   // tapping a row opens the fields that only arrive days later
   const shown = log.slice(0, 8);
@@ -2403,7 +2477,7 @@ function renderLog(){
    cloud account would quietly end that. A paste is the clinician choosing, each time, what
    leaves — and the thumbnails are left out of it, because a 96 px wound photograph pasted into a
    spreadsheet is still a patient image. */
-const LOG_COLS = ['id','when','case_id','image','disease','skin_type','device','protocol','grader','model','ai_label','p_severe','p_infection','probs','wound_area_frac','roi_source','roi_source_px','tissue',
+const LOG_COLS = ['id','when','case_id','image','disease','skin_type','device','protocol','grader','revised','revision_log','model','ai_label','p_severe','p_infection','probs','wound_area_frac','roi_source','roi_source_px','tissue',
                   'gt_grade','gt_stage','gt_wagner','probe_to_bone','specimen_date','organisms','sensitivity_notes','culture_positive',
                   'npiap_stage','blanching','deepest_structure','body_site','pi_date','outcome','pi_notes',
                   'rater2','rater2_wagner','rater2_npiap'];
@@ -2787,7 +2861,7 @@ function loadLabels(){ try { return JSON.parse(localStorage.getItem(LABELS_KEY) 
 function saveLabels(){
   const m = loadLabels();
   pool.forEach(it => { const k = labKey(it);
-    if (labelled(it) || it.skin) m[k] = { w: it.wagner, n: it.npiap, f: [...it.feats], s: it.skin || null };
+    if (labelled(it) || it.skin || it.flag) m[k] = { w: it.wagner, n: it.npiap, f: [...it.feats], s: it.skin || null, q: !!it.flag };
     else delete m[k]; });
   try { localStorage.setItem(LABELS_KEY, JSON.stringify(m)); }
   catch(e){ toast('Labels could not be stored \u2014 export the CSV before reloading'); }
@@ -2798,10 +2872,11 @@ function addToPool(items){
   items.forEach(it => {
     const rec = { file: it.file, name: it.name, url: null,
                   wagner: it.wagner || null, npiap: it.npiap || null, skin: it.skin || null,
-                  feats: new Set(it.feats || []) };
+                  flag: false, feats: new Set(it.feats || []) };
     const prev = store[labKey(rec)];                 // ticks from an earlier session
     if (prev && !labelled(rec)){ rec.wagner = prev.w || null; rec.npiap = prev.n || null;
-                                 rec.feats = new Set(prev.f || []); rec.skin = prev.s || null; }
+                                 rec.feats = new Set(prev.f || []); rec.skin = prev.s || null;
+                                 rec.flag = !!prev.q; }
     pool.push(rec);
   });
   const firstUnlabelled = pool.findIndex(it => !labelled(it));
@@ -2850,6 +2925,40 @@ function fillTargets(){
   if (keep) sel.value = keep;
 }
 
+/* ── revising work already done ────────────────────────────────────────────────────────────
+   A grading pass is never right first time. Tapping a chip that is already on turns it off, so a
+   wrong label is corrected in place; what was missing was any way to FIND the image to correct
+   once the filmstrip holds a few hundred, and any way to say "I am not sure about this one" and
+   come back. The filter and the flag do that. Removing an image also deletes its stored label,
+   because a label with no image is a row that will silently reattach itself next session.      */
+let labFilter = 'all';
+function filterOpts(){
+  const has = f => pool.some(f);
+  const o = [['all', `All images (${pool.length})`],
+             ['un', `Not yet labelled (${pool.filter(it => !labelled(it)).length})`],
+             ['flag', `Flagged for review (${pool.filter(it => it.flag).length})`],
+             ['noskin', `Missing skin type (${pool.filter(it => !it.skin).length})`]];
+  WAGNER_OPTS.forEach(([v, l]) => { const k = pool.filter(it => it.wagner === v).length;
+    if (k) o.push(['w:' + v, `Wagner ${l} (${k})`]); });
+  NPIAP_OPTS.forEach(([v, l]) => { const k = pool.filter(it => it.npiap === v).length;
+    if (k) o.push(['p:' + v, `NPIAP ${l} (${k})`]); });
+  FEAT_OPTS.forEach(([v, l]) => { const k = pool.filter(it => it.feats.has(v)).length;
+    if (k) o.push(['f:' + v, `${l} (${k})`]); });
+  return o;
+}
+function matchesFilter(it){
+  const f = labFilter;
+  if (f === 'all') return true;
+  if (f === 'un') return !labelled(it);
+  if (f === 'flag') return !!it.flag;
+  if (f === 'noskin') return !it.skin;
+  if (f.startsWith('w:')) return it.wagner === f.slice(2);
+  if (f.startsWith('p:')) return it.npiap === f.slice(2);
+  if (f.startsWith('f:')) return it.feats.has(f.slice(2));
+  return true;
+}
+const viewIdx = () => pool.map((it, i) => matchesFilter(it) ? i : -1).filter(i => i >= 0);
+
 function renderLabeller(){
   $('labelCard').classList.toggle('hidden', !pool.length);
   $('targetCard').classList.toggle('hidden', !pool.length);
@@ -2866,7 +2975,7 @@ function renderLabeller(){
   const chips = (host, opts, isOn, onPick) => {
     $(host).innerHTML = opts.map(([v, l]) => `<button class="chip${isOn(v) ? ' on' : ''}" data-v="${v}">${l}</button>`).join('');
     $(host).querySelectorAll('.chip').forEach(b => b.onclick = () => {
-      onPick(b.dataset.v); saveLabels(); autoTarget(); projectClasses(); describeTarget(); renderLabeller(); renderJourney(); });
+      onPick(b.dataset.v); labChanged(); });
   };
   chips('labWagner', WAGNER_OPTS, v => it.wagner === v, v => { it.wagner = it.wagner === v ? null : v; });
   chips('labNpiap',  NPIAP_OPTS,  v => it.npiap === v,  v => { it.npiap  = it.npiap  === v ? null : v; });
@@ -2905,11 +3014,31 @@ function renderLabeller(){
     + 'The next step is <b>C · choose what to train</b> below. Training needs at least two classes with four '
     + 'images each, so ' + (pool.length < 8 ? 'this pool is still far too small — keep adding images.' : 'check the counts there.');
 
+  /* Flag / clear / remove, and the filter that makes them reachable in a pool of hundreds. */
+  $('labFlag').classList.toggle('on', !!it.flag);
+  $('labFlag').innerHTML = it.flag ? '⚑ Flagged — tap to unflag' : '⚑ Flag for review';
+
+  const sel = $('labFilter'), opts = filterOpts();
+  if (!opts.some(o => o[0] === labFilter)) labFilter = 'all';   // the last filter may now match nothing
+  sel.innerHTML = opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+  sel.value = labFilter;
+
+  const view = viewIdx();
+  $('labFilterN').textContent = labFilter === 'all' ? ''
+    : `${view.length} of ${pool.length} shown · Previous and Skip move within this filter`;
+
   const strip = $('labStrip');
-  strip.innerHTML = pool.map((x, i) =>
-    `<button data-i="${i}" class="${i === cur ? 'on' : ''}${labelled(x) ? ' done' : ''}" title="${x.name}"><img src="${poolUrl(x)}" alt=""></button>`).join('');
+  strip.innerHTML = view.map(i => { const x = pool[i];
+    return `<button data-i="${i}" class="${i === cur ? 'on' : ''}${labelled(x) ? ' done' : ''}${x.flag ? ' flag' : ''}" title="${x.name}"><img src="${poolUrl(x)}" alt=""></button>`; }).join('')
+    || '<p class="small" style="color:var(--faint);padding:8px 0">No image matches this filter.</p>';
   strip.querySelectorAll('button').forEach(b => b.onclick = () => { cur = +b.dataset.i; renderLabeller(); });
   const active = strip.querySelector('button.on'); if (active) active.scrollIntoView({block:'nearest', inline:'center'});
+}
+
+/* Redraw everything that depends on a label. One call, so no view can drift out of step. */
+function labChanged(){
+  saveLabels(); autoTarget(); projectClasses(); describeTarget();
+  renderLabeller(); readinessNote(); renderJourney();
 }
 
 $('poolInput') && ($('poolInput').onchange = e => {
@@ -2918,8 +3047,47 @@ $('poolInput') && ($('poolInput').onchange = e => {
   toast(`${files.length} image${files.length === 1 ? '' : 's'} added — tick what each one shows`);
   $('labelCard').scrollIntoView({ behavior:'smooth', block:'start' });
 });
-$('labPrev') && ($('labPrev').onclick = () => { cur = (cur - 1 + pool.length) % pool.length; renderLabeller(); });
-$('labSkip') && ($('labSkip').onclick = () => { cur = (cur + 1) % pool.length; renderLabeller(); });
+/* Step within whatever the filter is showing, not through the whole pool: filtering to
+   "Flagged for review" and then having Skip jump to an unflagged image would defeat it. */
+function step(d){
+  const view = viewIdx(); if (!view.length) return;
+  const at = view.indexOf(cur);
+  cur = view[at < 0 ? (d > 0 ? 0 : view.length - 1) : (at + d + view.length) % view.length];
+  renderLabeller();
+}
+$('labPrev') && ($('labPrev').onclick = () => step(-1));
+$('labSkip') && ($('labSkip').onclick = () => step(1));
+$('labFilter') && ($('labFilter').onchange = e => { labFilter = e.target.value;
+  const view = viewIdx();
+  if (view.length && !view.includes(cur)) cur = view[0];     // land on something the filter shows
+  renderLabeller(); });
+
+$('labFlag') && ($('labFlag').onclick = () => {
+  const it = pool[cur]; if (!it) return;
+  it.flag = !it.flag; saveLabels(); renderLabeller();
+  toast(it.flag ? 'Flagged — find it again under Show › Flagged for review' : 'Flag removed');
+});
+
+$('labClear') && ($('labClear').onclick = () => {
+  const it = pool[cur]; if (!it) return;
+  if (!labelled(it) && !it.skin) return toast('Nothing to clear on this image');
+  it.wagner = null; it.npiap = null; it.skin = null; it.feats.clear();
+  labChanged();
+  toast('Every tick cleared on this image');
+});
+
+/* Removing an image also removes its stored label. Keeping the label would mean it silently
+   reattaches the next time the same folder is chosen, which is the opposite of deleting it. */
+$('labRemove') && ($('labRemove').onclick = () => {
+  const it = pool[cur]; if (!it) return;
+  if (!confirm(`Remove ${it.name} from this session, and delete any ticks stored for it?\n\nThe file itself is not touched — only this app's record of it.`)) return;
+  try { const m = loadLabels(); delete m[labKey(it)]; localStorage.setItem(LABELS_KEY, JSON.stringify(m)); } catch(e){}
+  if (it.url) URL.revokeObjectURL(it.url);
+  pool.splice(cur, 1);
+  if (cur >= pool.length) cur = Math.max(0, pool.length - 1);
+  labChanged();
+  toast(pool.length ? `Removed — ${pool.length} image${pool.length === 1 ? '' : 's'} left` : 'Removed — the pool is empty');
+});
 $('labNext') && ($('labNext').onclick = () => {
   const next = pool.findIndex((x, i) => i > cur && !labelled(x));
   const wrap = next < 0 ? pool.findIndex(x => !labelled(x)) : next;
@@ -2936,8 +3104,8 @@ $('labNext') && ($('labNext').onclick = () => {
    built on. One click gets them out of the browser. */
 $('labExport') && ($('labExport').onclick = () => {
   if (!pool.length) return toast('No images loaded');
-  const head = ['filename', 'case_id', 'wagner', 'npiap', 'skin_type'].concat(FEAT_OPTS.map(o => o[0]));
-  const rows = pool.map(it => [it.name, caseIdOf(it.name), it.wagner || '', it.npiap || '', it.skin || '']
+  const head = ['filename', 'case_id', 'wagner', 'npiap', 'skin_type', 'flagged_for_review'].concat(FEAT_OPTS.map(o => o[0]));
+  const rows = pool.map(it => [it.name, caseIdOf(it.name), it.wagner || '', it.npiap || '', it.skin || '', it.flag ? '1' : '0']
     .concat(FEAT_OPTS.map(o => it.feats.has(o[0]) ? '1' : '0')));
   const esc = v => /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
   const csv = [head].concat(rows).map(r => r.map(v => esc(String(v))).join(',')).join('\r\n');

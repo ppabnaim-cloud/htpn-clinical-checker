@@ -98,6 +98,8 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .filmstrip button.done{border-color:var(--teal)}
 .filmstrip img{width:100%;height:100%;object-fit:cover;display:block;opacity:.85}
 .filmstrip button.done::after{content:"\2713";position:absolute;right:2px;bottom:1px;font-size:11px;color:#fff;background:var(--teal);border-radius:3px;padding:0 3px;line-height:1.35}
+.orggroup{margin-top:7px}
+.orggroup > span{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
 .pending{background:var(--amber);color:var(--navy);border-radius:11px;padding:11px 13px;margin:4px 0 12px}
 .pending b{display:block;font-size:13.5px;margin-bottom:6px}
 .pending ul{list-style:none;display:flex;flex-direction:column;gap:4px}
@@ -1908,7 +1910,40 @@ $('saveCase').onclick = () => {
    available for three to five days, and the healing outcome not for weeks, so neither belongs on
    a form the clinician fills in at the trolley. Tapping a row in the log opens the fields that
    arrive later and writes them back to that case. */
-const ORG_LIST = ["No growth", "MSSA", "MRSA", "Streptococcus", "Pseudomonas", "E. coli", "Klebsiella", "Proteus", "Enterococcus", "Anaerobes", "Polymicrobial"];
+/* Organisms reported from diabetic foot infection, grouped so a long list stays scannable.
+   Streptococci are split by group and Enterococcus by species because the antibiotic
+   consequences differ; Acinetobacter and Stenotrophomonas are here because they turn up in
+   Malaysian hospital isolates and are usually multi-resistant when they do.
+
+   Three entries are not organisms and behave differently. "No growth" and "Skin flora only" are
+   negative results — skin flora is colonisation, not infection. "Specimen not sent" records that
+   no swab was taken, which is NOT a negative culture: treating it as one would quietly create
+   false negatives in the reference standard. Selecting any of the three clears the organisms, and
+   selecting an organism clears all three. */
+const ORG_GROUPS = [
+  ['Result', ['No growth', 'Skin flora only', 'Specimen not sent']],
+  ['Gram-positive', ['S. aureus — MSSA', 'S. aureus — MRSA', 'Coagulase-negative staph',
+                     'Streptococcus group A', 'Streptococcus group B', 'Streptococcus, other',
+                     'Enterococcus faecalis', 'Enterococcus, other', 'Corynebacterium']],
+  ['Gram-negative', ['Pseudomonas aeruginosa', 'Escherichia coli', 'Klebsiella pneumoniae',
+                     'Proteus mirabilis', 'Enterobacter', 'Acinetobacter baumannii',
+                     'Morganella morganii', 'Citrobacter', 'Serratia', 'Stenotrophomonas']],
+  ['Anaerobes', ['Bacteroides', 'Peptostreptococcus / Finegoldia', 'Clostridium', 'Anaerobes, unspecified']],
+  ['Fungi', ['Candida']],
+  ['Other', ['Polymicrobial (3 or more)', 'Other — see notes']]
+];
+const ORG_SENTINELS = ['No growth', 'Skin flora only', 'Specimen not sent'];
+const ORG_LIST = ORG_GROUPS.flatMap(([, v]) => v);
+
+/* A result is culture-positive only if a real organism grew. Skin flora is colonisation, and a
+   specimen that was never sent tells us nothing either way, so it stays unknown. */
+function culturePositive(orgs){
+  if (!orgs || !orgs.length) return null;
+  if (orgs.includes('Specimen not sent')) return null;
+  if (orgs.every(o => ORG_SENTINELS.includes(o))) return false;
+  return true;
+}
+
 let openCase = null;
 
 function followupHtml(r){
@@ -1916,7 +1951,12 @@ function followupHtml(r){
   const pi = r.disease === 'pressure injury';
   return `<div class="followup" data-id="${r.id}">
     ${pi ? '' : `<span class="lab">Tissue culture &amp; sensitivity <em>reference standard for infection</em></span>
-    <div class="chips" data-role="orgs">${ORG_LIST.map(o => `<button class="chip${orgs.has(o) ? ' on' : ''}" data-v="${o}">${o}</button>`).join('')}</div>
+    <div data-role="orgs">${ORG_GROUPS.map(([g, list]) =>
+      `<div class="orggroup"><span>${g}</span><div class="chips">${list.map(o =>
+        `<button class="chip${orgs.has(o) ? ' on' : ''}" data-v="${o}">${o}</button>`).join('')}</div></div>`).join('')
+      + (() => { const extra = [...orgs].filter(o => !ORG_LIST.includes(o));
+                 return extra.length ? `<div class="orggroup"><span>Recorded earlier</span><div class="chips">${extra.map(o =>
+                   `<button class="chip on" data-v="${o}">${o}</button>`).join('')}</div></div>` : ''; })()}</div>
     <div class="row2" style="margin-top:8px">
       <div class="field"><label>Specimen date</label><input type="date" data-role="date" value="${r.specimen_date || ''}"></div>
       <div class="field"><label>Sensitivity / notes</label><input data-role="notes" value="${(r.sensitivity_notes || '').replace(/"/g, '&quot;')}" placeholder="sensitive to co-amoxiclav; ESBL negative"></div>
@@ -1931,7 +1971,17 @@ function followupHtml(r){
 
 function wireFollowup(li, r){
   const box = li.querySelector('.followup'); if (!box) return;
-  box.querySelectorAll('[data-role="orgs"] .chip').forEach(b => b.onclick = e => { e.stopPropagation(); b.classList.toggle('on'); });
+  box.querySelectorAll('[data-role="orgs"] .chip').forEach(b => b.onclick = e => {
+    e.stopPropagation();
+    const v = b.dataset.v, wasOn = b.classList.contains('on');
+    const all = [...box.querySelectorAll('[data-role="orgs"] .chip')];
+    if (!wasOn){
+      // a result and an organism cannot both be true of one specimen
+      if (ORG_SENTINELS.includes(v)) all.forEach(x => x.classList.remove('on'));
+      else all.filter(x => ORG_SENTINELS.includes(x.dataset.v)).forEach(x => x.classList.remove('on'));
+    }
+    b.classList.toggle('on', !wasOn);
+  });
   box.onclick = e => e.stopPropagation();
   box.querySelector('[data-role="close"]').onclick = () => { openCase = null; renderLog(); };
   box.querySelector('[data-role="save"]').onclick = () => {
@@ -1940,7 +1990,7 @@ function wireFollowup(li, r){
     const org = [...box.querySelectorAll('[data-role="orgs"] .chip.on')].map(b => b.dataset.v);
     if (org.length){
       rec.organisms = org;
-      rec.culture_positive = !(org.length === 1 && org[0] === 'No growth');
+      rec.culture_positive = culturePositive(org);
     }
     const g = k => { const el = box.querySelector(`[data-role="${k}"]`); return el ? el.value : ''; };
     rec.specimen_date = g('date') || rec.specimen_date || '';

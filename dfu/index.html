@@ -242,6 +242,13 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .modelcard dd{margin:0}
 footer{text-align:center;font-size:11.5px;color:var(--faint);padding:10px 16px 30px;max-width:600px;margin:0 auto;line-height:1.7}
 footer b{color:var(--muted)}
+.labsaved{margin-top:10px;font-size:13px;line-height:1.5;padding:9px 12px;border-radius:9px;
+  background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}
+.labsaved.none{background:var(--slate-soft);border-color:var(--rule);color:var(--ink-3)}
+.labsaved b{font-weight:700}
+.labdone{margin-top:10px;font-size:13px;line-height:1.55;padding:11px 13px;border-radius:9px;
+  background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a}
+.labdone.hidden{display:none}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:999px;font-size:13px;box-shadow:var(--shadow-lg);z-index:999;opacity:0;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.show{opacity:1}
 
@@ -595,7 +602,8 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 
   <!-- B: tick what each image shows -->
   <section class="card hidden" id="labelCard">
-    <div class="step"><span class="n">B</span><h3>Tick what each image shows</h3><span class="hint" id="labelProg">0 of 0 labelled</span></div>
+    <div class="step"><span class="n">B</span><h3>Tick what each image shows</h3><span class="hint" id="labelProg">0 of 0 labelled</span>
+      <button class="btn btn-ghost btn-sm" id="labExport" style="margin-left:auto">Export labels CSV</button></div>
     <div class="labwrap">
       <div class="labimg"><img id="labImg" alt="the image being labelled"><span class="badge" id="labName">—</span></div>
       <div class="labform">
@@ -605,12 +613,14 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
         <div class="chips" id="labNpiap"></div>
         <span class="lab" style="margin-top:10px">Present in this image <em>tick all that apply</em></span>
         <div class="chips" id="labFeats"></div>
+        <p class="labsaved" id="labSaved"></p>
         <div class="labnav">
           <button class="btn btn-ghost btn-sm" id="labPrev">&larr; Previous</button>
           <button class="btn btn-ghost btn-sm" id="labSkip">Skip</button>
-          <button class="btn btn-teal btn-sm" id="labNext">Save &amp; next unlabelled &rarr;</button>
+          <button class="btn btn-teal btn-sm" id="labNext">Next unlabelled &rarr;</button>
         </div>
         <p class="small" id="labHint" style="margin-top:8px"></p>
+        <p class="labdone hidden" id="labDone"></p>
       </div>
     </div>
     <div class="filmstrip" id="labStrip"></div>
@@ -711,7 +721,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
   Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
-  <b id="buildStamp">build 2026-09-26 &middot; v0.8</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=7</code><br>
+  <b id="buildStamp">build 2026-09-26 &middot; v0.9</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=9</code><br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>
@@ -2362,13 +2372,39 @@ let pool = [], cur = 0;
 
 const labelled = it => it.wagner || it.npiap || it.feats.size > 0;
 
+/* A tick is recorded the moment it is tapped — there is no separate save step. The ticks also
+   survive a reload: the image files themselves cannot be kept (the browser will not hand a
+   file back without the user choosing it again, and the 5 MB quota could not hold them anyway)
+   but the labels can, keyed by filename and byte size. Choose the same folder again and every
+   tick comes back onto the right image.                                                      */
+const LABELS_KEY = 'wv_labels_v1';
+const labKey = it => it.name + '|' + (it.file ? it.file.size : 0);
+function loadLabels(){ try { return JSON.parse(localStorage.getItem(LABELS_KEY) || '{}'); } catch(e){ return {}; } }
+function saveLabels(){
+  const m = loadLabels();
+  pool.forEach(it => { const k = labKey(it);
+    if (labelled(it)) m[k] = { w: it.wagner, n: it.npiap, f: [...it.feats] };
+    else delete m[k]; });
+  try { localStorage.setItem(LABELS_KEY, JSON.stringify(m)); }
+  catch(e){ toast('Labels could not be stored \u2014 export the CSV before reloading'); }
+}
+
 function addToPool(items){
-  items.forEach(it => pool.push({ file: it.file, name: it.name, url: null,
-                                  wagner: it.wagner || null, npiap: it.npiap || null,
-                                  feats: new Set(it.feats || []) }));
+  const store = loadLabels();
+  items.forEach(it => {
+    const rec = { file: it.file, name: it.name, url: null,
+                  wagner: it.wagner || null, npiap: it.npiap || null,
+                  feats: new Set(it.feats || []) };
+    const prev = store[labKey(rec)];                 // ticks from an earlier session
+    if (prev && !labelled(rec)){ rec.wagner = prev.w || null; rec.npiap = prev.n || null;
+                                 rec.feats = new Set(prev.f || []); }
+    pool.push(rec);
+  });
   const firstUnlabelled = pool.findIndex(it => !labelled(it));
   cur = firstUnlabelled < 0 ? 0 : firstUnlabelled;
-  projectClasses(); renderLabeller();
+  const restored = pool.filter(labelled).length;
+  if (restored) toast(`${restored} image${restored === 1 ? '' : 's'} already labelled \u2014 ticks restored`);
+  saveLabels(); autoTarget(); projectClasses(); describeTarget(); renderLabeller();
 }
 const poolUrl = it => it.url || (it.url = URL.createObjectURL(it.file));
 
@@ -2388,6 +2424,17 @@ function projectClasses(){
     }
   });
   refreshData();
+}
+
+/* The dropdown in C defaults to Wagner. A pool of sacral pressure injuries then reports zero
+   usable images, which reads as though nothing was recorded. So until the clinician chooses a
+   target themselves, follow whichever label the pool actually carries. */
+let targetTouched = false;
+function autoTarget(){
+  const sel = $('trainTarget'); if (!sel || targetTouched) return;
+  const w = pool.filter(it => it.wagner).length, np = pool.filter(it => it.npiap).length;
+  if (np > w) sel.value = 'npiap';
+  else if (w > 0) sel.value = 'wagner';
 }
 
 function fillTargets(){
@@ -2412,15 +2459,43 @@ function renderLabeller(){
 
   const chips = (host, opts, isOn, onPick) => {
     $(host).innerHTML = opts.map(([v, l]) => `<button class="chip${isOn(v) ? ' on' : ''}" data-v="${v}">${l}</button>`).join('');
-    $(host).querySelectorAll('.chip').forEach(b => b.onclick = () => { onPick(b.dataset.v); projectClasses(); renderLabeller(); });
+    $(host).querySelectorAll('.chip').forEach(b => b.onclick = () => {
+      onPick(b.dataset.v); saveLabels(); autoTarget(); projectClasses(); describeTarget(); renderLabeller(); });
   };
   chips('labWagner', WAGNER_OPTS, v => it.wagner === v, v => { it.wagner = it.wagner === v ? null : v; });
   chips('labNpiap',  NPIAP_OPTS,  v => it.npiap === v,  v => { it.npiap  = it.npiap  === v ? null : v; });
   chips('labFeats',  FEAT_OPTS,   v => it.feats.has(v), v => { it.feats.has(v) ? it.feats.delete(v) : it.feats.add(v); });
 
   $('labHint').textContent = labelled(it)
-    ? 'Ticked. A wound is either a foot ulcer or a pressure injury, so it normally carries a Wagner grade or an NPIAP stage, not both.'
+    ? 'A wound is either a foot ulcer or a pressure injury, so it normally carries a Wagner grade or an NPIAP stage, not both.'
     : 'Nothing ticked yet. An image with no ticks is ignored by training — it is not treated as a negative.';
+
+  /* Say back what is on the record for this image. A tick is stored the instant it is tapped,
+     so the clinician needs to see that rather than hunt for a save button. */
+  const sv = $('labSaved');
+  const optLabel = (opts, v) => (opts.find(o => o[0] === v) || ['', ''])[1];
+  if (labelled(it)){
+    const bits = [];
+    if (it.wagner) bits.push('Wagner ' + optLabel(WAGNER_OPTS, it.wagner));
+    if (it.npiap)  bits.push('NPIAP ' + optLabel(NPIAP_OPTS, it.npiap));
+    if (it.feats.size) bits.push(FEAT_OPTS.filter(o => it.feats.has(o[0])).map(o => o[1].toLowerCase()).join(', '));
+    sv.classList.remove('none');
+    sv.innerHTML = '\u2713 <b>Saved for this image:</b> ' + bits.join(' &middot; ')
+      + '<br>Recorded as you tick — there is no save button. It survives a reload if you choose the same folder again.';
+  } else {
+    sv.classList.add('none');
+    sv.innerHTML = 'Nothing recorded for this image yet. Tap a grade or a feature and it is stored at once.';
+  }
+
+  /* Next unlabelled has nowhere to jump to once every image is ticked. Say so on the page
+     rather than in a message that fades, and point at the step that actually follows. */
+  const left = pool.filter(x => !labelled(x)).length;
+  const dn = $('labDone');
+  dn.classList.toggle('hidden', left > 0);
+  if (!left) dn.innerHTML = 'All <b>' + pool.length + '</b> image' + (pool.length === 1 ? '' : 's')
+    + ' labelled — nothing left for <b>Next unlabelled</b> to jump to, which is why the button looks dead. '
+    + 'The next step is <b>C · choose what to train</b> below. Training needs at least two classes with four '
+    + 'images each, so ' + (pool.length < 8 ? 'this pool is still far too small — keep adding images.' : 'check the counts there.');
 
   const strip = $('labStrip');
   strip.innerHTML = pool.map((x, i) =>
@@ -2440,10 +2515,31 @@ $('labSkip') && ($('labSkip').onclick = () => { cur = (cur + 1) % pool.length; r
 $('labNext') && ($('labNext').onclick = () => {
   const next = pool.findIndex((x, i) => i > cur && !labelled(x));
   const wrap = next < 0 ? pool.findIndex(x => !labelled(x)) : next;
-  if (wrap < 0) return toast('Every image is labelled');
+  if (wrap < 0){                                   // nothing unlabelled anywhere in the pool
+    toast('All ' + pool.length + ' labelled — next step is C below');
+    $('labDone').classList.remove('hidden');
+    $('targetCard').scrollIntoView({ behavior:'smooth', block:'start' });
+    return;
+  }
   cur = wrap; renderLabeller();
 });
-$('trainTarget') && ($('trainTarget').onchange = () => { projectClasses(); describeTarget(); });
+
+/* The ticks are the asset, not the trained weights: they are the reference standard the study is
+   built on. One click gets them out of the browser. */
+$('labExport') && ($('labExport').onclick = () => {
+  if (!pool.length) return toast('No images loaded');
+  const head = ['filename', 'wagner', 'npiap'].concat(FEAT_OPTS.map(o => o[0]));
+  const rows = pool.map(it => [it.name, it.wagner || '', it.npiap || '']
+    .concat(FEAT_OPTS.map(o => it.feats.has(o[0]) ? '1' : '0')));
+  const esc = v => /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  const csv = [head].concat(rows).map(r => r.map(v => esc(String(v))).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = 'wound-labels-' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click(); URL.revokeObjectURL(a.href);
+  toast(pool.length + ' row' + (pool.length === 1 ? '' : 's') + ' exported');
+});
+$('trainTarget') && ($('trainTarget').onchange = () => { targetTouched = true; projectClasses(); describeTarget(); });
 
 function describeTarget(){
   const t = $('trainTarget').value;

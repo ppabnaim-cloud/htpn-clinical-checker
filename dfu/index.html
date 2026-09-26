@@ -250,6 +250,37 @@ footer b{color:var(--muted)}
 .labdone{margin-top:10px;font-size:13px;line-height:1.55;padding:11px 13px;border-radius:9px;
   background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a}
 .labdone.hidden{display:none}
+.journey{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
+.journey li{display:flex;gap:11px;align-items:flex-start;padding:9px 0;position:relative}
+.journey li:not(:last-child)::before{content:"";position:absolute;left:13px;top:31px;bottom:-3px;width:2px;background:var(--line)}
+.journey li.done:not(:last-child)::before{background:#6ee7b7}
+.journey .jn{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:12.5px;
+  font-weight:700;background:var(--cloud);color:var(--muted);border:2px solid var(--line);z-index:1}
+.journey li.done .jn{background:#10b981;border-color:#10b981;color:#fff}
+.journey li.now .jn{background:#fff;border-color:var(--teal);color:var(--teal);box-shadow:0 0 0 4px rgba(28,184,160,.15)}
+.journey .jt{flex:1;min-width:0}
+.journey .jt b{display:block;font-size:13.5px;color:var(--navy)}
+.journey li.todo .jt b{color:var(--muted)}
+.journey .jt span{display:block;font-size:12px;color:var(--muted);line-height:1.5;margin-top:1px}
+.journey li.now .jt span{color:var(--text)}
+.journey .jbadge{font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--cloud);color:var(--muted);white-space:nowrap;align-self:center}
+.journey li.now .jbadge{background:rgba(28,184,160,.15);color:#0f766e}
+.journey li.done .jbadge{background:#ecfdf5;color:#065f46}
+.keepbox{margin-top:14px;border:1px solid var(--rule);border-radius:11px;padding:12px 14px;background:var(--slate-soft)}
+.keepbox>b{font-size:13.5px;color:var(--navy);display:block;margin-bottom:7px}
+table.keep{border-collapse:collapse;width:100%;font-size:12.5px}
+table.keep td{padding:6px 8px 6px 0;vertical-align:top;border-top:1px solid var(--rule);color:var(--muted)}
+table.keep tr:first-child td{border-top:0}
+table.keep td:first-child{color:var(--navy);font-weight:600;white-space:nowrap}
+table.keep td.y{color:#065f46;font-weight:700;white-space:nowrap}
+table.keep td.n2{color:#9a3412;font-weight:700;white-space:nowrap}
+@media (max-width:560px){
+  table.keep td:first-child{white-space:normal}
+  table.keep tr{display:grid;grid-template-columns:1fr auto;gap:0 8px;border-top:1px solid var(--rule);padding-top:6px}
+  table.keep tr:first-child{border-top:0}
+  table.keep td{border-top:0;padding:1px 0}
+  table.keep td:last-child{grid-column:1/-1;padding-bottom:5px}
+}
 .occ{margin-top:14px;border:1px solid var(--rule);border-radius:11px;padding:12px 14px;background:var(--slate-soft)}
 .occhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .occhead b{font-size:14px}
@@ -619,9 +650,27 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 
 <!-- ═══════════════════════════ TRAIN TAB ═══════════════════════════ -->
 <div id="tab-train" class="hidden">
+
+  <!-- the journey, with live state: which step you are on and what is left -->
+  <section class="card" id="journeyCard">
+    <div class="step"><span class="n">&#9679;</span><h3>How training works here</h3><span class="hint">five steps, one sitting</span></div>
+    <ol class="journey" id="journey"></ol>
+    <div class="keepbox">
+      <b>What survives closing the app</b>
+      <table class="keep">
+        <tr><td>Your ticks and labels</td><td class="y">Kept</td><td>Stored in this browser. Choose the same images again and every tick comes back on the right one.</td></tr>
+        <tr><td>Trained models</td><td class="y">Kept</td><td>Saved in this browser under step E.</td></tr>
+        <tr><td>The case log</td><td class="y">Kept</td><td>A separate record, filled in from <b>Assess a wound</b>, not from here.</td></tr>
+        <tr><td>The image files</td><td class="n2">Not kept</td><td>A browser cannot hold on to files you picked. Choose the same folder again each session &mdash; your labels reattach to them automatically.</td></tr>
+      </table>
+      <p class="small" style="margin:8px 0 0">Nothing is uploaded anywhere. That is why nothing can be restored from a server, and why the <b>Export</b> buttons are the only way your work leaves this device. Export the labels CSV and the case log at the end of each sitting.</p>
+    </div>
+    <div class="note" id="storedLabels" style="margin-top:10px"></div>
+  </section>
+
   <section class="card">
     <div class="step"><span class="n">A</span><h3>Add your images</h3><span class="hint">stay on this device</span></div>
-    <p class="small" style="margin-bottom:10px">Add as many images as you like in one go, then tick what each one shows in step B. Nothing is uploaded anywhere — the files stay in this browser. If you already keep them in folders named after the class, the second option reads those names and pre-fills the labels for you.</p>
+    <p class="small" style="margin-bottom:10px">Add as many images as you like in one go, then tick what each one shows in step B. Nothing is uploaded anywhere — the files stay in this browser, which is also why they have to be chosen again each session. If you already keep them in folders named after the class, the second option reads those names and pre-fills the labels for you.</p>
     <div class="src-tabs">
       <button class="on" data-src="images">Add images and tick labels</button>
       <button data-src="folder">Upload a sorted folder</button>
@@ -674,7 +723,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   </section>
 
   <section class="card" id="logCard">
-    <div class="step"><span class="n">C</span><h3>Case log · model vs ground truth</h3><div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+    <div class="step"><span class="n">&#9679;</span><h3>Case log · model vs ground truth</h3><div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" id="copyTsv">Copy for Sheets</button>
         <button class="btn btn-ghost btn-sm" id="exportCsv">Export CSV</button>
         <label class="btn btn-ghost btn-sm" style="cursor:pointer">Import CSV<input type="file" accept=".csv,text/csv" id="importCsv" hidden></label>
@@ -687,7 +736,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     </div>
     <div class="note" id="kappaNote" style="margin:0 0 10px"></div>
     <div id="pending"></div>
-    <p class="small" style="margin:2px 0 8px;color:var(--muted)">Tap a case to complete what was not known at the bedside — the culture result, and the outcome at follow-up.</p>
+    <p class="small" style="margin:2px 0 8px;color:var(--muted)">This log is filled in from <b>Assess a wound</b>, step 3 — not from the training steps. Ticking a label on a training image does not add a row here, and is not meant to: the log pairs a model's output against the clinician's ground truth, one patient at a time. It is shown in both tabs because it is the same record. Tap a case to complete what was not known at the bedside — the culture result, and the outcome at follow-up.</p>
     <ul class="log-list" id="logList"></ul>
     <p id="logEmpty" class="small" style="margin-top:8px;color:var(--faint)">No cases logged yet.</p>
     <div class="note" id="logStorage" style="margin-top:10px"></div>
@@ -707,7 +756,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 
   <!-- what the model should learn from those ticks -->
   <section class="card hidden" id="targetCard">
-    <div class="step"><span class="n">D</span><h3>What should the model learn?</h3><span class="hint">supervised learning</span></div>
+    <div class="step"><span class="n">C</span><h3>What should the model learn?</h3><span class="hint">supervised learning</span></div>
     <p class="small" style="margin-bottom:8px">Your ticks are the supervision. Choose which of them the model should predict, and the images carrying that label become the training set. A feature is trained as present against absent, which is why every image needs a tick either way for that feature to be usable.</p>
     <div class="field"><label>Train to predict</label><select id="trainTarget"></select></div>
     <div class="note" id="targetNote" style="margin-top:8px"></div>
@@ -734,7 +783,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   </section>
 
   <section class="card">
-    <div class="step"><span class="n">E</span><h3>Transfer learning on this device</h3><span class="hint">frozen backbone · new head</span></div>
+    <div class="step"><span class="n">D</span><h3>Transfer learning on this device</h3><span class="hint">frozen backbone · new head</span></div>
     <p class="small" style="margin-bottom:8px">Every image is passed once through the ImageNet‑pre‑trained MobileNetV2 backbone to obtain a 1,280‑number embedding. A new classification head is then trained on those embeddings, here in the browser. A stratified 20 % of images is held out to estimate performance. Fine‑tuning the backbone itself needs a GPU: use the Colab notebook.</p>
     <div class="row3">
       <div class="field"><label>Epochs</label><input id="tEpochs" type="number" value="40" min="5" max="300"></div>
@@ -762,7 +811,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   </section>
 
   <section class="card">
-    <div class="step"><span class="n">F</span><h3>Models on this device</h3></div>
+    <div class="step"><span class="n">E</span><h3>Models on this device</h3></div>
     <div id="modelList"></div>
   </section>
 </div>
@@ -770,7 +819,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
   Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
-  <b id="buildStamp">build 2026-09-26 &middot; v1.0</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=10</code><br>
+  <b id="buildStamp">build 2026-09-26 &middot; v1.1</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=11</code><br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>
@@ -2522,6 +2571,75 @@ function refreshData(){
    One bar per class against a per-class target, coloured by status and labelled in words.
    Status colour is never the only signal: every row carries an icon and a text verdict. */
 const MIN_PER_CLASS = 100;
+/* ── the journey, drawn from live state ────────────────────────────────────────────────────
+   The five steps were legible only to someone who already knew them, and the case log sat in the
+   middle of the sequence wearing the letter C, which made it look like a training step. It is not:
+   the log is the assessment record, and labelling a training image has never written a row to it.
+   Showing the actual state of each step is better than an infographic of the ideal one, because
+   the question being asked is always "where am I now, and why is the next button doing nothing".  */
+function renderJourney(){
+  const el = $('journey'); if (!el) return;
+  const nImg = pool.length, nLab = pool.filter(labelled).length, nCase = poolCases().size;
+  const rows = [...data.classes.entries()].filter(([, v]) => v.length);
+  const usable = rows.reduce((a, [, v]) => a + v.length, 0);
+  const trainable = rows.filter(([, v]) => v.length >= 4).length >= 2;
+  /* Both of these are declared later in the file and this runs on first paint, so read them
+     through a guard rather than tripping the temporal dead zone. */
+  const nModels = (() => { try { return loadHeadsMeta().length; } catch(e){ return 0; } })();
+  const haveTrained = (() => { try { return !!trained; } catch(e){ return false; } })();
+  const tgt = $('trainTarget') && $('trainTarget').value;
+  const tgtName = !tgt ? '' : tgt.startsWith('feat:') ? tgt.slice(5).replace(/_/g, ' ')
+                   : tgt === 'wagner' ? 'Wagner grade' : 'NPIAP stage';
+
+  const steps = [
+    { k: 'A', t: 'Add your images',
+      d: nImg ? `${nImg} image${nImg === 1 ? '' : 's'} loaded, from ${nCase} case${nCase === 1 ? '' : 's'}.`
+              : 'Pick as many photographs as you like. They stay on this device and are not uploaded.',
+      badge: nImg ? `${nImg} loaded` : 'start here', done: nImg > 0 },
+    { k: 'B', t: 'Tick what each image shows',
+      d: !nImg ? 'Needs images first.'
+         : nLab < nImg ? `${nLab} of ${nImg} done. A tick is stored the moment you tap it — there is no save button.`
+         : `All ${nImg} ticked. The ticks are kept in this browser even after you close the app.`,
+      badge: nImg ? `${nLab}/${nImg}` : '—', done: nImg > 0 && nLab === nImg, blocked: !nImg },
+    { k: 'C', t: 'Choose what to train',
+      d: !nLab ? 'Needs at least one ticked image.'
+         : `Currently <b>${tgtName}</b>, with ${usable} usable image${usable === 1 ? '' : 's'} across ${rows.length} class${rows.length === 1 ? '' : 'es'}.`,
+      badge: nLab ? `${rows.length} class${rows.length === 1 ? '' : 'es'}` : '—', done: usable > 0, blocked: !nLab },
+    { k: 'D', t: 'Train the model',
+      d: trainable ? 'Ready. Training runs here in the browser and takes a minute or two.'
+         : `Needs two classes with at least four images each; you have ${rows.filter(([, v]) => v.length >= 4).length} `
+           + `such class${rows.filter(([, v]) => v.length >= 4).length === 1 ? '' : 'es'}. Below that a held-out split gives a number with no meaning, so the button stays disabled.`,
+      badge: trainable ? 'ready' : 'locked', done: haveTrained, blocked: !trainable },
+    { k: 'E', t: 'Keep or export the model',
+      d: nModels ? `${nModels} model${nModels === 1 ? '' : 's'} saved in this browser. Activate one and it is used on the Assess tab.`
+                 : 'A trained model is saved in this browser, or downloaded as files.',
+      badge: nModels ? `${nModels} saved` : '—', done: nModels > 0, blocked: !haveTrained && !nModels }
+  ];
+  const cur = steps.findIndex(x => !x.done);
+  el.innerHTML = steps.map((x, i) => {
+    const cls = x.done ? 'done' : i === cur ? 'now' : 'todo';
+    return `<li class="${cls}"><span class="jn">${x.done ? '✓' : x.k}</span>
+      <span class="jt"><b>${x.k} · ${x.t}</b><span>${x.d}</span></span>
+      ${x.badge === '—' ? '' : `<span class="jbadge">${x.badge}</span>`}</li>`;
+  }).join('');
+
+  /* Labels outliving their images is the single most confusing thing about a browser-only tool,
+     so say how many are waiting rather than letting the person conclude the work was lost. */
+  const el2 = $('storedLabels'); if (!el2) return;
+  const stored = Object.keys(loadLabels()).length;
+  if (stored && !nImg){
+    el2.innerHTML = `<b>${stored} label${stored === 1 ? '' : 's'} from an earlier session are waiting in this browser.</b> `
+      + `The images themselves could not be kept — no website may hold on to files you picked. Choose the same `
+      + `photographs again in step A and every tick reattaches to the right image automatically. Nothing was lost.`;
+    el2.classList.remove('hidden');
+  } else if (stored && nImg){
+    const matched = pool.filter(it => loadLabels()[labKey(it)]).length;
+    el2.innerHTML = `${stored} label${stored === 1 ? '' : 's'} stored in this browser; ${matched} of the ${nImg} images now loaded `
+      + `match one. Use <b>Export labels CSV</b> in step B to keep a copy outside the browser.`;
+    el2.classList.remove('hidden');
+  } else { el2.innerHTML = ''; el2.classList.add('hidden'); }
+}
+
 function readinessNote(){
   const el = $('rNote'); if (!el) return;
   const nImg = pool.length, nCase = poolCases().size;
@@ -2535,7 +2653,7 @@ function readinessNote(){
 }
 
 function renderReadiness(){
-  readinessNote();
+  readinessNote(); renderJourney();
   const target = +$('targetPreset').value || 250;
   const rows = [...data.classes.entries()].filter(([, v]) => v.length).sort((a, b) => b[1].length - a[1].length);
   const counts = rows.map(([, v]) => v.length);
@@ -2690,7 +2808,7 @@ function addToPool(items){
   cur = firstUnlabelled < 0 ? 0 : firstUnlabelled;
   const restored = pool.filter(labelled).length;
   if (restored) toast(`${restored} image${restored === 1 ? '' : 's'} already labelled \u2014 ticks restored`);
-  saveLabels(); autoTarget(); projectClasses(); describeTarget(); renderLabeller(); readinessNote();
+  saveLabels(); autoTarget(); projectClasses(); describeTarget(); renderLabeller(); readinessNote(); renderJourney();
 }
 const poolUrl = it => it.url || (it.url = URL.createObjectURL(it.file));
 
@@ -2748,7 +2866,7 @@ function renderLabeller(){
   const chips = (host, opts, isOn, onPick) => {
     $(host).innerHTML = opts.map(([v, l]) => `<button class="chip${isOn(v) ? ' on' : ''}" data-v="${v}">${l}</button>`).join('');
     $(host).querySelectorAll('.chip').forEach(b => b.onclick = () => {
-      onPick(b.dataset.v); saveLabels(); autoTarget(); projectClasses(); describeTarget(); renderLabeller(); });
+      onPick(b.dataset.v); saveLabels(); autoTarget(); projectClasses(); describeTarget(); renderLabeller(); renderJourney(); });
   };
   chips('labWagner', WAGNER_OPTS, v => it.wagner === v, v => { it.wagner = it.wagner === v ? null : v; });
   chips('labNpiap',  NPIAP_OPTS,  v => it.npiap === v,  v => { it.npiap  = it.npiap  === v ? null : v; });
@@ -2829,7 +2947,7 @@ $('labExport') && ($('labExport').onclick = () => {
   a.click(); URL.revokeObjectURL(a.href);
   toast(pool.length + ' row' + (pool.length === 1 ? '' : 's') + ' exported');
 });
-$('trainTarget') && ($('trainTarget').onchange = () => { targetTouched = true; projectClasses(); describeTarget(); });
+$('trainTarget') && ($('trainTarget').onchange = () => { targetTouched = true; projectClasses(); describeTarget(); renderJourney(); });
 
 function describeTarget(){
   const t = $('trainTarget').value;
@@ -2844,7 +2962,7 @@ function describeTarget(){
   $('targetNote').innerHTML = note;
 }
 
-fillTargets(); describeTarget(); renderLabeller(); renderReadiness();
+fillTargets(); describeTarget(); renderLabeller(); renderReadiness(); renderJourney();
 /* Place the case log for whichever tab is showing at load, so it is not stranded in the hidden
    one until the first tab click. */
 (() => { const t = document.querySelector('.tabs button.on');
@@ -2950,7 +3068,7 @@ $('trainBtn').onclick = async () => {
   $('mAcc').textContent = (acc*100).toFixed(0) + ' %'; $('mF1').textContent = f1.toFixed(2); $('mN').textContent = vaY.length; $('mTime').textContent = ((performance.now() - t0)/1000).toFixed(0) + ' s';
   $('cmTable').innerHTML = `<tr><th>true ⟍ predicted</th>${classes.map(c => `<th>${c}</th>`).join('')}</tr>` + cm.map((r, i) => `<tr><th>${classes[i]}</th>${r.map((v, j) => `<td class="${i===j?'diag':''}">${v}</td>`).join('')}</tr>`).join('');
   $('prTable').innerHTML = `<tr><th>class</th><th>n</th><th>precision</th><th>recall</th><th>F1</th></tr>` + per.map(x => `<tr><th>${x.c}</th><td>${x.n}</td><td>${(x.p*100).toFixed(0)} %</td><td>${(x.r*100).toFixed(0)} %</td><td>${x.f1.toFixed(2)}</td></tr>`).join('');
-  $('trainResults').classList.remove('hidden'); $('trainBtn').disabled = false;
+  $('trainResults').classList.remove('hidden'); $('trainBtn').disabled = false; renderJourney();
   log(`Done in ${((performance.now() - t0)/1000).toFixed(0)} s. Held-out accuracy ${(acc*100).toFixed(0)} %, macro F1 ${f1.toFixed(2)}.`);
 };
 function headEntry(head, classes, name, metrics, when){
@@ -2965,7 +3083,7 @@ $('activateBtn').onclick = async () => {
   const entry = headEntry(trained.head, trained.classes, name, trained.metrics, when); registry[name] = entry; setActive(entry);
   try { const key = 'dfu-head-' + Date.now(); await trained.head.save('indexeddb://' + key); const meta = loadHeadsMeta(); meta.unshift({ key, name, classes: trained.classes, metrics: trained.metrics, when }); localStorage.setItem(HEADS_KEY, JSON.stringify(meta.slice(0, 10))); toast('Model active and saved on this device'); }
   catch(e){ toast('Model active (could not persist: ' + e.message + ')'); }
-  renderModelList(); $('tabAssess').click();
+  renderModelList(); renderJourney(); $('tabAssess').click();
 };
 $('downloadBtn').onclick = async () => {
   if (!trained) return;

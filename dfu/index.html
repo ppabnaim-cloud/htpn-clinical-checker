@@ -250,6 +250,19 @@ footer b{color:var(--muted)}
 .labdone{margin-top:10px;font-size:13px;line-height:1.55;padding:11px 13px;border-radius:9px;
   background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a}
 .labdone.hidden{display:none}
+details.labmore{margin-top:11px;border:1px solid var(--rule);border-radius:9px;padding:9px 12px;background:var(--slate-soft)}
+details.labmore>summary{cursor:pointer;font-size:12.5px;font-weight:700;color:var(--navy);list-style:revert}
+details.labmore .cnt{font-weight:400;color:var(--muted);font-size:11.5px}
+details.labmore .cnt.on{color:#065f46;font-weight:700}
+.labq{padding:8px 0;border-top:1px solid var(--rule)}
+.labq:first-child{border-top:0}
+.labq b{display:block;font-size:12.5px;color:var(--navy);font-weight:600}
+.labq em{display:block;font-style:normal;font-size:11.5px;color:var(--muted);line-height:1.45;margin:1px 0 5px}
+.labrule{margin-top:9px;padding:9px 11px;border-radius:8px;background:#fff;border:1px solid var(--rule);font-size:12.5px}
+.labrule b{color:var(--navy)}
+.labrule .need{color:var(--muted);font-size:11.5px;margin-top:3px}
+#labRec .field{margin-top:8px}
+#labRec .lab{margin-top:10px}
 details.correct{margin-top:12px;border:1px solid var(--rule);border-radius:9px;padding:9px 12px;background:var(--slate-soft)}
 details.correct>summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--navy);list-style:revert}
 details.correct[open]>summary{margin-bottom:4px}
@@ -617,12 +630,12 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <div class="note" style="margin:0 0 10px">Fill in whatever you have. A culture usually takes three to five days, so the microbiology is often blank at this point — that is expected. The case then appears in the log below under <b>cases waiting for a culture result</b>, and tapping it there completes the organism, the sensitivity and the outcome whenever they arrive.</div>
     <!-- Applies to both wound types: the patient and the camera, not the wound. -->
     <div class="row3">
-      <div class="field"><label>Study ID <em style="font-style:normal;color:var(--faint);font-weight:400">no name, no I.C.</em></label>
+      <div class="field"><label>Study ID <em style="font-style:normal;color:var(--faint);font-weight:400">optional — taken from the filename if blank</em></label>
         <input id="gtCase" placeholder="P014" autocomplete="off"></div>
       <div class="field"><label>Fitzpatrick skin type</label>
         <select id="gtSkin"><option value="">—</option><option>I</option><option>II</option><option>III</option><option>IV</option><option>V</option><option>VI</option><option>Not assessed</option></select></div>
-      <div class="field"><label>Grader <em style="font-style:normal;color:var(--faint);font-weight:400">initials</em></label>
-        <input id="gtRater" placeholder="NBM" autocomplete="off" maxlength="6"></div>
+      <div class="field"><label>Grader</label>
+        <select id="gtRater"><option value="">—</option></select></div>
     </div>
     <div class="row2">
       <div class="field"><label>Capture device</label>
@@ -745,14 +758,32 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <div class="labwrap">
       <div class="labimg"><img id="labImg" alt="the image being labelled"><span class="badge" id="labName">—</span><span class="badge case" id="labCase"></span></div>
       <div class="labform">
-        <span class="lab">Meggitt–Wagner grade <em>one only</em></span>
+        <span class="lab">Wound type <em>decides which scale and which questions apply</em></span>
+        <div class="chips" id="labType"></div>
+        <span class="lab" style="margin-top:10px" id="labGradeLab">Meggitt–Wagner grade <em>one only</em></span>
         <div class="chips" id="labWagner"></div>
-        <span class="lab" style="margin-top:10px">NPIAP pressure injury stage <em>one only</em></span>
         <div class="chips" id="labNpiap"></div>
         <span class="lab" style="margin-top:10px">Present in this image <em>tick all that apply</em></span>
         <div class="chips" id="labFeats"></div>
         <span class="lab" style="margin-top:10px">Fitzpatrick skin type <em>so performance can be reported by skin tone</em></span>
         <div class="chips" id="labSkin"></div>
+        <details class="labmore" id="labExamBox">
+          <summary>What only your examination supplies <span class="cnt" id="labExamCnt"></span></summary>
+          <p class="small" style="margin:6px 0 8px">The same questions as step 2b at the bedside. These are what a photograph cannot show, and they are what the published definitions are made of — answer them and the grade is worked out rather than guessed.</p>
+          <div id="labAsk"></div>
+          <div class="labrule" id="labRule"></div>
+        </details>
+
+        <details class="labmore" id="labRecBox">
+          <summary>Clinical record <span class="cnt" id="labRecCnt"></span></summary>
+          <p class="small" style="margin:6px 0 8px">The same fields as the case log. Most belong to the visit rather than to the photograph, so <b>Copy from previous image</b> fills them from the image before this one — use it for a second view of the same wound.</p>
+          <div id="labRec"></div>
+          <div class="labnav" style="margin-top:8px">
+            <button class="btn btn-ghost btn-sm" id="labCopyPrev">Copy from previous image</button>
+            <button class="btn btn-ghost btn-sm" id="labRecClear">Clear this record</button>
+          </div>
+        </details>
+
         <p class="labsaved" id="labSaved"></p>
         <div class="labnav">
           <button class="btn btn-ghost btn-sm" id="labPrev">&larr; Previous</button>
@@ -874,7 +905,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
   Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
-  <b id="buildStamp">build 2026-09-27 &middot; v1.3</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=13</code><br>
+  <b id="buildStamp">build 2026-09-27 &middot; v1.4</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=14</code><br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>
@@ -1064,7 +1095,7 @@ function useImage(img, name){
      specimen's result can never attach to the next case. The grader's initials and the camera
      stay, because they are properties of the clinic session and re-typing them 40 times is how
      a field ends up empty. */
-  ['gtGrade','gtStage','gtWagner','gtPtb','gtOutcome','gtNpiap','gtBlanch','gtDeep','gtSite','gtSiteDfu','gtSkin']
+  ['gtGrade','gtStage','gtWagner','gtPtb','gtOutcome','gtNpiap','gtBlanch','gtDeep','gtSite','gtSiteDfu','gtSkin']   /* not gtRater / gtDevice / gtProto: clinic-session properties */
     .forEach(k => { if ($(k)) $(k).value = ''; });
   if ($('gtPiNotes')) $('gtPiNotes').value = '';
   if ($('gtCase')){ const cid = caseIdOf(name);
@@ -2300,7 +2331,7 @@ $('saveCase').onclick = () => {
        blank it is derived from the filename, by the same rule the trainer uses. */
     case_id: $('gtCase').value.trim().toUpperCase() || caseIdOf(currentName),
     skin_type: $('gtSkin').value, device: $('gtDevice').value, protocol: $('gtProto').value,
-    grader: $('gtRater').value.trim().toUpperCase(),
+    grader: $('gtRater').value,
     rater2: '', rater2_wagner: '', rater2_npiap: '',
     gt_grade: $('gtGrade').value, gt_stage: $('gtStage').value, gt_wagner: $('gtWagner').value, probe_to_bone: $('gtPtb').value,
     /* Usually blank at the bedside, because a culture takes days — the log's follow-up editor
@@ -2398,7 +2429,7 @@ function followupHtml(r){
         .map(o => `<option value="${o}"${(r.outcome || '') === o ? ' selected' : ''}>${o || '—'}</option>`).join('')}</select></div>
     <span class="lab" style="margin-top:12px">Second grader <em>independent — grade from the image before reading the row above</em></span>
     <div class="row3">
-      <div class="field"><label>Initials</label><input data-role="r2" value="${(r.rater2 || '').replace(/"/g, '&quot;')}" placeholder="e.g. SAH" maxlength="6"></div>
+      <div class="field"><label>Reviewer</label><select data-role="r2">${sel([''].concat(GRADERS, ['Other']), r.rater2)}</select></div>
       ${pi
         ? `<div class="field"><label>NPIAP stage</label><select data-role="r2npiap">${['','1','2','3','4','Unstageable','Deep tissue injury']
             .map(o => `<option value="${o}"${(r.rater2_npiap || '') === o ? ' selected' : ''}>${o || '—'}</option>`).join('')}</select></div>`
@@ -2420,8 +2451,8 @@ function followupHtml(r){
           <div class="field"><label>Wagner grade</label><select data-role="c_wagner">${sel(['','0','1','2','3','4','5'], r.gt_wagner)}</select></div>
         </div>
         <div class="field" style="max-width:260px"><label>Probe-to-bone</label><select data-role="c_ptb">${sel(['','Negative','Positive','Not done'], r.probe_to_bone)}</select></div>`}
-      <div class="field"><label>Who is making this correction <em style="font-style:normal;color:var(--faint);font-weight:400">initials</em></label>
-        <input data-role="c_by" maxlength="6" placeholder="${(r.grader || 'NBM').replace(/"/g, '&quot;')}"></div>
+      <div class="field"><label>Who is making this correction</label>
+        <select data-role="c_by">${sel([''].concat(GRADERS, ['Other']), r.grader)}</select></div>
       ${(r.revisions || []).length ? `<div class="note" style="margin-top:8px"><b>Already corrected ${r.revisions.length} time${r.revisions.length === 1 ? '' : 's'}:</b><br>${r.revisions.map(v => `${v.when.slice(0,10)} ${v.by || '?'}: ${v.what}`).join('<br>')}</div>` : ''}
     </details>
     <div class="labnav"><button class="btn btn-teal btn-sm" data-role="save">Save changes</button>
@@ -2462,7 +2493,7 @@ function wireFollowup(li, r){
     rec.specimen_date = g('date') || rec.specimen_date || '';
     rec.sensitivity_notes = g('notes') || '';
     rec.outcome = g('outcome') || '';
-    rec.rater2 = (g('r2') || '').trim().toUpperCase();
+    rec.rater2 = g('r2') || '';
     rec.rater2_wagner = g('r2wagner') || '';
     rec.rater2_npiap = g('r2npiap') || '';
 
@@ -2481,7 +2512,7 @@ function wireFollowup(li, r){
       if (was !== now) changes.push({ key, label, was, now });
     });
     if (changes.length){
-      const by = (g('c_by') || rec.grader || '').trim().toUpperCase();
+      const by = g('c_by') || rec.grader || '';
       const what = changes.map(c => `${c.label} ${c.was || 'blank'} → ${c.now || 'blank'}`).join('; ');
       changes.forEach(c => rec[c.key] = c.now);
       rec.revisions = (rec.revisions || []).concat([{ when: new Date().toISOString(), by, what }]);
@@ -2936,6 +2967,15 @@ const WAGNER_OPTS = [['0','0 · intact skin'],['1','1 · superficial'],['2','2 �
                      ['3','3 · abscess or osteomyelitis'],['4','4 · localised gangrene'],['5','5 · extensive gangrene']];
 const NPIAP_OPTS  = [['1','1 · non-blanchable erythema'],['2','2 · exposed dermis'],['3','3 · adipose visible'],
                      ['4','4 · muscle, tendon or bone'],['U','Unstageable'],['D','Deep tissue injury']];
+/* The people who grade for this study. A grading is attributable or it is not a reference
+   standard, and free text produces "NBM", "N.B.M." and "naim" in the same column. Add a name
+   here when a new grader joins; Other keeps the form usable in the meantime. */
+const GRADERS = ['Dr Naim Bin Abdul Malek', 'Dr Farah Hana Binti Hasan', 'Dr Azfar'];
+const SITE_DFU = ['Plantar forefoot','Plantar midfoot','Heel','Hallux','Lesser toe','Dorsum of foot',
+                  'Medial malleolus','Lateral malleolus','Amputation stump','Other'];
+const SITE_PI  = ['Sacrum','Coccyx','Ischial tuberosity','Heel','Lateral malleolus','Greater trochanter',
+                  'Occiput','Ear','Elbow','Device-related','Other'];
+const OUTCOMES = ['Healed','Improving','Static','Deteriorated','Not yet known'];
 const SKIN_OPTS   = [['I','I'],['II','II'],['III','III'],['IV','IV'],['V','V'],['VI','VI']];
 const FEAT_OPTS   = [['granulation','Granulation'],['slough','Slough'],['necrosis','Necrosis'],
                      ['epithelialising','Epithelialising'],['periwound_erythema','Peri-wound erythema'],
@@ -2981,7 +3021,10 @@ function loadLabels(){ try { return JSON.parse(localStorage.getItem(LABELS_KEY) 
 function saveLabels(){
   const m = loadLabels();
   pool.forEach(it => { const k = labKey(it);
-    if (labelled(it) || it.skin || it.flag) m[k] = { w: it.wagner, n: it.npiap, f: [...it.feats], s: it.skin || null, q: !!it.flag };
+    const any = labelled(it) || it.skin || it.flag || it.typeSet
+             || Object.keys(it.ex || {}).length || Object.keys(it.rec || {}).length;
+    if (any) m[k] = { w: it.wagner, n: it.npiap, f: [...it.feats], s: it.skin || null, q: !!it.flag,
+                      t: it.wtype, ts: !!it.typeSet, e: it.ex || {}, r: it.rec || {} };
     else delete m[k]; });
   try { localStorage.setItem(LABELS_KEY, JSON.stringify(m)); }
   catch(e){ toast('Labels could not be stored \u2014 export the CSV before reloading'); }
@@ -2992,11 +3035,15 @@ function addToPool(items){
   items.forEach(it => {
     const rec = { file: it.file, name: it.name, url: null,
                   wagner: it.wagner || null, npiap: it.npiap || null, skin: it.skin || null,
-                  flag: false, feats: new Set(it.feats || []) };
+                  flag: false, feats: new Set(it.feats || []),
+                  /* Same variables as the bedside form, so a training image and a logged case
+                     describe a wound in one vocabulary and can be pooled later. */
+                  wtype: it.wtype || DISEASE, ex: {}, rec: {} };
     const prev = store[labKey(rec)];                 // ticks from an earlier session
     if (prev && !labelled(rec)){ rec.wagner = prev.w || null; rec.npiap = prev.n || null;
                                  rec.feats = new Set(prev.f || []); rec.skin = prev.s || null;
-                                 rec.flag = !!prev.q; }
+                                 rec.flag = !!prev.q; rec.ex = prev.e || {}; rec.rec = prev.r || {}; }
+    if (prev && prev.t){ rec.wtype = prev.t; rec.typeSet = !!prev.ts; }   // the wound type is remembered even when nothing was ticked
     pool.push(rec);
   });
   const firstUnlabelled = pool.findIndex(it => !labelled(it));
@@ -3097,8 +3144,18 @@ function renderLabeller(){
     $(host).querySelectorAll('.chip').forEach(b => b.onclick = () => {
       onPick(b.dataset.v); labChanged(); });
   };
+  /* One wound is one kind of wound. Showing both scales at once invited an image carrying a
+     Wagner grade and an NPIAP stage, which is not a thing that exists. */
+  const pi = it.wtype === 'pi';
+  chips('labType', [['dfu','Diabetic foot ulcer'],['pi','Pressure injury']], v => it.wtype === v,
+        v => { if (it.wtype !== v){ it.wtype = v; it.typeSet = true; it.wagner = null; it.npiap = null; it.ex = {}; } });
+  $('labGradeLab').innerHTML = pi ? 'NPIAP pressure injury stage <em>one only</em>'
+                                  : 'Meggitt–Wagner grade <em>one only</em>';
+  $('labWagner').classList.toggle('hidden', pi);
+  $('labNpiap').classList.toggle('hidden', !pi);
   chips('labWagner', WAGNER_OPTS, v => it.wagner === v, v => { it.wagner = it.wagner === v ? null : v; });
   chips('labNpiap',  NPIAP_OPTS,  v => it.npiap === v,  v => { it.npiap  = it.npiap  === v ? null : v; });
+  renderLabExam(it); renderLabRec(it);
   chips('labFeats',  FEAT_OPTS,   v => it.feats.has(v), v => { it.feats.has(v) ? it.feats.delete(v) : it.feats.add(v); });
   chips('labSkin',   SKIN_OPTS,   v => it.skin === v,   v => { it.skin = it.skin === v ? null : v; });
 
@@ -3155,6 +3212,122 @@ function renderLabeller(){
   const active = strip.querySelector('button.on'); if (active) active.scrollIntoView({block:'nearest', inline:'center'});
 }
 
+/* ── the same examination questions as step 2b, per training image ─────────────────────────
+   A grade entered by looking at a photograph is a guess about a definition; a grade produced by
+   answering the findings the definition is made of is the definition. Using the same question
+   set, the same wording and the same rule functions as the bedside means a training label and a
+   logged case say the same thing in the same vocabulary, and can be pooled. It also means the
+   examiner is never asked to hold seven criteria in their head.                              */
+function renderLabExam(it){
+  const pi = it.wtype === 'pi', spec = ASK[pi ? 'pi' : 'dfu'];
+  const host = $('labAsk');
+  host.innerHTML = spec.map(f => `<div class="labq"><b>${f.q}</b><em>${f.why}</em>
+    <div class="chips">${f.opts.map(([v, l]) =>
+      `<button class="chip${it.ex[f.id] === v ? ' on' : ''}" data-f="${f.id}" data-v="${v}">${l}</button>`).join('')}</div></div>`).join('');
+  host.querySelectorAll('.chip').forEach(b => b.onclick = () => {
+    const f = b.dataset.f;
+    it.ex[f] = it.ex[f] === b.dataset.v ? undefined : b.dataset.v;
+    if (it.ex[f] === undefined) delete it.ex[f];
+    labChanged();
+  });
+
+  const nA = Object.keys(it.ex).length;
+  const cnt = $('labExamCnt');
+  cnt.textContent = nA ? `${nA} of ${spec.length} answered` : `${spec.length} questions`;
+  cnt.classList.toggle('on', nA === spec.length);
+
+  const rules = pi ? [['NPIAP stage', ruleNpiap(it.ex)]]
+                   : [['Meggitt–Wagner', ruleWagner(it.ex)], ['University of Texas', ruleTexas(it.ex)]];
+  const settled = rules.filter(([, r]) => r.label);
+  $('labRule').innerHTML = !nA
+    ? '<span class="need">Answer the questions above and the published definition produces the class — no guessing from the photograph.</span>'
+    : rules.map(([nm, r]) => {
+        const need = [...new Set(r.need)].filter(Boolean);
+        return `<div><b>${nm}: ${r.label || 'not yet determined'}</b>`
+          + (r.why ? `<div class="need">${r.why}</div>` : '')
+          + (need.length ? `<div class="need">Still needed: ${need.join(', ')}.</div>` : '') + '</div>';
+      }).join('')
+      + (settled.length ? `<div class="labnav" style="margin-top:8px"><button class="btn btn-teal btn-sm" id="labUseRule">Use as the label for this image</button></div>` : '');
+
+  const use = $('labUseRule');
+  if (use) use.onclick = () => {
+    const r = pi ? ruleNpiap(it.ex) : ruleWagner(it.ex);
+    const m = { 'NPIAP stage 1':'1','NPIAP stage 2':'2','NPIAP stage 3':'3','NPIAP stage 4':'4',
+                'Unstageable':'U','Deep tissue injury':'D',
+                'Wagner 0':'0','Wagner 1':'1','Wagner 2':'2','Wagner 3':'3','Wagner 4':'4','Wagner 5':'5' };
+    const v = m[r.label];
+    if (!v) return toast('That rule has not settled on a class yet');
+    if (pi) it.npiap = v; else it.wagner = v;
+    if (!pi){ const t = ruleTexas(it.ex); if (t.label){ it.rec.grade = t.label.replace(/^Texas /, '').slice(0, 1); it.rec.stage = t.label.slice(-1); } }
+    labChanged(); toast(`Labelled ${r.label} from your findings`);
+  };
+}
+
+/* ── the clinical record, field for field the same as the case log ─────────────────────────── */
+function recField(it, key, label, opts, hint){
+  const v = it.rec[key] || '';
+  return `<div class="field"><label>${label}${hint ? ` <em style="font-style:normal;color:var(--faint);font-weight:400">${hint}</em>` : ''}</label>
+    <select data-k="${key}">${[''].concat(opts).map(o =>
+      `<option value="${o}"${v === o ? ' selected' : ''}>${o || '—'}</option>`).join('')}</select></div>`;
+}
+function renderLabRec(it){
+  const pi = it.wtype === 'pi';
+  const host = $('labRec');
+  const txt = (key, label, ph) => `<div class="field"><label>${label}</label>
+    <input data-k="${key}" value="${String(it.rec[key] || '').replace(/"/g, '&quot;')}" placeholder="${ph || ''}"></div>`;
+  host.innerHTML = `<div class="row2">
+      ${recField(it, 'grader', 'Grader', GRADERS.concat(['Other']))}
+      ${recField(it, 'reviewer', 'Independent reviewer', GRADERS.concat(['Other']), 'second opinion')}
+    </div>
+    ${(it.rec.grader === 'Other' || it.rec.reviewer === 'Other') ? txt('grader_other', 'Name of the other grader or reviewer', 'Dr …') : ''}
+    <div class="row2">
+      ${recField(it, 'device', 'Capture device', ['Mobile phone','Digital camera','Tablet','Dermatoscope','Other'])}
+      ${recField(it, 'proto', 'Lighting / distance protocol followed', ['Yes','Partly','No'])}
+    </div>
+    ${pi
+      ? `<div class="row3">
+          ${recField(it, 'site', 'Body site', SITE_PI)}
+          ${recField(it, 'blanch', 'Blanching test', ['Blanchable','Non-blanchable','Not tested'])}
+          ${recField(it, 'deepest', 'Deepest structure', ['Dermis','Adipose','Fascia','Muscle','Tendon','Bone','Obscured by slough or eschar'])}
+        </div>`
+      : `<div class="row3">
+          ${recField(it, 'grade', 'Clinician Texas grade', ['0','1','2','3'])}
+          ${recField(it, 'stage', 'Texas stage', ['A','B','C','D'])}
+          ${recField(it, 'site', 'Ulcer site', SITE_DFU)}
+        </div>
+        <div class="row2">
+          ${recField(it, 'ptb', 'Probe-to-bone', ['Negative','Positive','Not done'])}
+          <div class="field"><label>Specimen date</label><input type="date" data-k="spec_date" value="${it.rec.spec_date || ''}"></div>
+        </div>
+        <span class="lab" style="margin-top:10px">Tissue culture &amp; sensitivity <em>leave blank if not back yet</em></span>
+        <div data-role="labOrgs"></div>
+        <div class="field"><label>Sensitivity pattern / notes</label><input data-k="sens" value="${String(it.rec.sens || '').replace(/"/g, '&quot;')}" placeholder="sensitive to co-amoxiclav; ESBL negative"></div>`}
+    <div class="field" style="max-width:320px">${recField(it, 'outcome', 'Outcome at follow-up', OUTCOMES).replace(/^<div class="field">|<\/div>$/g, '')}</div>
+    <div class="field"><label>Notes</label><input data-k="notes" value="${String(it.rec.notes || '').replace(/"/g, '&quot;')}" placeholder="e.g. offloading in place; Braden 12"></div>`;
+
+  host.querySelectorAll('[data-k]').forEach(el => {
+    const ev = el.tagName === 'SELECT' ? 'onchange' : 'oninput';
+    el[ev] = () => { const v = el.value; if (v) it.rec[el.dataset.k] = v; else delete it.rec[el.dataset.k];
+                     if (el.dataset.k === 'grader' || el.dataset.k === 'reviewer') renderLabRec(it);
+                     saveLabels(); recCount(it); };
+  });
+  const orgHost = host.querySelector('[data-role="labOrgs"]');
+  if (orgHost){
+    renderOrgChips(orgHost, it.rec.organisms || []);
+    orgHost.querySelectorAll('.chip').forEach(b => { const prev = b.onclick;
+      b.onclick = e => { prev && prev(e); it.rec.organisms = orgChosen(orgHost);
+                         if (!it.rec.organisms.length) delete it.rec.organisms;
+                         saveLabels(); recCount(it); }; });
+  }
+  recCount(it);
+}
+function recCount(it){
+  const k = Object.keys(it.rec).filter(x => it.rec[x] && (!Array.isArray(it.rec[x]) || it.rec[x].length)).length;
+  const c = $('labRecCnt');
+  c.textContent = k ? `${k} field${k === 1 ? '' : 's'} filled` : 'optional';
+  c.classList.toggle('on', k > 0);
+}
+
 /* Redraw everything that depends on a label. One call, so no view can drift out of step. */
 function labChanged(){
   saveLabels(); autoTarget(); projectClasses(); describeTarget();
@@ -3182,6 +3355,24 @@ $('labFilter') && ($('labFilter').onchange = e => { labFilter = e.target.value;
   if (view.length && !view.includes(cur)) cur = view[0];     // land on something the filter shows
   renderLabeller(); });
 
+/* Most of the clinical record belongs to the visit, not to the photograph, so a second view of
+   the same wound repeats every field. Copying explicitly beats copying automatically: the second
+   image might be a different wound on the same patient. */
+$('labCopyPrev') && ($('labCopyPrev').onclick = () => {
+  if (cur < 1) return toast('This is the first image — nothing before it to copy');
+  const src = pool[cur - 1], it = pool[cur];
+  it.rec = JSON.parse(JSON.stringify(src.rec || {}));
+  if (src.wtype) it.wtype = src.wtype;
+  it.ex = JSON.parse(JSON.stringify(src.ex || {}));
+  if (src.skin && !it.skin) it.skin = src.skin;
+  labChanged();
+  toast(`Record and findings copied from ${src.name}`);
+});
+$('labRecClear') && ($('labRecClear').onclick = () => {
+  const it = pool[cur]; if (!it) return;
+  it.rec = {}; labChanged(); toast('Clinical record cleared for this image');
+});
+
 $('labFlag') && ($('labFlag').onclick = () => {
   const it = pool[cur]; if (!it) return;
   it.flag = !it.flag; saveLabels(); renderLabeller();
@@ -3191,9 +3382,9 @@ $('labFlag') && ($('labFlag').onclick = () => {
 $('labClear') && ($('labClear').onclick = () => {
   const it = pool[cur]; if (!it) return;
   if (!labelled(it) && !it.skin) return toast('Nothing to clear on this image');
-  it.wagner = null; it.npiap = null; it.skin = null; it.feats.clear();
+  it.wagner = null; it.npiap = null; it.skin = null; it.feats.clear(); it.ex = {};
   labChanged();
-  toast('Every tick cleared on this image');
+  toast('Ticks and examination findings cleared — the clinical record is kept, clear it separately');
 });
 
 /* Removing an image also removes its stored label. Keeping the label would mean it silently
@@ -3224,9 +3415,27 @@ $('labNext') && ($('labNext').onclick = () => {
    built on. One click gets them out of the browser. */
 $('labExport') && ($('labExport').onclick = () => {
   if (!pool.length) return toast('No images loaded');
-  const head = ['filename', 'case_id', 'wagner', 'npiap', 'skin_type', 'flagged_for_review'].concat(FEAT_OPTS.map(o => o[0]));
-  const rows = pool.map(it => [it.name, caseIdOf(it.name), it.wagner || '', it.npiap || '', it.skin || '', it.flag ? '1' : '0']
-    .concat(FEAT_OPTS.map(o => it.feats.has(o[0]) ? '1' : '0')));
+  /* Every variable the bedside form holds, so this CSV and the case log export line up column
+     for column and can be concatenated for analysis. */
+  const exKeys = [...new Set([].concat(ASK.dfu.map(f => f.id), ASK.pi.map(f => f.id)))];
+  const recKeys = ['grader','reviewer','grader_other','device','proto','site','grade','stage','ptb',
+                   'blanch','deepest','spec_date','sens','outcome','notes'];
+  const head = ['filename','case_id','wound_type','wagner','npiap','skin_type','flagged_for_review']
+    .concat(FEAT_OPTS.map(o => o[0]))
+    .concat(exKeys.map(k => 'exam_' + k))
+    .concat(recKeys)
+    .concat(['organisms','culture_positive','rule_class']);
+  const rows = pool.map(it => {
+    const pi = it.wtype === 'pi';
+    const r = pi ? ruleNpiap(it.ex) : ruleWagner(it.ex);
+    const orgs = it.rec.organisms || [];
+    const cp = culturePositive(orgs);
+    return [it.name, caseIdOf(it.name), it.wtype || '', it.wagner || '', it.npiap || '', it.skin || '', it.flag ? '1' : '0']
+      .concat(FEAT_OPTS.map(o => it.feats.has(o[0]) ? '1' : '0'))
+      .concat(exKeys.map(k => it.ex[k] || ''))
+      .concat(recKeys.map(k => it.rec[k] || ''))
+      .concat([orgs.join('; '), cp === null ? '' : String(cp), r.label || '']);
+  });
   const esc = v => /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
   const csv = [head].concat(rows).map(r => r.map(v => esc(String(v))).join(',')).join('\r\n');
   const a = document.createElement('a');
@@ -3249,6 +3458,11 @@ function describeTarget(){
   if (rows.length < 2) note += ' <br>At least two classes with four images each are needed before training can start.';
   $('targetNote').innerHTML = note;
 }
+
+/* One list of graders, used on the bedside card, in the training labeller and for the second
+   reading, so the same person is one value in the column rather than three spellings of it.
+   Filled here because GRADERS and sel are both declared further down the file. */
+$('gtRater') && ($('gtRater').innerHTML = sel([''].concat(GRADERS, ['Other']), ''));
 
 fillTargets(); describeTarget(); renderLabeller(); renderReadiness(); renderJourney(); renderAssessJourney();
 /* Place the case log for whichever tab is showing at load, so it is not stranded in the hidden

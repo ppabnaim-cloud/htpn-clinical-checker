@@ -488,9 +488,9 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
         <button class="sample" data-dis="dfu" data-src="samples/plantar_eschar_ulcer.jpg" data-name="Sample E"><img src="samples/plantar_eschar_ulcer.jpg" alt="A plantar ulcer with black eschar"><span>E · plantar eschar <i>Dice 0.96</i></span></button>
         <button class="sample" data-dis="dfu" data-src="samples/landscape_offcentre.jpg" data-name="Sample F (landscape)"><img src="samples/landscape_offcentre.jpg" alt="Sample C off-centre in a 4:3 landscape frame"><span>F · landscape, off-centre</span></button>
         <button class="sample" data-dis="dfu" data-src="samples/portrait_phone.jpg" data-name="Sample G (portrait)"><img src="samples/portrait_phone.jpg" alt="Sample B in a 9:16 portrait phone frame"><span>G · portrait, phone shape</span></button>
-        <button class="sample" data-dis="pi" data-src="samples/pi_sloughy.jpg" data-name="PI 1 (slough and eschar)"><img src="samples/pi_sloughy.jpg" alt="A pressure injury whose depth is obscured by slough and eschar"><span>1 · depth obscured <i>HTPN · consented</i></span></button>
-        <button class="sample" data-dis="pi" data-src="samples/pi_granulating.jpg" data-name="PI 2 (granulating)"><img src="samples/pi_granulating.jpg" alt="A full-thickness pressure injury with a granulating bed"><span>2 · granulating bed <i>HTPN · consented</i></span></button>
-        <button class="sample" data-dis="pi" data-src="samples/pi_cavity.jpg" data-name="PI 3 (cavity)"><img src="samples/pi_cavity.jpg" alt="A deep pressure injury cavity with necrotic edging"><span>3 · deep cavity <i>HTPN · consented</i></span></button>
+        <button class="sample" data-dis="pi" data-src="samples/pi_sloughy.jpg" data-name="PI 1 (slough and eschar)"><img src="samples/pi_sloughy.jpg" alt="A pressure injury whose depth is obscured by slough and eschar"><span>1 · depth obscured <i>HTPN wound unit</i></span></button>
+        <button class="sample" data-dis="pi" data-src="samples/pi_granulating.jpg" data-name="PI 2 (granulating)"><img src="samples/pi_granulating.jpg" alt="A full-thickness pressure injury with a granulating bed"><span>2 · granulating bed <i>HTPN wound unit</i></span></button>
+        <button class="sample" data-dis="pi" data-src="samples/pi_cavity.jpg" data-name="PI 3 (cavity)"><img src="samples/pi_cavity.jpg" alt="A deep pressure injury cavity with necrotic edging"><span>3 · deep cavity <i>HTPN wound unit</i></span></button>
   </section>
 
   <!-- STEP 2: ANALYSE -->
@@ -700,7 +700,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       <dt>Held‑out performance (against the weak labels)</dt><dd id="mcPerf">Loading…</dd>
       <dt>Data source</dt><dd>FUSeg 2021 / AZH Wound and Vascular Center dataset, Wang C. et al., <i>Sci Rep</i> 2020;10:21897, github.com/uwm-bigdata/wound-segmentation.</dd>
       <dt>Author</dt><dd>Dr Naim Bin Abdul Malek. Built as a demonstrator for the Deep Learning Healthcare Centre of Excellence and as the technical pilot for a DrPH study on diabetic foot ulcer infection classification, extended to pressure injury staging.</dd>
-      <dt>Patient data</dt><dd>No patient image may be loaded into this tool until NMRR registration and MREC ethical approval are in place, and every image must be de&#8209;identified and consented under the Personal Data Protection Act 2010. Images processed here stay in this browser, which reduces the transmission risk but does not substitute for approval.</dd>
+      <dt>Patient data</dt><dd>Images are processed entirely in this browser and are not transmitted anywhere. Photographs must be de&#8209;identified before use: no name, no identity card number, no face, and no identifying metadata.</dd>
     </dl>
   </section>
 </div>
@@ -836,7 +836,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
         <button class="btn btn-teal btn-sm" id="sheetPush">Send all cases now</button>
       </div>
       <div class="small" id="sheetStatus" style="margin-top:8px"></div>
-      <div class="note rose" style="margin-top:10px"><b>What leaves the device.</b> The clinical columns only — grades, stage, probe-to-bone, culture, tissue percentages. Never the photograph and never the thumbnail. Once a URL is set the tool no longer holds to "nothing leaves this device", so the destination belongs in your MREC submission by name.</div>
+      <div class="note rose" style="margin-top:10px"><b>What leaves the device.</b> The clinical columns only — grades, stage, probe-to-bone, culture, tissue percentages. Never the photograph and never the thumbnail. Once a URL is set the tool no longer holds to "nothing leaves this device", so record where that sheet lives and who can open it.</div>
     </details>
   </section>
 
@@ -905,7 +905,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
   Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
-  <b id="buildStamp">build 2026-09-27 &middot; v1.4</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=14</code><br>
+  <b id="buildStamp">build 2026-09-27 &middot; v1.5</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=15</code><br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>
@@ -1823,7 +1823,7 @@ function setDisease(d){
      assessing a sacral sore, and vice versa. */
   document.querySelectorAll('.sample').forEach(b => b.classList.toggle('hidden', b.dataset.dis !== (pi ? 'pi' : 'dfu')));
   $('sampleNote').innerHTML = pi
-    ? 'Three pressure injuries from the <b>HTPN wound unit</b>, used with patient consent for teaching and de-identified before upload &mdash; no ruler, no name, no identity card number, no metadata. They carry no expert mask, so no outline score is shown for them; only the foot ulcer samples have one. Remember that no pressure injury classifier exists, so the app will outline and measure these but leave the staging to you.'
+    ? 'Three pressure injuries from the <b>HTPN wound unit</b>, de-identified before upload &mdash; no ruler, no name, no identity card number, no metadata. They carry no expert mask, so no outline score is shown for them; only the foot ulcer samples have one. Remember that no pressure injury classifier exists, so the app will outline and measure these but leave the staging to you.'
     : 'Samples A to E are images 0068, 0046, 0729, 0136 and 0971 of the FUSeg 2021 <b>validation</b> split, so the models were never trained on them. Each carries an expert-drawn mask, and the Dice shown is how closely this model\u2019s outline matches that mask on that image &mdash; 0.70 is kept deliberately, because a demo that only shows its best cases is an advertisement. F and G are C and B re-framed into camera and phone shapes, to show that nothing at the edge of the frame is discarded.';
   $('truthIntro').textContent = pi
     ? 'Record the stage you assigned, the blanching test and the deepest structure you could see or palpate. Outcome at follow-up is the reference standard here, not a swab.'

@@ -253,6 +253,26 @@ footer b{color:var(--muted)}
 details.correct{margin-top:12px;border:1px solid var(--rule);border-radius:9px;padding:9px 12px;background:var(--slate-soft)}
 details.correct>summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--navy);list-style:revert}
 details.correct[open]>summary{margin-bottom:4px}
+.card.tight{padding:13px 16px}
+.jstrip{list-style:none;margin:0;padding:0;display:flex;align-items:flex-start;gap:0}
+.jstrip li{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;position:relative;min-width:0}
+.jstrip li::before{content:"";position:absolute;top:13px;left:-50%;width:100%;height:2px;background:var(--line);z-index:0}
+.jstrip li:first-child::before{display:none}
+.jstrip li.done::before,.jstrip li.now::before{background:#6ee7b7}
+.jstrip .sn{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;
+  background:var(--cloud);color:var(--muted);border:2px solid var(--line);z-index:1;flex:none}
+.jstrip li.done .sn{background:#10b981;border-color:#10b981;color:#fff}
+.jstrip li.now .sn{background:#fff;border-color:var(--teal);color:var(--teal);box-shadow:0 0 0 4px rgba(28,184,160,.15)}
+.jstrip .sl{font-size:11px;line-height:1.3;text-align:center;color:var(--muted);max-width:92px}
+.jstrip li.now .sl{color:var(--navy);font-weight:700}
+.jstrip li.done .sl{color:var(--navy)}
+@media (max-width:430px){.jstrip .sl{font-size:10px;max-width:68px}}
+.jnow{margin:11px 0 0;font-size:12.5px;line-height:1.55;color:var(--text);padding:8px 11px;border-radius:8px;
+  background:var(--slate-soft);border:1px solid var(--rule)}
+.jnow.ok{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
+details.jmore{margin-top:9px}
+details.jmore>summary{cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;list-style:revert}
+details.jmore[open]>summary{margin-bottom:2px}
 .labfilter{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
 .labfilter label{font-size:12px;color:var(--muted);font-weight:600}
 .labfilter select{padding:6px 8px;border-radius:8px;border:1px solid var(--line);font-size:12.5px;max-width:100%}
@@ -414,6 +434,18 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <main>
 <!-- ═══════════════════════════ ASSESS TAB ═══════════════════════════ -->
 <div id="tab-assess">
+
+  <!-- Where you are in one case. Compact by default: a clinician scrolls past this at every
+       bedside, so the map must not cost more than the glance it saves. -->
+  <section class="card tight" id="assessJourney">
+    <ol class="jstrip" id="jstrip"></ol>
+    <p class="jnow" id="jnow"></p>
+    <details class="jmore">
+      <summary>What each step needs</summary>
+      <ol class="journey" id="journeyAssess"></ol>
+    </details>
+  </section>
+
   <!-- STEP 1: CAPTURE -->
   <section class="card" id="capture">
     <div class="step"><span class="n">1</span><h3>Capture or upload the wound image</h3><span class="hint">runs on-device</span></div>
@@ -842,7 +874,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
   Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
-  <b id="buildStamp">build 2026-09-26 &middot; v1.2</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=12</code><br>
+  <b id="buildStamp">build 2026-09-27 &middot; v1.3</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=13</code><br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>
@@ -883,6 +915,7 @@ let backbone = null;             // tf.model input -> out_relu  (shared by demo 
 let active = null;               // { kind:'demo'|'head'|'full', name, classes, conv, tail, gradLayer, inputRange, scheme }
 let currentImg = null, currentName = '', lastPred = null, lastActs = null, isch = '0', scheme = 'texas', camManual = false;
 let segModel = null, segMetrics = null, lastSeg = null, lastBox = null;   // lastBox = the crop actually classified
+let savedThisImage = false;      // has the photograph on screen been written to the case log yet
 let lastTissue = null;                                                     // wound-bed colour composition
 let fit = null;            // how the photograph was letterboxed into the square view
 let manualBox = null, boxing = false, boxStart = null;   // clinician-drawn region of interest
@@ -1003,7 +1036,7 @@ loadModel().catch(e => { $('modelPill').textContent = 'model: failed'; $('status
 
 /* ═══════════════════════════ image intake ═══════════════════════════ */
 function useImage(img, name){
-  currentImg = img; currentName = name; lastPred = null; camManual = false;
+  currentImg = img; currentName = name; lastPred = null; camManual = false; savedThisImage = false;
   $('imgName').textContent = name;
   const c = $('imgCanvas'), ctx = c.getContext('2d');
   /* Letterbox, never centre-crop. A centre crop of a 4:3 camera frame discards a quarter of its
@@ -1038,6 +1071,7 @@ function useImage(img, name){
     $('gtCase').value = cid === String(name || '').replace(/\.[^.]+$/, '').toUpperCase() ? '' : cid; }
   setCam(segModel ? 1 : 0);
   $('analyse').classList.remove('hidden'); $('truth').classList.remove('hidden');
+  renderAssessJourney();
   $('results').classList.add('hidden'); $('woundPanel').classList.add('hidden'); $('decide').classList.add('hidden'); $('status').classList.remove('hidden');
   $('analyse').scrollIntoView({behavior:'smooth', block:'start'});
   if (backbone) runInference(); else $('statusText').textContent = 'Loading models…';
@@ -1289,6 +1323,7 @@ async function runInference(reuseSeg){
 function showResults(){
   const p = lastPred;
   if ($('occBox')){ $('occBox').classList.remove('hidden'); $('occOut').innerHTML = ''; }
+  renderAssessJourney();
   $('camToggle').querySelector('[data-v="2"]').disabled = false;
   $('timing').textContent = `${p.ms.toFixed(0)} ms on ${tf.getBackend()}`;
   $('status').classList.add('hidden'); $('results').classList.remove('hidden');
@@ -1679,7 +1714,7 @@ function renderDecide(){
   $('askFind').querySelectorAll('.chip').forEach(b => b.onclick = () => {
     const f = b.dataset.f;
     a[f] = a[f] === b.dataset.v ? undefined : b.dataset.v;
-    renderDecide();
+    renderDecide(); renderAssessJourney();
   });
 
   if (DISEASE === 'pi'){
@@ -1766,6 +1801,7 @@ function setDisease(d){
     ? 'The clinician’s NPIAP stage, under adjudication, is the reference standard for this arm, with outcome at follow-up as the clinical endpoint. Stored locally in this browser only for the prototype.'
     : "Culture & sensitivity is the reference standard for infection. The clinician's Texas or Wagner class is the reference standard for the classification head. Stored locally in this browser only for the prototype.";
   if (currentImg) renderDecide();
+  renderAssessJourney();            // the questions and the rules both change with the wound type
   // the built-in heads are diabetic-foot-ulcer heads; re-run so the right path is taken
   if (currentImg && backbone) runInference();
 }
@@ -1780,7 +1816,7 @@ function showPiResults(){
   $('camToggle').querySelector('[data-v="2"]').disabled = true;
   if (+$('camToggle').querySelector('.on').dataset.v === 2) setCam(1);
   if ($('occBox')) $('occBox').classList.add('hidden');   // no classifier ran, so nothing to perturb
-  renderPiOut(); renderDecide();
+  renderPiOut(); renderDecide(); renderAssessJourney();
 }
 
 /* ═══════════════════════════ wound-bed tissue composition ═══════════════════════════
@@ -2024,6 +2060,89 @@ $('viewer').addEventListener('click', e => {
   }
 });
 
+/* ═════════════════════ where you are in this case ═════════════════════
+   The same idea as the training journey, but this one runs at a bedside, so it is a strip rather
+   than a panel: the map must cost less than the glance it saves. The steps keep the clinical
+   numbering (1, 2, 2b, 3) rather than the training letters, because the two flows are different
+   jobs and giving them the same labels was what made the case log look like a training step.
+
+   The one thing it is really for: step 3. Forgetting to record the case is silent, costs the
+   study a data point, and is discovered weeks later when the numbers do not add up.            */
+function renderAssessJourney(){
+  const strip = $('jstrip'); if (!strip) return;
+  const pi = DISEASE === 'pi';
+  const a = answers[DISEASE], spec = ASK[DISEASE];
+  const answered = spec.filter(f => a[f.id] !== undefined).length;
+  const rules = pi ? [['NPIAP stage', ruleNpiap(a)]]
+                   : [['Meggitt–Wagner', ruleWagner(a)], ['University of Texas', ruleTexas(a)]];
+  const settled = rules.filter(([, r]) => r.label);
+  const log = loadLog();
+  const waiting = log.filter(r => r.disease !== 'pressure injury' && !(r.organisms || []).length).length;
+  /* Read "has this been recorded" from the log rather than a session flag. Switching between a
+     foot ulcer and a pressure injury asks a different clinical question about the same
+     photograph, so a flag would leave step 3 ticked for a record made about the other one. The
+     log check also survives a reload, and warns before a second row is created for one image. */
+  const mine = log.filter(r => r.image === currentName && r.disease === (pi ? 'pressure injury' : 'diabetic foot ulcer'));
+  const recorded = !!currentName && mine.length > 0;
+  const thisSession = recorded && savedThisImage;
+
+  const steps = [
+    { k: '1', s: 'Photograph',
+      done: !!currentImg,
+      d: currentImg ? `<b>${currentName}</b> loaded. Nothing leaves this device.`
+                    : 'Take or upload a photograph. Follow the acquisition protocol — distance, lighting and a plain background are the largest single source of error.' },
+    { k: '2', s: 'AI analysis',
+      done: !!lastPred,
+      d: !currentImg ? 'Waiting for a photograph.'
+         : !lastPred ? 'Runs automatically once the image loads.'
+         : (lastPred.piOnly
+            ? 'Outline and measurement only. No pressure injury classifier has been trained, so the app does not guess a stage — you supply it in 2b.'
+            : `Outline, tissue composition and classification done${lastSeg && lastSeg.found ? '' : ' — but no wound was outlined, so the whole photograph was classified'}. Check the outline before trusting the numbers, and drag a box over the wound if it is wrong.`) },
+    { k: '2b', s: 'Your findings',
+      done: settled.length === rules.length && answered > 0,
+      d: !currentImg ? 'Waiting for a photograph.'
+         : `${answered} of ${spec.length} questions answered. `
+           + (settled.length === rules.length
+              ? `Every definition is satisfied: ${settled.map(([, r]) => r.label).join(' · ')}.`
+              : `These are definitions, not predictions — ${rules.filter(([, r]) => !r.label).map(([nm]) => nm).join(' and ')} cannot be determined until the findings they are defined by are answered.`) },
+    { k: '3', s: 'Record the case',
+      done: recorded,
+      d: !currentImg ? 'Waiting for a photograph.'
+         : thisSession ? 'Saved to the case log. Add the culture and the outcome from the log when they arrive.'
+         : recorded ? `Already in the log as ${mine.length === 1 ? 'a case' : mine.length + ' cases'} under this filename and wound type, from ${new Date(mine[0].when).toLocaleDateString()}. Saving again adds another row rather than replacing that one — to change a grading, correct it in the log instead.`
+         : 'Not recorded yet. Without this the case contributes nothing to the reference standard — and it is the easiest step in the whole app to forget.' }
+  ];
+
+  const cur = steps.findIndex(x => !x.done);
+  strip.innerHTML = steps.map((x, i) => {
+    const cls = x.done ? 'done' : i === cur ? 'now' : 'todo';
+    return `<li class="${cls}"><span class="sn">${x.done ? '✓' : x.k}</span><span class="sl">${x.s}</span></li>`;
+  }).join('');
+
+  const nowEl = $('jnow');
+  if (cur < 0){
+    nowEl.className = 'jnow ok';
+
+    nowEl.innerHTML = `✓ <b>This case is complete.</b> ${log.length} case${log.length === 1 ? '' : 's'} in the log`
+      + (waiting ? `, ${waiting} waiting for a culture result.` : '.')
+      + ' Load the next photograph when you are ready.';
+  } else {
+    nowEl.className = 'jnow';
+    nowEl.innerHTML = `<b>Now: ${steps[cur].k} · ${steps[cur].s}.</b> ${steps[cur].d}`;
+  }
+
+  const more = $('journeyAssess');
+  more.innerHTML = steps.map((x, i) => {
+    const cls = x.done ? 'done' : i === cur ? 'now' : 'todo';
+    return `<li class="${cls}"><span class="jn">${x.done ? '✓' : x.k}</span>
+      <span class="jt"><b>${x.k} · ${x.s}</b><span>${x.d}</span></span></li>`;
+  }).join('')
+  + `<li class="${log.length ? 'done' : 'todo'}"><span class="jn">●</span><span class="jt"><b>Case log</b>`
+  + `<span>${log.length} case${log.length === 1 ? '' : 's'} recorded in this browser`
+  + (waiting ? `, ${waiting} still waiting for a culture result — tap one in the log to complete it.` : '.')
+  + ' The log is the same record on both tabs, and it is filled in from step 3, never from the training steps.</span></span></li>';
+}
+
 /* ═══════════════════════════ occlusion test ═══════════════════════════
    Grad-CAM answers "where did the activations concentrate", which is a correlation and is easy to
    over-read: a heatmap can sit on the wound while the decision is being made on the bed sheet, and
@@ -2190,7 +2309,8 @@ $('saveCase').onclick = () => {
     culture_positive: culturePositive(orgs), outcome: $('gtOutcome').value, pi_date: '',
     npiap_stage: $('gtNpiap').value, blanching: $('gtBlanch').value, deepest_structure: $('gtDeep').value,
     body_site: (DISEASE === 'pi' ? $('gtSite').value : $('gtSiteDfu').value), pi_notes: $('gtPiNotes').value.trim() };
-  const log = loadLog(); log.unshift(rec); saveLog(log); renderLog(); toast('Case saved to log');
+  const log = loadLog(); log.unshift(rec); saveLog(log); savedThisImage = true; renderLog(); renderAssessJourney();
+  toast('Case saved to log');
   if ($('sheetAuto') && $('sheetAuto').checked && sheetUrl()) pushToSheet([rec], 'Auto-sent');
   $('logCard').scrollIntoView({behavior:'smooth', block:'start'});
 };
@@ -2444,7 +2564,7 @@ function renderLog(){
   const cult = log.filter(r => r.culture_positive !== null);
   $('kCult').textContent = cult.length ? `${cult.filter(r => r.culture_positive).length}/${cult.length}` : '—';
   renderKappa(log);
-  renderStorage(); renderPending();
+  renderStorage(); renderPending(); renderAssessJourney();
   $('logList').innerHTML = log.slice(0, 8).map(r => {
     const a = (r.culture_positive === null || r.p_infection === null) ? '' : `<span class="agree ${(r.p_infection>=0.5)===r.culture_positive?'':'no'}">${(r.p_infection>=0.5)===r.culture_positive?'agrees with C&S':'disagrees with C&S'}</span>`;
     const pi = r.disease === 'pressure injury';
@@ -3130,7 +3250,7 @@ function describeTarget(){
   $('targetNote').innerHTML = note;
 }
 
-fillTargets(); describeTarget(); renderLabeller(); renderReadiness(); renderJourney();
+fillTargets(); describeTarget(); renderLabeller(); renderReadiness(); renderJourney(); renderAssessJourney();
 /* Place the case log for whichever tab is showing at load, so it is not stranded in the hidden
    one until the first tab click. */
 (() => { const t = document.querySelector('.tabs button.on');

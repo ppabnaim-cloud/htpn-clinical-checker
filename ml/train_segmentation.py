@@ -14,7 +14,7 @@ Loss:    Dice + binary cross-entropy (the wound is a small minority of pixels).
 Usage:
   TF_USE_LEGACY_KERAS=1 python ml/train_segmentation.py \
       --root "/path/to/wound-segmentation/data/Foot Ulcer Segmentation Challenge" \
-      --out dfu/seg
+      --out seg
 
 Data: Wang C. et al., Sci Rep 2020;10:21897 — github.com/uwm-bigdata/wound-segmentation
 """
@@ -145,7 +145,7 @@ def evaluate(model, X, Y, thresh=0.5):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default="/tmp/ws/data/Foot Ulcer Segmentation Challenge")
-    ap.add_argument("--out", default="dfu/seg")
+    ap.add_argument("--out", default="seg")
     ap.add_argument("--epochs_dec", type=int, default=12)
     ap.add_argument("--epochs_ft", type=int, default=6)
     ap.add_argument("--limit", type=int, default=0, help="debug: use only N training images")

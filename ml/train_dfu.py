@@ -9,7 +9,7 @@ Labels are WEAK labels derived from the FUSeg 2021 masks (wound area) and wound-
 colour features (slough / necrosis / peri-wound erythema). See make_labels.py and README.
 They are demonstrator labels, NOT clinician-adjudicated ground truth.
 
-Usage:  TF_USE_LEGACY_KERAS=1 python ml/train_dfu.py --labels /tmp/work/labels.json --out dfu/model
+Usage:  TF_USE_LEGACY_KERAS=1 python ml/train_dfu.py --labels /tmp/work/labels.json --out model
 """
 import os, json, argparse, random
 os.environ.setdefault("TF_USE_LEGACY_KERAS", "1")
@@ -92,7 +92,7 @@ def evaluate(model, X, yg, yi, wg, wi):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--labels", default="/tmp/work/labels.json")
-    ap.add_argument("--out", default="dfu/model")
+    ap.add_argument("--out", default="model")
     ap.add_argument("--epochs_head", type=int, default=10)
     ap.add_argument("--epochs_ft", type=int, default=4)
     a = ap.parse_args()

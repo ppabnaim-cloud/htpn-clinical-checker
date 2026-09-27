@@ -913,7 +913,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <script>
 /* ═══════════════════════════ constants ═══════════════════════════ */
 const IMG = 224, EMB = 1280, SEG = 224, ROI_MARGIN = 0.6;   // ROI_MARGIN matches ml/train_segmentation.py
-const TTA = true;              // average four flipped views; see dfu/model-roi/calibration.json
+const TTA = true;              // average four flipped views; see model-roi/calibration.json
 const ABSTAIN_AT = 0.70;       // below this confidence a head declines rather than guesses
 let CALIB = {};                // Platt coefficients, loaded from the model folder
 /* Platt scaling on the logit: p_cal = sigmoid(scale*logit(p_raw) + shift). Applied to the severity

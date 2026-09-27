@@ -2,7 +2,7 @@
 Record a ~30 s walk-through of the DFU Vision prototype on a phone-sized viewport.
 
   1. serve the app:   (cd dfu && python -m http.server 8765)
-  2. record:          python ml/record_demo.py  -> dfu/demo/dfu-demo.mp4 (+ .webm)
+  2. record:          python ml/record_demo.py  -> demo/dfu-demo.mp4 (+ .webm)
 
 Needs: pip install playwright imageio-ffmpeg  (uses the Chromium that Playwright finds; set CHROME=/path/to/chrome to override)
 """

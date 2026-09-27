@@ -6,7 +6,7 @@ network, a Grad-CAM heatmap shows what the model looked at, the result is mapped
 Diabetic Wound Classification, and the clinician records the ground truth (clinical grade/stage and tissue
 culture & sensitivity) so that every case becomes a labelled training example for the next cycle.
 
-Live path once deployed with the rest of this repository on Vercel: `https://<your-app>.vercel.app/dfu/`
+Live path once deployed on Vercel: `https://<your-app>.vercel.app/`
 
 > **Disclaimer.** Research prototype. Not a medical device, not validated, not for clinical decision-making.
 > Trained on a small public dataset with weak (rule-derived) labels. The app opens with this disclaimer and with the
@@ -235,14 +235,14 @@ python -m venv venv && . venv/bin/activate
 pip install -r ml/requirements.txt
 git clone --depth 1 https://github.com/uwm-bigdata/wound-segmentation.git /tmp/ws
 python ml/make_labels.py --root "/tmp/ws/data/Foot Ulcer Segmentation Challenge" --out /tmp/labels.json
-TF_USE_LEGACY_KERAS=1 python ml/train_dfu.py --labels /tmp/labels.json --out dfu/model
+TF_USE_LEGACY_KERAS=1 python ml/train_dfu.py --labels /tmp/labels.json --out model
 ```
 
 To re-record the demo video:
 
 ```bash
 (cd dfu && python -m http.server 8765) &
-python ml/record_demo.py          # writes dfu/demo/dfu-demo.mp4
+python ml/record_demo.py          # writes demo/dfu-demo.mp4
 ```
 
 ## Running locally

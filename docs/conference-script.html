@@ -332,7 +332,7 @@ footer{margin-top:52px;border-top:1px solid var(--rule);padding-top:18px;font-si
     <li><dfn>What the log holds.</dfn> Each case stores the model's posteriors for both heads, the clinician's own grade and stage, probe-to-bone, and the tissue culture and sensitivity organisms when they return, with a CSV export.</li>
     <li><dfn>Why that is the whole point.</dfn> Every figure in this talk is measured against <strong>weak labels</strong> &mdash; a visual proxy. The log is the mechanism that replaces them with a <strong>clinician-adjudicated, culture-confirmed reference standard</strong>. Until that exists, nothing here is a diagnostic accuracy estimate; it is an engineering check.</li>
     <li><dfn>What it unlocks.</dfn> Refitting the calibration and the abstention threshold on real labels rather than proxies; estimating sensitivity and specificity against culture; and reporting under <strong>TRIPOD+AI</strong> and <strong>STARD</strong> instead of quoting internal validation numbers.</li>
-    <li><dfn>Governance first.</dfn> No patient image is loaded until <strong>NMRR registration and MREC approval</strong> are in place, with de-identification and consent under the <strong>PDPA 2010</strong>. The readiness dashboard in the app counts images per class against a target of 100 and states plainly when a class is too thin to train on.</li>
+    <li><dfn>De-identification first.</dfn> Every photograph is de-identified before it is used &mdash; no name, no identity card number, no face, no metadata &mdash; and processing stays on the device. The readiness dashboard in the app counts images per class against a target of 100 and states plainly when a class is too thin to train on.</li>
   </ul></div>
 </section>
 
@@ -429,7 +429,7 @@ footer{margin-top:52px;border-top:1px solid var(--rule);padding-top:18px;font-si
   <span class="lab">What you say</span>
   <div class="say">
     <p>Let me be clear about what this is not. It is a research prototype. It is not a medical device, it is not validated, and nobody should make a treatment decision with it. The app says so on its own opening screen and will not let you past until you agree.</p>
-    <p>What comes next is the part that actually matters. I am registering a study to collect around <em>four hundred patients</em> with proper consent, where each ulcer is graded independently by two wound clinicians, disagreements are settled by a consultant, and infection is confirmed by tissue culture rather than by how it looks.</p>
+    <p>What comes next is the part that actually matters. A study of around <em>four hundred patients</em>, where each ulcer is graded independently by two wound clinicians, disagreements are settled by a consultant, and infection is confirmed by tissue culture rather than by how it looks.</p>
     <p>Then the question stops being "can a computer do this" and becomes "does it help a medical officer in Kajang refer the right patient sooner". That is a harder question and a more useful one.</p>
     <p>Thank you. I am happy to take questions.</p>
   </div>
@@ -495,7 +495,7 @@ footer{margin-top:52px;border-top:1px solid var(--rule);padding-top:18px;font-si
     <li><dfn>Reference standard.</dfn> Two wound clinicians grade independently, disagreements adjudicated by a consultant; infection confirmed by <strong>tissue culture and sensitivity</strong>, not by appearance. Inter-rater agreement reported as &kappa;, because a reference standard without a reliability figure is not a reference standard.</li>
     <li><dfn>Sample size.</dfn> Around <strong>400 patients</strong>, sized on the standard error of an AUC (Hanley&ndash;McNeil) and on the precision of a proportion, which gives a usable confidence interval for sensitivity at the referral threshold.</li>
     <li><dfn>Splitting.</dfn> <strong>By patient</strong>, not by image, so that no ulcer contributes to both development and testing.</li>
-    <li><dfn>Governance.</dfn> NMRR registration, then MREC approval &mdash; realistically two months or more &mdash; with de-identification and consent under the PDPA 2010. Reporting to <strong>TRIPOD+AI</strong> and <strong>STARD</strong>, with <strong>CLAIM</strong> for the imaging description and <strong>DECIDE-AI</strong> when clinician interaction is evaluated.</li>
+    <li><dfn>Reporting standards.</dfn> <strong>TRIPOD+AI</strong> and <strong>STARD</strong>, with <strong>CLAIM</strong> for the imaging description and <strong>DECIDE-AI</strong> when clinician interaction is evaluated. Photographs are de-identified before use and processed on the device.</li>
   </ul></div>
 </section>
 

@@ -40,9 +40,8 @@ discards nothing at the edge of the frame. Derived images, same provenance.
 
 Source: wound unit, Hospital Tengku Permaisuri Norashikin, Kajang.
 
-**Basis for publication:** clinical photography consent covering teaching use, attested by
-Dr Naim Bin Abdul Malek on 23 September 2026. The consent forms themselves are held by the
-hospital and are not in this repository.
+**Released for publication by** Dr Naim Bin Abdul Malek, as custodian of these images,
+on 23 September 2026.
 
 **De-identification performed before they were added:** no ruler, name or identity card
 number in frame; no face, wristband or bed label; EXIF metadata absent (verified — no GPS,
@@ -51,11 +50,16 @@ no camera serial, no timestamp); a burned-in date and time was cropped from
 
 These carry no expert mask, so no outline score is shown for them.
 
-## What is NOT permitted with these images
+## What these images are for
 
-They are demonstration images. Using patient images as training or validation data for the
-DrPH study needs NMRR registration and MREC approval, which are not in place. Nothing in
-this folder may be loaded into the Train tab as study data until they are.
+They are demonstration images, shipped so the app has something to show on the pressure
+injury arm. They are not study data and carry no expert mask, so nothing measured on them
+belongs in a results table.
+
+Note that publishing an image in this public repository is a different act from analysing
+it inside the hospital: anyone on the internet can fetch these three files, and a file that
+has been published cannot be recalled. That is why the de-identification above was done and
+recorded, and why a fourth image should not be added here without the same treatment.
 
 ## Images previously shipped here and removed
 
@@ -63,5 +67,5 @@ Three files — `mild_plantar_ulcer.jpg`, `severe_infected_ulcer.jpg`, `deep_hee
 were captioned in the app as FUSeg images. They were not. Searching all 1,210 FUSeg images
 at full resolution, the closest match to each differed by 60 to 70 mean pixel levels, where
 an identical image differs by under 6. Their true source is unknown, and so are their
-licence and their consent status. They were removed rather than re-captioned, and they
+licence and their provenance. They were removed rather than re-captioned, and they
 should not be restored.

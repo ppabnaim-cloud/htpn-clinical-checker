@@ -877,6 +877,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       <div class="field"><label>Flip augmentation</label><select id="tAug"><option value="1">On (×3)</option><option value="0">Off</option></select></div>
     </div>
     <button class="btn btn-primary" id="trainBtn" disabled>Train model</button>
+    <p class="small" id="trainBlock" style="margin-top:8px"></p>
     <div class="progress"><i id="trainProg"></i></div>
     <div class="trainlog" id="trainLog">Waiting for data…</div>
     <div id="trainResults" class="hidden">
@@ -2850,11 +2851,40 @@ setDisease('dfu');
 const data = { classes: new Map() };          // className -> [{file|blob, name, url}]
 const IMG_RE = /\.(jpe?g|png|webp|bmp|heic)$/i;
 function addSamples(cls, items){ if (!data.classes.has(cls)) data.classes.set(cls, []); data.classes.get(cls).push(...items); refreshData(); }
-function dataReady(){ const cs = [...data.classes.values()].filter(v => v.length >= 4); return cs.length >= 2 && !!backbone; }
+/* Two different numbers govern this screen and conflating them is confusing.
+     MIN_TO_RUN  = 4   what the code needs to produce a held-out split at all.
+     MIN_PER_CLASS = 100  what the result needs before anyone should believe it.
+   The button is gated on the first. The readiness card advises on the second. Saying "fewer
+   than 100 images" beside a disabled button implies 100 is the gate, which it is not, and
+   leaves someone with 42 images per class thinking they are stuck when they could train
+   today and simply not publish the number. */
+const MIN_TO_RUN = 4;
+function trainBlocker(){
+  if (!backbone) return 'The MobileNetV2 backbone is still loading. Give it a moment.';
+  const rows = [...data.classes.entries()].filter(([, v]) => v.length);
+  if (!rows.length) return 'Nothing to train on yet. Tick some images in step B.';
+  const ok = rows.filter(([, v]) => v.length >= MIN_TO_RUN);
+  if (ok.length >= 2) return null;
+  const thin = rows.filter(([, v]) => v.length < MIN_TO_RUN)
+                   .map(([k, v]) => `<b>${k}</b> has ${v.length}`);
+  return `Training needs <b>two classes with at least ${MIN_TO_RUN} images each</b>, and `
+       + `${thin.join(', ')}. `
+       + (rows.length < 2
+          ? 'Only one class exists for this label, and a classifier with one class has nothing to tell apart. '
+          : '')
+       + `Either tick more images for the thin class, or choose a different label in step C `
+       + `— the dropdown shows how many classes each one would give you.`;
+}
+function dataReady(){ return trainBlocker() === null; }
 function refreshData(){
   const rows = [...data.classes.entries()].filter(([, v]) => v.length);
   $('dataSummary').innerHTML = rows.length ? `<b>${rows.reduce((n, [, v]) => n + v.length, 0)} images in ${rows.length} classes:</b> ` + rows.map(([k, v]) => `${k} (${v.length})`).join(' · ') + (rows.some(([, v]) => v.length < 4) ? ' — each class needs at least 4 images.' : '') : '';
-  $('trainBtn').disabled = !dataReady();
+  const blocked = trainBlocker();
+  $('trainBtn').disabled = !!blocked;
+  if ($('trainBlock')) $('trainBlock').innerHTML = blocked
+    ? `<b>Why this button is off.</b> ${blocked}`
+    : `Ready. Training runs here in the browser; expect a minute or two. Whether the result is `
+      + `<i>believable</i> is a separate question — the readiness card above answers that.`;
   if ($('trainTarget') && $('trainTarget').options.length) describeTarget();
   renderReadiness();
 }
@@ -2985,7 +3015,10 @@ function renderReadiness(){
   const v = $('rVerdict');
   if (below){
     v.className = 'verdict crit';
-    v.innerHTML = `<b>Not ready to train.</b> ${below} of ${rows.length} ${below === 1 ? 'class has' : 'classes have'} fewer than ${MIN_PER_CLASS} images. Below that a held-out split leaves single figures per class, so the reported accuracy would carry no usable confidence interval. Collect the rare classes first, or merge them &mdash; Wagner 4 and 5 are usually better combined into one "gangrene" class than reported separately.`;
+    /* This card judges whether a RESULT would be believable, which is not the same question as
+       whether training can run. Saying "not ready to train" beside a button that is enabled and
+       works is a straight contradiction, so name what is actually at stake: the number. */
+    v.innerHTML = `<b>You can train, but do not report the number.</b> ${below} of ${rows.length} ${below === 1 ? 'class has' : 'classes have'} fewer than ${MIN_PER_CLASS} images. Below that a held-out split leaves single figures per class, so the accuracy it prints would carry no usable confidence interval &mdash; useful as a smoke test that the pipeline runs, worthless as evidence. Collect the rare classes first, or merge them &mdash; Wagner 4 and 5 are usually better combined into one "gangrene" class than reported separately.`;
   } else if (short){
     v.className = 'verdict warn';
     v.innerHTML = `<b>Trainable, not yet defensible.</b> Every class clears the ${MIN_PER_CLASS}-image minimum, so the model will learn something, but ${short} ${short === 1 ? 'class is' : 'classes are'} short of your ${target}-image target. Treat results at this size as a smoke test.`;
@@ -3116,7 +3149,8 @@ function addToPool(items){
   cur = firstUnlabelled < 0 ? 0 : firstUnlabelled;
   const restored = pool.filter(labelled).length;
   if (restored) toast(`${restored} image${restored === 1 ? '' : 's'} already labelled \u2014 ticks restored`);
-  saveLabels(); autoTarget(); projectClasses(); describeTarget(); renderLabeller(); readinessNote(); renderJourney();
+  saveLabels(); autoTarget(); fillTargets(); projectClasses(); describeTarget();
+  renderLabeller(); readinessNote(); renderJourney();
 }
 const poolUrl = it => it.url || (it.url = URL.createObjectURL(it.file));
 
@@ -3149,12 +3183,39 @@ function autoTarget(){
   else if (w > 0) sel.value = 'wagner';
 }
 
+/* What each label would give you, without having to select it and look. Choosing a target blind
+   is how someone lands on "epithelialising" with 375 absent against 1 present, meets a disabled
+   button, and concludes the app is broken rather than that this particular question has almost
+   no data behind it yet. */
+function targetShape(t){
+  const cls = new Map();
+  const put = k => cls.set(k, (cls.get(k) || 0) + 1);
+  pool.forEach(it => {
+    if (t === 'wagner'){ if (it.wagner) put(it.wagner); }
+    else if (t === 'npiap'){ if (it.npiap) put(it.npiap); }
+    else { const f = t.slice(5);
+           if (it.feats.has(f)) put('present'); else if (labelled(it)) put('absent'); }
+  });
+  const counts = [...cls.values()];
+  return { n: counts.reduce((a, b) => a + b, 0), classes: counts.length,
+           smallest: counts.length ? Math.min(...counts) : 0,
+           ok: counts.filter(c => c >= MIN_TO_RUN).length >= 2 };
+}
 function fillTargets(){
   const sel = $('trainTarget'); if (!sel) return;
   const keep = sel.value;
-  sel.innerHTML = '<option value="wagner">Meggitt–Wagner grade (0–5)</option>'
-    + '<option value="npiap">NPIAP pressure injury stage</option>'
-    + FEAT_OPTS.map(([id, l]) => `<option value="feat:${id}">${l} — present or absent</option>`).join('');
+  const opt = (v, name) => {
+    const sh = targetShape(v);
+    const tail = !pool.length ? 'no images loaded'
+      : !sh.classes  ? 'nothing ticked for this'
+      : sh.classes < 2 ? `only 1 class, ${sh.n} images`
+      : sh.ok ? `${sh.classes} classes, smallest ${sh.smallest}`
+              : `${sh.classes} classes, smallest ${sh.smallest} — too few to train`;
+    return `<option value="${v}">${name} — ${tail}</option>`;
+  };
+  sel.innerHTML = opt('wagner', 'Meggitt–Wagner grade (0–5)')
+    + opt('npiap', 'NPIAP pressure injury stage')
+    + FEAT_OPTS.map(([id, l]) => opt('feat:' + id, `${l}, present or absent`)).join('');
   if (keep) sel.value = keep;
 }
 
@@ -3396,7 +3457,7 @@ function recCount(it){
 
 /* Redraw everything that depends on a label. One call, so no view can drift out of step. */
 function labChanged(){
-  saveLabels(); autoTarget(); projectClasses(); describeTarget();
+  saveLabels(); autoTarget(); fillTargets(); projectClasses(); describeTarget();
   renderLabeller(); readinessNote(); renderJourney();
 }
 

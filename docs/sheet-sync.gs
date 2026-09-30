@@ -14,6 +14,13 @@
  *      "Anyone" means anyone with the URL; the sheet itself stays private.
  *   4. Authorise when prompted, then copy the URL ending in /exec.
  *
+ * Paste the /exec URL, NOT the spreadsheet's own docs.google.com address. A web page cannot
+ * write into a Sheet directly; that needs a Google sign-in, which is the thing this script
+ * exists to avoid. Sharing the sheet does not change that.
+ *
+ * Re-deploy after changing this file: Deploy > Manage deployments > pencil > New version.
+ * Changes are NOT live until you do.
+ *
  * If your administrator has disabled Apps Script or web-app deployment, step 3 will refuse. That
  * is a Workspace policy, not a fault in this script, and the app's "Copy for Sheets" button
  * remains the way to get the data across.
@@ -30,8 +37,24 @@ function doPost(e) {
     var body  = JSON.parse(e.postData.contents);
     var rows  = body.rows || [];
 
+    /* Headers are written if the sheet is empty, and EXTENDED if the app has grown a column
+       since the sheet was made. Without this, a new field is silently dropped: the row is
+       written under the old headers and the new value has nowhere to go, which is invisible
+       until someone analyses the data months later and finds a column of blanks. Existing
+       columns are never moved or renamed, so anything already in the sheet stays put. */
     var lastCol = sheet.getLastColumn();
-    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var headers = lastCol ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
+    var wanted  = body.columns || [];
+    var added   = [];
+    wanted.forEach(function (c) {
+      if (c && headers.indexOf(c) === -1) { headers.push(c); added.push(c); }
+    });
+    if (added.length || !lastCol) {
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+      lastCol = headers.length;
+    }
 
     // Existing ids, so that sending the same cases twice adds nothing the second time.
     var lastRow = sheet.getLastRow();
@@ -50,7 +73,7 @@ function doPost(e) {
     if (out.length) sheet.getRange(lastRow + 1, 1, out.length, lastCol).setValues(out);
 
     return ContentService
-      .createTextOutput(JSON.stringify({ added: out.length, received: rows.length }))
+      .createTextOutput(JSON.stringify({ added: out.length, received: rows.length, newColumns: added }))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService

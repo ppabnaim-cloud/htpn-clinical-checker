@@ -905,7 +905,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
   Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
-  <b id="buildStamp">build 2026-09-27 &middot; v1.5</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=15</code><br>
+  <b id="buildStamp">build 2026-09-30 &middot; v1.6</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=16</code><br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>
@@ -2650,32 +2650,75 @@ const cellText = v => String(Array.isArray(v) ? v.join('; ') : (v && typeof v ==
 const SHEET_KEY = 'wound_vision_sheet_url', SHEET_AUTO = 'wound_vision_sheet_auto';
 const sheetUrl = () => { try { return localStorage.getItem(SHEET_KEY) || ''; } catch(e){ return ''; } };
 
+/* Diagnose the URL before blaming the network. The commonest mistake by far is pasting the
+   spreadsheet's own address, because that is the link Google offers you and it looks like the
+   right thing. It is not: no web page can write to a Sheet directly without a Google sign-in,
+   which is exactly what an Apps Script web app exists to avoid. Saying "check the deployment is
+   set to Anyone" in that case sends someone hunting through a settings screen they never
+   reached, so name the actual fault instead. */
+function sheetUrlProblem(u){
+  if (!u) return 'No URL set, so nothing is sent.';
+  if (/docs\.google\.com\/spreadsheets/.test(u))
+    return 'That is the spreadsheet\u2019s own address, not the script\u2019s. A web page cannot write '
+         + 'into a Sheet directly \u2014 that needs a Google sign-in, which is the thing this route exists '
+         + 'to avoid. Open the sheet, choose <b>Extensions \u203a Apps Script</b>, deploy it as a web app, '
+         + 'and paste the address it gives you, which ends in <code>/exec</code>. Sharing the sheet does '
+         + 'not change this; sharing controls who may open it, not whether a page may write to it.';
+  if (/script\.google\.com\/macros\/.*\/dev\b/.test(u))
+    return 'That is the <b>test</b> deployment (it ends in <code>/dev</code>), which only works while you '
+         + 'are signed in as yourself. Use <b>Deploy \u203a New deployment</b> and copy the address ending '
+         + 'in <code>/exec</code>.';
+  if (!/^https:\/\/script\.google\.com\/macros\//.test(u))
+    return 'That does not look like an Apps Script web app address. It should begin '
+         + '<code>https://script.google.com/macros/s/</code> and end in <code>/exec</code>.';
+  if (!/\/exec(\?|$)/.test(u))
+    return 'The address should end in <code>/exec</code>. Copy it again from <b>Deploy \u203a Manage '
+         + 'deployments</b> \u2014 the web app URL, not the editor link.';
+  return null;
+}
+
 async function pushToSheet(rows, label){
   const url = sheetUrl();
-  if (!url) { $('sheetStatus').textContent = 'No URL set, so nothing was sent.'; return false; }
+  const bad = sheetUrlProblem(url);
+  if (bad){ $('sheetStatus').innerHTML = `<b>Nothing sent.</b> ${bad}`; return false; }
   const send = rows.map(r => { const o = {}; LOG_COLS.forEach(c => o[c] = cellText(r[c])); return o; });
   $('sheetStatus').textContent = `Sending ${send.length} row${send.length === 1 ? '' : 's'}…`;
   try {
     // no Content-Type header on purpose: keeps it a simple request, which Apps Script accepts
-    const res = await fetch(url, { method:'POST', body: JSON.stringify({ rows: send }) });
+    // columns travel with the rows, so the script can add any the sheet does not have yet
+    const res = await fetch(url, { method:'POST', body: JSON.stringify({ columns: LOG_COLS, rows: send }) });
     const txt = await res.text();
     let j = null; try { j = JSON.parse(txt); } catch(_){}
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     $('sheetStatus').textContent = j && typeof j.added === 'number'
       ? `${label}: ${j.added} new row${j.added === 1 ? '' : 's'} written, ${send.length - j.added} already there.`
+        + ((j.newColumns && j.newColumns.length) ? ` Added ${j.newColumns.length} new column${j.newColumns.length === 1 ? '' : 's'} to the sheet: ${j.newColumns.join(', ')}.` : '')
       : `${label}: sent, but the script did not reply with a row count — check the sheet.`;
     markExported();
     return true;
   } catch (e) {
-    $('sheetStatus').innerHTML = `<b>Failed:</b> ${e.message}. Check the deployment is set to “Anyone” and that the URL ends in <code>/exec</code>. If your administrator blocks Apps Script this will never succeed — use Copy for Sheets instead.`;
+    /* The URL is the right shape, so the fault is at the far end. 401 and 403 are almost always
+       "Who has access" left on the default rather than Anyone. */
+    const hint = /HTTP 40[13]/.test(e.message)
+      ? 'Google refused the request. In <b>Deploy › Manage deployments › Edit</b>, set '
+        + '<b>Who has access</b> to <b>Anyone</b> and <b>Execute as</b> to <b>Me</b>, then deploy a new '
+        + 'version and copy the fresh <code>/exec</code> address. The sheet itself stays private.'
+      : /Failed to fetch|NetworkError|Load failed/i.test(e.message)
+      ? 'The request never arrived — usually no network, or the deployment has been deleted. '
+        + 'Open the <code>/exec</code> address in a browser tab: a working one replies with a line of JSON.'
+      : 'Check that the deployment still exists and that <b>Who has access</b> is <b>Anyone</b>.';
+    $('sheetStatus').innerHTML = `<b>Failed:</b> ${e.message}. ${hint} If your administrator blocks Apps Script entirely this route will never work — use <b>Copy for Sheets</b> instead, which needs no permission from anyone.`;
     return false;
   }
 }
 $('sheetUrl').value = sheetUrl();
-$('sheetUrl').onchange = () => {
+$('sheetUrl').oninput = $('sheetUrl').onchange = () => {
   const v = $('sheetUrl').value.trim();
   try { localStorage.setItem(SHEET_KEY, v); } catch(e){}
-  $('sheetStatus').textContent = v ? 'URL saved in this browser.' : 'URL cleared — nothing will be sent.';
+  const bad = sheetUrlProblem(v);
+  if (!v) $('sheetStatus').textContent = 'URL cleared — nothing will be sent.';
+  else if (bad) $('sheetStatus').innerHTML = `<b>That will not work.</b> ${bad}`;
+  else $('sheetStatus').innerHTML = 'Looks right, and saved in this browser. Press <b>Test connection</b>.';
 };
 try { $('sheetAuto').checked = localStorage.getItem(SHEET_AUTO) === '1'; } catch(e){}
 $('sheetAuto').onchange = () => { try { localStorage.setItem(SHEET_AUTO, $('sheetAuto').checked ? '1' : '0'); } catch(e){} };

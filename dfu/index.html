@@ -905,7 +905,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
   Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
-  <b id="buildStamp">build 2026-09-30 &middot; v1.6</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=16</code><br>
+  <b id="buildStamp">build 2026-09-30 &middot; v1.7</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=17</code><br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>
@@ -2595,7 +2595,7 @@ function renderLog(){
   const cult = log.filter(r => r.culture_positive !== null);
   $('kCult').textContent = cult.length ? `${cult.filter(r => r.culture_positive).length}/${cult.length}` : '—';
   renderKappa(log);
-  renderStorage(); renderPending(); renderAssessJourney();
+  renderStorage(); renderPending(); renderAssessJourney(); labelSheetPush();
   $('logList').innerHTML = log.slice(0, 8).map(r => {
     const a = (r.culture_positive === null || r.p_infection === null) ? '' : `<span class="agree ${(r.p_infection>=0.5)===r.culture_positive?'':'no'}">${(r.p_infection>=0.5)===r.culture_positive?'agrees with C&S':'disagrees with C&S'}</span>`;
     const pi = r.disease === 'pressure injury';
@@ -2711,6 +2711,14 @@ async function pushToSheet(rows, label){
     return false;
   }
 }
+/* Label the button with the number it will actually send, so an empty log is visible before
+   the button is pressed rather than after. */
+function labelSheetPush(){
+  const b = $('sheetPush'); if (!b) return;
+  const k = loadLog().length;
+  b.textContent = k ? `Send all ${k} case${k === 1 ? '' : 's'} now` : 'Send all cases now';
+  b.disabled = false;
+}
 $('sheetUrl').value = sheetUrl();
 $('sheetUrl').oninput = $('sheetUrl').onchange = () => {
   const v = $('sheetUrl').value.trim();
@@ -2724,10 +2732,25 @@ try { $('sheetAuto').checked = localStorage.getItem(SHEET_AUTO) === '1'; } catch
 $('sheetAuto').onchange = () => { try { localStorage.setItem(SHEET_AUTO, $('sheetAuto').checked ? '1' : '0'); } catch(e){} };
 $('sheetTest').onclick = () => pushToSheet([{ id:'test-' + Date.now(), when:new Date().toISOString(),
   image:'connection test', disease:'test row — delete me', model:'none' }], 'Test');
-$('sheetPush').onclick = () => { const log = loadLog(); if (!log.length) return toast('Nothing to send'); pushToSheet(log, 'Sent'); };
+$('sheetPush').onclick = () => {
+  const log = loadLog();
+  /* "Nothing to send" as a toast that fades, while the status line still shows the last
+     success, reads as a failure of the connection. It is not: the connection is fine and the
+     case log is empty. Say which, and say where cases come from, because this button is in the
+     Train tab too and it is not obvious that it sends the CASE log rather than the labels. */
+  if (!log.length){
+    $('sheetStatus').innerHTML = '<b>Nothing to send — the case log is empty.</b> This button sends the '
+      + '<b>case log</b>, which is filled in from <b>Assess a wound → step 3, Record this case</b>. '
+      + 'Ticking labels on training images does not add rows here. The labels are a separate record and '
+      + 'leave by <b>Export labels CSV</b> in step B.';
+    return;
+  }
+  pushToSheet(log, 'Sent');
+};
 
 $('copyTsv').onclick = async () => {
-  const log = loadLog(); if (!log.length) return toast('Nothing to copy');
+  const log = loadLog();
+  if (!log.length) return toast('The case log is empty — record a case in step 3 first');
   const tsv = [LOG_COLS.join('\t')]
     .concat(log.map(r => LOG_COLS.map(c => cellText(r[c]).replace(/[\t\r\n]+/g, ' ')).join('\t'))).join('\n');
   try {

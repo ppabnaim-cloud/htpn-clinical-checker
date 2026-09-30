@@ -3031,24 +3031,70 @@ function renderReadiness(){
   }
 }
 $('targetPreset').onchange = renderReadiness;
+/* Graders do not name folders the way a regular expression wishes they would. "Necrotic" is not
+   "necrosis", "Epithelialization" is not "epithelialising", and "Gangrene" contains none of
+   "dry_gangrene". Matching on the identifier alone silently imported those folders as unlabelled,
+   which looks like the app ignoring a day of somebody's work. */
+const FEAT_ALIASES = {
+  granulation:        ['granulat', 'granular', 'red tissue'],
+  slough:             ['slough', 'sloughy', 'yellow tissue', 'fibrin'],
+  necrosis:           ['necrosis', 'necrotic', 'eschar', 'black tissue'],
+  epithelialising:    ['epitheli'],
+  periwound_erythema: ['periwound', 'peri-wound', 'peri wound', 'erythema', 'cellulitis'],
+  dry_gangrene:       ['gangrene', 'gangrenous'],
+  bleeding:           ['bleed', 'haemorrhag', 'hemorrhag'],
+  abscess:            ['abscess', 'collection'],
+  pus:                ['pus', 'purulent', 'discharge']
+};
+function featsFromName(key){
+  return FEAT_OPTS.map(([id]) => id).filter(id =>
+    (FEAT_ALIASES[id] || [id]).some(a => key.includes(a)));
+}
+
 $('dirInput').onchange = e => {
   const files = [...e.target.files].filter(f => IMG_RE.test(f.name));
   const byClass = {};
   files.forEach(f => { const parts = (f.webkitRelativePath || f.name).split('/'); const cls = parts.length >= 3 ? parts[parts.length - 2] : (parts.length === 2 ? parts[0] : 'unlabelled'); (byClass[cls] = byClass[cls] || []).push({ file: f, name: f.name }); });
-  /* A folder name that matches a known class pre-fills that tick; anything else is added
-     unlabelled rather than inventing a class nobody asked for. */
-  const items = [];
+
+  /* One image can legitimately appear in several folders, because a wound bed has several
+     tissues at once and a folder can only say one thing. So the same filename found in
+     Granulation, Slough and Necrotic becomes ONE image carrying all three ticks, not three
+     images each contradicting the others. Without this, the copy in Granulation would count as
+     slough-absent and teach the model the opposite of what the grader meant. */
+  const merged = new Map();
+  const unmatched = [];
   Object.entries(byClass).forEach(([k, v]) => {
     const key = String(k).toLowerCase();
     const w = (key.match(/(?:wagner|grade|^w|^g)[\s_-]*([0-5])(?![0-9])/) || [])[1] || null;
     const np = (key.match(/(?:npiap|npuap|stage)[\s_-]*([1-4])(?![0-9])/) || [])[1]
              || (/unstage/.test(key) ? 'U' : (/deep[\s_-]*tissue|dtpi/.test(key) ? 'D' : null));
-    const feats = FEAT_OPTS.map(([id]) => id).filter(id => key.includes(id.split('_')[0]));
-    v.forEach(it => items.push({ file: it.file, name: it.name, wagner: w, npiap: np, feats }));
+    const feats = featsFromName(key);
+    if (!w && !np && !feats.length && k !== 'unlabelled') unmatched.push(k);
+    v.forEach(it => {
+      const id = it.name + '|' + it.file.size;
+      let m = merged.get(id);
+      if (!m){ m = { file: it.file, name: it.name, wagner: null, npiap: null, feats: new Set(), folders: [] };
+               merged.set(id, m); }
+      m.folders.push(k);
+      if (w)  m.wagner = w;
+      if (np) m.npiap = np;
+      feats.forEach(f => m.feats.add(f));
+    });
   });
+
+  const items = [...merged.values()].map(m => ({ file: m.file, name: m.name, wagner: m.wagner,
+                                                 npiap: m.npiap, feats: [...m.feats] }));
+  const multi = [...merged.values()].filter(m => m.folders.length > 1).length;
   addToPool(items);
-  if (!files.length) toast('No image files found in that folder');
-  else toast(`Loaded ${files.length} images from ${Object.keys(byClass).length} folders`);
+
+  if (!files.length) return toast('No image files found in that folder');
+  let msg = `${items.length} image${items.length === 1 ? '' : 's'} from ${Object.keys(byClass).length} folders`;
+  if (multi) msg += `, ${multi} found in more than one folder and merged`;
+  toast(msg);
+  if (unmatched.length) $('dataSummary').insertAdjacentHTML('afterbegin',
+    `<div class="note" style="margin-bottom:8px"><b>${unmatched.length} folder name${unmatched.length === 1 ? ' was' : 's were'} not recognised:</b> `
+    + `${unmatched.join(', ')}. Those images came in unlabelled \u2014 tick them in step B, or rename the `
+    + `folder to something the app knows (a Wagner grade, an NPIAP stage, or a tissue name) and load it again.</div>`);
 };
 /* ═══════════════════════════ per-image labelling ═══════════════════════════
    Sorting photographs into folders before uploading them is work done in the wrong place: it

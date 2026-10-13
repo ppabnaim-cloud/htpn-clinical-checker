@@ -418,6 +418,16 @@ table.keep td.n2{color:#9a3412;font-weight:700;white-space:nowrap}
 .abxrow b{display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
 .abxrow span{font-size:13px;color:var(--navy);font-weight:600;line-height:1.4}
 .abx .need{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.5}
+.reg{margin-top:11px;background:rgba(255,255,255,.72);border:1px solid var(--rule);border-radius:9px;padding:11px 12px}
+.reg h5{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.reg .field{margin:0}
+.regrow{display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--rule);font-size:13px}
+.regrow:first-of-type{border-top:0;margin-top:4px}
+.regrow b{flex:0 0 130px;color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;padding-top:2px}
+.regrow span{flex:1;color:var(--navy);font-weight:600;line-height:1.45}
+.regnote{margin-top:9px;font-size:12px;line-height:1.5;color:var(--muted);border-left:2px solid var(--rule);padding-left:9px}
+.regsrc{margin-top:9px;padding-top:8px;border-top:1px solid var(--rule);font-size:11px;color:var(--muted);font-family:var(--mono)}
+@media (max-width:560px){.regrow{flex-direction:column;gap:2px}.regrow b{flex:none}}
 .abx .policy{margin-top:10px;padding-top:9px;border-top:1px solid var(--rule);font-size:12px;color:var(--muted);line-height:1.55}
 .cmp{margin-top:14px;border:1px solid var(--rule);border-radius:11px;padding:12px 14px;background:var(--slate-soft)}
 .cmphead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -1036,6 +1046,24 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <div class="step"><span class="n">D</span><h3>Models on this device</h3></div>
     <div id="modelList"></div>
   </section>
+  <section class="card" id="formularyCard">
+    <div class="step"><span class="n">&#9679;</span><h3>Antibiotic formulary</h3><span class="hint">entered by you, not by the app</span></div>
+    <p class="small" style="margin-bottom:10px">What the app shows beside an infection grade. It is deliberately empty until you fill it in: empirical choice depends on local resistance, so these have to come from the guideline your hospital follows, not from the software. Every line is shown to the clinician with the source and your name against it.</p>
+    <div class="row3">
+      <div class="field"><label>Source</label><input id="nagSource" placeholder="National Antimicrobial Guideline"></div>
+      <div class="field"><label>Edition</label><input id="nagEdition" placeholder="2024, 4th edition"></div>
+      <div class="field"><label>Entered by</label><select id="nagBy"></select></div>
+    </div>
+    <div id="nagRows"></div>
+    <div class="labnav" style="margin-top:12px">
+      <button class="btn btn-teal btn-sm" id="nagSave">Save formulary</button>
+      <button class="btn btn-ghost btn-sm" id="nagExport">Export</button>
+      <label class="btn btn-ghost btn-sm" style="cursor:pointer">Import<input type="file" accept=".json,application/json" id="nagImport" hidden></label>
+    </div>
+    <div class="note" style="margin-top:10px" id="nagStatus"></div>
+    <div class="note rose" style="margin-top:10px">Once this is filled in the app names drugs, which makes it a prescribing aid rather than a wound classifier. Have it signed off by your antimicrobial stewardship pharmacist or ID consultant before any clinician outside the study team uses it, and re-check it whenever the guideline is revised — the app cannot know that it has been.</div>
+  </section>
+
   <section class="card" id="logCard">
     <div class="step"><span class="n">&#9679;</span><h3>Case log · model vs ground truth</h3><div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" id="copyTsv">Copy for Sheets</button>
@@ -1076,7 +1104,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-10-13 &middot; v3.3</span>
+  <span class="study-hide" id="buildStamp">build 2026-10-13 &middot; v3.5</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1337,6 +1365,7 @@ function useImage(img, name){
   ['gtGrade','gtStage','gtWagner','gtPtb','gtOutcome','gtNpiap','gtBlanch','gtDeep','gtSite','gtSiteDfu','gtSkin']   /* not gtRater / gtDevice: clinic-session properties */
     .forEach(k => { if ($(k)) $(k).value = ''; });
   if ($('gtPiNotes')) $('gtPiNotes').value = '';
+  abxGates = {};                                     // allergy and renal function belong to the patient
   if ($('gtCase')){ const cid = caseIdOf(name);
     $('gtCase').value = cid === String(name || '').replace(/\.[^.]+$/, '').toUpperCase() ? '' : cid; }
   setCam(segModel ? 1 : 0);
@@ -1845,7 +1874,9 @@ const ASK = {
     { id:'obscured', q:'Is the depth obscured by slough or eschar?', why:'If the base cannot be seen, the injury is Unstageable and no stage may be assigned.',
       opts:[['yes','Obscured'],['no','Base visible']] },
     { id:'deepest', q:'Deepest structure seen or palpated?', why:'Dermis only is stage 2; adipose or fascia is stage 3; muscle, tendon, cartilage or bone is stage 4.',
-      opts:[['dermis','Dermis only'],['adipose','Adipose or fascia'],['deep','Muscle, tendon, cartilage or bone']] }
+      opts:[['dermis','Dermis only'],['adipose','Adipose or fascia'],['deep','Muscle, tendon, cartilage or bone']] },
+    { id:'systemic', q:'Signs of systemic infection?', why:'A pressure injury is colonised by definition, so a swab proves nothing. The guideline keys antibiotics to systemic infection, not to the appearance of the wound.',
+      opts:[['yes','Yes \u2014 fever, tachycardia, raised white cell count or hypotension'],['no','No']] }
   ]
 };
 let answers = { dfu:{}, pi:{} };
@@ -1888,10 +1919,84 @@ function renderHitl(spec, a, rules){
         + 'this wound type does not supply — the classification below names which.';
 }
 
+/* The gates, then the regimen. An allergy missed and a dose not adjusted for renal function are
+   the two errors a tool like this most easily causes, so neither is optional and neither is a
+   tick-box buried in a panel: nothing is shown until both are answered. */
+const ABX_GATE_FIELDS = [
+  ['allergy', 'Penicillin allergy', [['no','No known allergy'],['mild','Non-severe (rash)'],['severe','Severe \u2014 anaphylaxis, angio-oedema, SJS']]],
+  ['egfr',    'Renal function',     [['ge60','eGFR 60 or above'],['30-59','eGFR 30\u201359'],['lt30','eGFR under 30 or dialysis']]],
+  ['risk',    'Resistant organism risk', [['none','None suspected'],['mrsa','MRSA risk or known MRSA'],['pseudo','Pseudomonas suspected'],['both','Both MRSA and Pseudomonas']]]
+];
+
+function regimenHtml(r){
+  const f = loadFormulary();
+  const key = r.label.toLowerCase().indexOf('severe') === 0 ? 'severe'
+            : r.label.toLowerCase().indexOf('moderate') === 0 ? 'moderate' : 'mild';
+  const row = (f.rows && f.rows[key]) || {};
+  const gates = ABX_GATE_FIELDS.map(([k, lab, opts]) =>
+    `<div class="field"><label>${lab}</label><select data-g="${k}">
+       <option value="">\u2014 answer first</option>
+       ${opts.map(([v, l]) => `<option value="${v}"${abxGates[k] === v ? ' selected' : ''}>${l}</option>`).join('')}
+     </select></div>`).join('');
+
+  const unanswered = ABX_GATE_FIELDS.filter(([k]) => !abxGates[k]).map(([, lab]) => lab);
+  let body;
+  if (!row.first)
+    body = `<div class="need">No regimen has been entered for this severity. The study team enters
+            them under <b>Antibiotic formulary</b> in the Study team tab.</div>`;
+  else if (unanswered.length)
+    body = `<div class="need">Answer ${unanswered.join(', ').toLowerCase()} above and the regimen for
+            this severity appears. It is withheld until then on purpose.</div>`;
+  else {
+    const rows = [];
+    const sev = abxGates.allergy === 'severe';
+    const mrsa = abxGates.risk === 'mrsa' || abxGates.risk === 'both';
+    const pseu = abxGates.risk === 'pseudo' || abxGates.risk === 'both';
+
+    /* A severe penicillin reaction does not get a substitute invented here. NAG routes it to
+       Appendix 3, and every "alternative" it lists for this infection is either a penicillin or
+       a cephalosporin, so the alternative is offered as a decision to take, not an answer. */
+    if (sev){
+      rows.push(`<div class="need"><b>Severe penicillin allergy recorded.</b> The preferred regimen
+        is a penicillin and is not shown. The guideline refers severe allergy to its antibiotic
+        allergy evaluation protocol (Appendix 3) rather than to a fixed substitute \u2014 discuss with
+        the antimicrobial stewardship pharmacist or an ID physician before prescribing.</div>`);
+      if (row.alt) rows.push(`<div class="regrow"><b>Guideline alternative</b><span>${row.alt}</span>
+        </div><div class="need">This alternative contains a cephalosporin. Cross-reactivity with
+        penicillin is low but not zero, so it is a clinical decision, not an automatic swap.</div>`);
+    } else {
+      rows.push(`<div class="regrow"><b>Preferred</b><span>${row.first}</span></div>`);
+      if (row.alt) rows.push(`<div class="regrow"><b>Alternative</b><span>${row.alt}</span></div>`);
+    }
+    if (mrsa && row.mrsa)   rows.push(`<div class="regrow"><b>MRSA suspected \u2014 add</b><span>${row.mrsa}</span></div>`);
+    if (pseu && row.pseudo) rows.push(`<div class="regrow"><b>Pseudomonas suspected</b><span>${row.pseudo}</span></div>`);
+
+    const bone = /probe|bone|osteomyelitis/i.test((r.notes || []).join(' '));
+    if (bone && row.durBone) rows.push(`<div class="regrow"><b>Duration \u2014 bone involved</b><span>${row.durBone}</span></div>`);
+    else if (row.dur)        rows.push(`<div class="regrow"><b>Duration</b><span>${row.dur}</span></div>`);
+
+    if (abxGates.egfr !== 'ge60')
+      rows.push(`<div class="need"><b>Renal dose adjustment needed</b> \u2014 ${abxGates.egfr === 'lt30' ? 'eGFR under 30 or dialysis' : 'eGFR 30\u201359'}. Check the dose before prescribing. Vancomycin needs levels.</div>`);
+    if (abxGates.allergy === 'mild')
+      rows.push('<div class="need">A non-severe penicillin reaction does not always rule out a beta-lactam \u2014 take the allergy history properly rather than defaulting to second line.</div>');
+    if (row.notes) rows.push(`<div class="regnote">${row.notes}</div>`);
+    body = rows.join('');
+  }
+  const src = f.source
+    ? `<div class="regsrc">${f.source}${f.edition ? ' \u00b7 ' + f.edition : ''}${f.by ? ' \u00b7 entered by ' + f.by : ''}${f.when ? ' \u00b7 ' + f.when.slice(0,10) : ''}</div>`
+    : '';
+  return `<div class="reg"><h5>Empirical regimen</h5>
+    <div class="need">Adult doses. Paediatric dosing is by body weight and is not held here \u2014 use
+    the paediatric section of the guideline.</div>
+    <div class="row3">${gates}</div>${body}${src}</div>`;
+}
+
 function renderAbx(){
   const el = $('abxBox'); if (!el) return;
-  /* IWGDF grades a diabetic foot infection; there is no equivalent in the NPIAP system, and
-     a swab of a pressure injury does not establish infection anyway. */
+  /* IWGDF grades a diabetic foot infection; NPIAP has no equivalent, because NPIAP stages depth
+     and says nothing about infection. The guideline handles pressure injury separately and much
+     more briefly, and that brevity is the clinical point \u2014 so the panel is separate too. */
+  if (DISEASE === 'pi'){ el.innerHTML = piAbxHtml(answers.pi); bindGates(el); return; }
   if (DISEASE !== 'dfu'){ el.innerHTML = ''; return; }
   const r = ruleInfection(answers.dfu);
   const unresolved = [...new Set(r.need)].filter(Boolean);
@@ -1912,12 +2017,74 @@ function renderAbx(){
         <div><b>Urgency</b><span>${r.urgency}</span></div>
       </div>
       ${(r.notes || []).map(x => `<div class="need">${x}</div>`).join('')}
+      ${r.abx === 'Not indicated' ? '' : regimenHtml(r)}
       ${unresolved.length ? `<div class="need">Not every finding is answered yet (${unresolved.join(', ')}), so this may change.</div>` : ''}
-      <div class="policy"><b>This does not name a drug, and is not a prescription.</b> Agent, dose
-      and duration follow your hospital antibiotic policy, the culture and sensitivity result,
-      renal function and allergy history — none of which this app can see. Send a deep tissue
-      specimen rather than a surface swab, and narrow the cover once sensitivities return.</div>
+      <div class="policy"><b>Decision support, not a prescription.</b> Check against the current
+      guideline and the patient in front of you. Send a deep tissue specimen rather than a surface
+      swab, and narrow the cover once sensitivities return.</div>
     </div>`;
+  bindGates(el);
+}
+
+function bindGates(el){
+  el.querySelectorAll('[data-g]').forEach(sel => sel.onchange = () => {
+    abxGates[sel.dataset.g] = sel.value || undefined;
+    if (!sel.value) delete abxGates[sel.dataset.g];
+    renderAbx();
+  });
+}
+
+/* Pressure injury. The guideline is short here on purpose: the mainstay of management is
+   prevention, the organisms are polymicrobial, and antibiotics are considered only where there
+   is systemic infection. Saying less than the diabetic foot panel is the correct behaviour. */
+function piAbxHtml(a){
+  const f = loadFormulary();
+  const row = (f.rows && f.rows.pi) || {};
+  if (a.systemic === undefined)
+    return `<div class="abx"><h4>Antibiotics</h4>
+      <div class="lbl">Not yet determined</div>
+      <div class="why">Answer whether there are signs of systemic infection. That is the question the
+      guideline turns on for a pressure injury \u2014 not the look of the wound bed.</div></div>`;
+  if (a.systemic !== 'yes')
+    return `<div class="abx ok"><h4>Antibiotics</h4>
+      <div class="lbl">Not indicated</div>
+      <div class="why">No systemic infection. A pressure injury is colonised by definition, so
+      redness, slough or an offensive smell alone do not justify systemic antibiotics, and a surface
+      swab will grow organisms whether or not the patient is infected.</div>
+      <div class="need">Pressure redistribution, debridement and nutrition are the treatment. The
+      guideline is explicit that the mainstay of management is prevention.</div></div>`;
+  const src = f.source
+    ? `<div class="regsrc">${f.source}${f.edition ? ' \u00b7 ' + f.edition : ''}${f.by ? ' \u00b7 entered by ' + f.by : ''}${f.when ? ' \u00b7 ' + f.when.slice(0,10) : ''}</div>`
+    : '';
+  const gates = ABX_GATE_FIELDS.map(([k, lab, opts]) =>
+    `<div class="field"><label>${lab}</label><select data-g="${k}">
+       <option value="">\u2014 answer first</option>
+       ${opts.map(([v, l]) => `<option value="${v}"${abxGates[k] === v ? ' selected' : ''}>${l}</option>`).join('')}
+     </select></div>`).join('');
+  const unanswered = ABX_GATE_FIELDS.filter(([k]) => !abxGates[k]).map(([, lab]) => lab);
+  let body;
+  if (!row.first) body = `<div class="need">No pressure injury regimen has been entered yet.</div>`;
+  else if (unanswered.length) body = `<div class="need">Answer ${unanswered.join(', ').toLowerCase()} above and the regimen appears.</div>`;
+  else if (abxGates.allergy === 'severe')
+    body = `<div class="need"><b>Severe penicillin allergy recorded.</b> The regimen here is a
+      penicillin and is not shown. Refer to the guideline\u2019s antibiotic allergy evaluation protocol
+      and discuss with the antimicrobial stewardship pharmacist.</div>`;
+  else body = `<div class="regrow"><b>Preferred</b><span>${row.first}</span></div>`
+      + (row.dur ? `<div class="regrow"><b>Duration</b><span>${row.dur}</span></div>` : '')
+      + (abxGates.egfr !== 'ge60' ? `<div class="need"><b>Renal dose adjustment needed.</b> Check the dose before prescribing.</div>` : '')
+      + (row.notes ? `<div class="regnote">${row.notes}</div>` : '');
+  return `<div class="abx warn"><h4>Antibiotics</h4>
+    <div class="lbl">Systemic infection present</div>
+    <div class="why">The guideline advises considering antibiotics only at this point.</div>
+    <div class="need">Look for another source first. A pressure injury is a convenient explanation
+    for a fever and often the wrong one \u2014 chest, urine and line should be excluded before the
+    wound is blamed.</div>
+    <div class="reg"><h5>Empirical regimen</h5>
+      <div class="need">Adult doses. Paediatric dosing is by body weight and is not held here.</div>
+      <div class="row3">${gates}</div>${body}${src}</div>
+    <div class="policy"><b>Decision support, not a prescription.</b> Check against the current
+    guideline and the patient in front of you. Switch to oral once the patient improves.</div>
+  </div>`;
 }
 
 function ruleInfection(a){
@@ -1932,6 +2099,13 @@ function ruleInfection(a){
     notes.push('Probe-to-bone is positive, so osteomyelitis is likely. Bone infection needs a longer course and usually a bone specimen, not a wound swab.');
   if (a.gangrene && a.gangrene !== 'none')
     notes.push('Gangrene is present. Antibiotics do not substitute for surgical debridement.');
+  /* The primary-care SSTI pathway asks, after incision and drainage, whether antibiotics are
+     indicated at all — and lists diabetes mellitus as one of the four things that make the
+     answer yes. In this cohort that branch is already decided. */
+  if (a.abscess === 'yes')
+    notes.push('Incision and drainage comes first and is the mainstay. Send the pus for culture and sensitivity before starting antibiotics. Antibiotics remain indicated after drainage here, because diabetes is itself one of the guideline’s indications — alongside extensive surrounding cellulitis, inadequate drainage and valvular heart disease.');
+  if (ischaemic || (a.gangrene && a.gangrene !== 'none'))
+    notes.push('Anaerobic cover is specifically advised where the limb is ischaemic, or there is necrosis or gas formation.');
 
   if (a.infection === 'no' && a.systemic !== 'yes')
     return { label:'Uninfected', abx:'Not indicated', route:'—', urgency:'Routine wound care',
@@ -2463,6 +2637,80 @@ $('viewer').addEventListener('click', e => {
     showWound(lastSeg); toast(`Scale set: ${pxPerCm.toFixed(0)} px per cm`);
   }
 });
+
+/* ═══════════════════════ antibiotic regimens ═══════════════════════
+   The severity grade is a definition and can be computed. The REGIMEN cannot: empirical choice
+   follows local resistance, and Malaysian MRSA and ESBL prevalence is not American or European,
+   so a drug that is first-line in an international table can be the wrong first-line at HTPN.
+
+   So the regimens are not written into this file. They are entered by the study team from the
+   National Antimicrobial Guideline, stored on the device, and shown with their source, edition
+   and whoever entered them. Three consequences, all wanted: the hospital owns the content and can
+   defend it; it updates when NAG updates, with no code change; and a wrong regimen is traceable
+   to a person and a date rather than to an app.
+
+   Nothing displays until the gates are answered, because the commonest prescribing errors this
+   would otherwise enable are an allergy missed and a dose not adjusted for renal function. */
+const NAG_KEY = 'wound_vision_formulary_v1';
+const NAG_SEV = [['mild','Diabetic foot · mild'],['moderate','Diabetic foot · moderate'],
+                 ['severe','Diabetic foot · severe'],['pi','Pressure injury · systemic infection']];
+/* The field names follow NAG's own columns rather than a shape of my invention. That matters:
+   NAG's "Alternative" for mild diabetic foot infection is amoxicillin/clavulanate, which is a
+   penicillin — filing it under "if penicillin-allergic" would have been a prescribing error
+   manufactured by the data model. NAG refers allergy to Appendix 3 instead, and so does this. */
+const NAG_FIELDS = [['first','Preferred','as written in the guideline'],
+                    ['alt','Alternative',''],
+                    ['pseudo','If Pseudomonas suspected',''],
+                    ['mrsa','If MRSA suspected',''],
+                    ['dur','Duration — skin and soft tissue',''],
+                    ['durBone','Duration — bone or joint',''],
+                    ['notes','Comments','']];
+
+/* NAG 2024, section A9.2.1, transcribed from the published text. Shown as unconfirmed until a
+   named member of the study team saves it, so nobody mistakes a transcription for a sign-off. */
+const NAG_DEFAULT = {
+  source: 'National Antimicrobial Guideline',
+  edition: '2024, 4th edition · Pharmaceutical Services Programme, MOH Malaysia',
+  rows: {
+    mild: {
+      first: 'Cloxacillin 500 mg PO q6h  OR  Cephalexin 1 g PO q12h',
+      alt:   'Amoxicillin/clavulanate 625 mg PO q8h  OR  Ampicillin/sulbactam 375–750 mg PO q12h',
+      dur:   '1–2 weeks (10 days following surgical debridement)',
+      notes: 'Mild = at least two of local swelling or induration, erythema more than 0.5 cm but under 2 cm, local tenderness or pain, local warmth, purulent discharge — with no other cause of inflammation.'
+    },
+    moderate: {
+      first:  'Amoxicillin/clavulanate 1.2 g IV q8h  OR  Ampicillin/sulbactam 3 g IV q6h',
+      alt:    'Cefuroxime 1.5 g IV q8h  PLUS  Metronidazole 500 mg IV q8h',
+      pseudo: 'Piperacillin/tazobactam 4.5 g IV q6–8h  OR  Cefepime 2 g IV q8h',
+      mrsa:   'Vancomycin 15–20 mg/kg q8–12h, not exceeding 2 g per dose',
+      dur:    'Total 2–4 weeks',
+      durBone:'Resected: 2–5 days · debrided for infected soft tissue: 1–2 weeks · positive culture or histology at bone margins after resection: 3 weeks · no surgery or dead bone: 6 weeks',
+      notes:  'Moderate = no systemic manifestations, with erythema 2 cm or more from the wound margin and/or tissue deeper than skin and subcutaneous tissue. IV to PO switch can be considered once source control is adequate. Piperacillin/tazobactam given q8h should be an extended infusion over 3–4 hours.'
+    },
+    severe: {
+      first:  'Amoxicillin/clavulanate 1.2 g IV q8h  OR  Ampicillin/sulbactam 3 g IV q6h',
+      alt:    'Cefuroxime 1.5 g IV q8h  PLUS  Metronidazole 500 mg IV q8h',
+      pseudo: 'Piperacillin/tazobactam 4.5 g IV q6–8h  OR  Cefepime 2 g IV q8h',
+      mrsa:   'Vancomycin 15–20 mg/kg q8–12h, not exceeding 2 g per dose',
+      dur:    'Total 2–4 weeks',
+      durBone:'Resected: 2–5 days · debrided for infected soft tissue: 1–2 weeks · positive culture or histology at bone margins after resection: 3 weeks · no surgery or dead bone: 6 weeks',
+      notes:  'Severe = any foot infection with systemic manifestations (two or more SIRS criteria). NAG gives the same regimen block as moderate; what changes is the urgency. Surgical debridement is URGENT, and antibiotics are streamlined on the intraoperative culture.'
+    },
+    pi: {
+      first:  'Ampicillin/sulbactam 3 g IV q6h  OR  Amoxicillin/clavulanate 1.2 g IV q8h',
+      dur:    'Guided by clinical response; oral may be considered for localised infection',
+      notes:  'NAG section A14.4: pressure injury is polymicrobial and the mainstay of management is prevention. Antibiotics are considered only where there is systemic infection. Look for another source and escalate accordingly.'
+    }
+  }
+};
+const loadFormulary = () => {
+  try { const v = localStorage.getItem(NAG_KEY);
+        return v ? JSON.parse(v) : JSON.parse(JSON.stringify(NAG_DEFAULT)); }
+  catch(e){ return JSON.parse(JSON.stringify(NAG_DEFAULT)); }
+};
+const saveFormulary = f => { try { localStorage.setItem(NAG_KEY, JSON.stringify(f)); } catch(e){ toast('Could not save the formulary'); } };
+let abxGates = {};                                   // allergy / eGFR / resistance risk, per patient
+
 
 /* ═════════════════════ where you are in this case ═════════════════════
    The same idea as the training journey, but this one runs at a bedside, so it is a strip rather
@@ -3183,6 +3431,57 @@ function renderSheetState(){
   b.className = 'btn btn-ghost btn-sm'; b.textContent = url ? 'Settings' : 'Set up';
   b.onclick = open; el.appendChild(b);
 }
+
+/* The formulary editor. Kept plain: six text fields per severity, because a guideline table is
+   prose and forcing it into structured dose fields would lose the footnotes that matter. */
+function renderFormulary(){
+  const host = $('nagRows'); if (!host) return;
+  const f = loadFormulary(), rows = f.rows || {};
+  host.innerHTML = NAG_SEV.map(([k, lab]) =>
+    `<details class="labmore"><summary>${lab} <span class="cnt${rows[k] && rows[k].first ? ' on' : ''}">${rows[k] && rows[k].first ? 'filled in' : 'empty'}</span></summary>`
+    + NAG_FIELDS.map(([fk, flab, ph]) =>
+        `<div class="field"><label>${flab}</label><input data-sev="${k}" data-f="${fk}" placeholder="${ph}" value="${String((rows[k] || {})[fk] || '').replace(/"/g, '&quot;')}"></div>`).join('')
+    + `</details>`).join('');
+  $('nagSource').value = f.source || '';
+  $('nagEdition').value = f.edition || '';
+  if ($('nagBy') && !$('nagBy').options.length) $('nagBy').innerHTML = sel([''].concat(GRADERS, ['Other']), f.by || '');
+  else if ($('nagBy')) $('nagBy').value = f.by || '';
+  const filled = NAG_SEV.filter(([k]) => rows[k] && rows[k].first).length;
+  $('nagStatus').innerHTML = filled
+    ? `<b>${filled} of ${NAG_SEV.length} severities filled in.</b> These are live in the assessment panel now.`
+    : '<b>Empty.</b> The assessment panel shows the infection grade and urgency, and says that no regimens have been loaded.';
+}
+
+$('nagSave') && ($('nagSave').onclick = () => {
+  const f = loadFormulary(); f.rows = f.rows || {};
+  $('nagRows').querySelectorAll('input[data-sev]').forEach(el => {
+    f.rows[el.dataset.sev] = f.rows[el.dataset.sev] || {};
+    const v = el.value.trim();
+    if (v) f.rows[el.dataset.sev][el.dataset.f] = v; else delete f.rows[el.dataset.sev][el.dataset.f];
+  });
+  f.source = $('nagSource').value.trim(); f.edition = $('nagEdition').value.trim();
+  f.by = $('nagBy').value; f.when = new Date().toISOString();
+  saveFormulary(f); renderFormulary();
+  toast('Formulary saved — it is live in the assessment panel');
+});
+
+/* It is typed once and used on five devices, so it has to travel. */
+$('nagExport') && ($('nagExport').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(loadFormulary(), null, 2)], { type:'application/json' }));
+  a.download = 'wound-vision-formulary.json'; a.click(); URL.revokeObjectURL(a.href);
+});
+$('nagImport') && ($('nagImport').onchange = e => {
+  const file = e.target.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try { const f = JSON.parse(r.result);
+          if (!f || typeof f !== 'object' || !f.rows) throw new Error('not a formulary file');
+          saveFormulary(f); renderFormulary(); toast('Formulary imported'); }
+    catch(err){ toast('Could not read that file: ' + err.message); }
+  };
+  r.readAsText(file); e.target.value = '';
+});
 
 function labelSheetPush(){
   const b = $('sheetPush'); if (!b) return;
@@ -4195,6 +4494,7 @@ function describeTarget(){
    reading, so the same person is one value in the column rather than three spellings of it.
    Filled here because GRADERS and sel are both declared further down the file. */
 $('gtRater') && ($('gtRater').innerHTML = sel([''].concat(GRADERS, ['Other']), ''));
+renderFormulary();
 
 fillTargets(); describeTarget(); renderLabeller(); renderReadiness(); renderJourney(); renderAssessJourney();
 /* Place the case log for whichever tab is showing at load, so it is not stranded in the hidden

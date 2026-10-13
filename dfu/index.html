@@ -291,6 +291,16 @@ details.correct[open]>summary{margin-bottom:4px}
 details.jmore{margin-top:9px}
 details.jmore>summary{cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;list-style:revert}
 details.jmore[open]>summary{margin-bottom:2px}
+.dimmed{opacity:.45;pointer-events:none}
+.readynow{margin-top:12px;border:1px solid var(--rule);border-radius:10px;padding:10px 12px;background:var(--slate-soft)}
+.readynow b.h{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+.rnrow{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:12.5px}
+.rnrow .nm{flex:0 0 32%;color:var(--navy);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rnbar{flex:1;height:7px;border-radius:4px;background:var(--cloud);overflow:hidden}
+.rnbar i{display:block;height:100%;border-radius:4px;background:var(--teal)}
+.rnbar i.thin{background:#f59e0b}
+.rnrow .ct{flex:0 0 58px;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.readynow .sum{margin-top:7px;font-size:12px;color:var(--muted);line-height:1.5}
 .labfilter{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
 .labfilter label{font-size:12px;color:var(--muted);font-weight:600}
 .labfilter select{padding:6px 8px;border-radius:8px;border:1px solid var(--line);font-size:12.5px;max-width:100%}
@@ -764,15 +774,24 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <div class="labwrap">
       <div class="labimg"><img id="labImg" alt="the image being labelled"><span class="badge" id="labName">—</span><span class="badge case" id="labCase"></span></div>
       <div class="labform">
-        <span class="lab">Wound type <em>decides which scale and which questions apply</em></span>
-        <div class="chips" id="labType"></div>
-        <span class="lab" style="margin-top:10px" id="labGradeLab">Meggitt–Wagner grade <em>one only</em></span>
-        <div class="chips" id="labWagner"></div>
-        <div class="chips" id="labNpiap"></div>
-        <span class="lab" style="margin-top:10px">Present in this image <em>tick all that apply</em></span>
-        <div class="chips" id="labFeats"></div>
-        <span class="lab" style="margin-top:10px">Fitzpatrick skin type <em>so performance can be reported by skin tone</em></span>
-        <div class="chips" id="labSkin"></div>
+        <!-- Who, then what: a grading with no name on it is not a reference standard, so the
+             grader is the first field and the rest stays disabled until it is set. -->
+        <div class="row2">
+          <div class="field"><label>Grader <em style="font-style:normal;color:var(--faint);font-weight:400">required</em></label>
+            <select id="labGrader"></select></div>
+          <div class="field"><label>Wound type</label>
+            <select id="labType"><option value="dfu">Diabetic foot ulcer</option><option value="pi">Pressure injury</option></select></div>
+        </div>
+        <div id="labNeedsGrader" class="note" style="margin:0 0 10px">Choose your name above before labelling. Every tick is stored against it.</div>
+        <div id="labFields">
+          <div class="row2">
+            <div class="field"><label id="labGradeLab">Meggitt–Wagner grade</label>
+              <select id="labWagner"></select></div>
+            <div class="field"><label>Fitzpatrick skin type</label>
+              <select id="labSkin"></select></div>
+          </div>
+          <span class="lab" style="margin-top:4px">Present in this image <em>tick all that apply</em></span>
+          <div class="chips" id="labFeats"></div>
         <details class="labmore" id="labExamBox">
           <summary>What only your examination supplies <span class="cnt" id="labExamCnt"></span></summary>
           <p class="small" style="margin:6px 0 8px">The same questions as step 2b at the bedside. These are what a photograph cannot show, and they are what the published definitions are made of — answer them and the grade is worked out rather than guessed.</p>
@@ -789,6 +808,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
             <button class="btn btn-ghost btn-sm" id="labRecClear">Clear this record</button>
           </div>
         </details>
+        </div><!-- /labFields -->
 
         <p class="labsaved" id="labSaved"></p>
         <div class="labnav">
@@ -805,6 +825,10 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
         <p class="labdone hidden" id="labDone"></p>
       </div>
     </div>
+    <!-- Readiness where the grading happens. The dashboard lower down answers the same
+         question, but a grader working through 300 images should not have to scroll to it
+         to see whether this hour moved anything. -->
+    <div class="readynow" id="readyNow"></div>
     <div class="labfilter">
       <label for="labFilter">Show</label>
       <select id="labFilter"></select>
@@ -3020,6 +3044,28 @@ function renderJourney(){
   } else { el2.innerHTML = ''; el2.classList.add('hidden'); }
 }
 
+/* A live count of what this sitting has produced, beside the image being graded. */
+function renderReadyNow(){
+  const el = $('readyNow'); if (!el) return;
+  if (!pool.length){ el.innerHTML = ''; return; }
+  const t = ($('trainTarget') && $('trainTarget').value) || 'wagner';
+  const rows = [...data.classes.entries()].filter(([, v]) => v.length)
+                 .sort((a, b) => b[1].length - a[1].length);
+  const target = +(($('targetPreset') && $('targetPreset').value) || 250);
+  const nCase = poolCases().size, done = pool.filter(labelled).length;
+  el.innerHTML = `<b class="h">Readiness · ${t.startsWith('feat:') ? t.slice(5).replace(/_/g, ' ') : (t === 'wagner' ? 'Wagner grade' : 'NPIAP stage')}</b>`
+    + (rows.length ? rows.map(([k, v]) => {
+        const pc = Math.min(100, Math.round(v.length / target * 100));
+        return `<div class="rnrow"><span class="nm" title="${k}">${k}</span>`
+             + `<span class="rnbar"><i class="${v.length < MIN_PER_CLASS ? 'thin' : ''}" style="width:${pc}%"></i></span>`
+             + `<span class="ct">${v.length} / ${target}</span></div>`;
+      }).join('')
+      : '<div class="rnrow"><span class="nm">nothing yet</span></div>')
+    + `<div class="sum">${done} of ${pool.length} image${pool.length === 1 ? '' : 's'} labelled, from `
+    + `${nCase} case${nCase === 1 ? '' : 's'}. Amber means under ${MIN_PER_CLASS} — trainable, but the `
+    + `number it produces would not be reportable.</div>`;
+}
+
 function readinessNote(){
   const el = $('rNote'); if (!el) return;
   const nImg = pool.length, nCase = poolCases().size;
@@ -3033,7 +3079,7 @@ function readinessNote(){
 }
 
 function renderReadiness(){
-  readinessNote(); renderJourney();
+  readinessNote(); renderReadyNow(); renderJourney();
   const target = +$('targetPreset').value || 250;
   const rows = [...data.classes.entries()].filter(([, v]) => v.length).sort((a, b) => b[1].length - a[1].length);
   const counts = rows.map(([, v]) => v.length);
@@ -3255,7 +3301,7 @@ function addToPool(items){
   const restored = pool.filter(labelled).length;
   if (restored) toast(`${restored} image${restored === 1 ? '' : 's'} already labelled \u2014 ticks restored`);
   saveLabels(); autoTarget(); fillTargets(); projectClasses(); describeTarget();
-  renderLabeller(); readinessNote(); renderJourney();
+  renderLabeller(); readinessNote(); renderReadyNow(); renderJourney();
 }
 const poolUrl = it => it.url || (it.url = URL.createObjectURL(it.file));
 
@@ -3331,6 +3377,10 @@ function fillTargets(){
    come back. The filter and the flag do that. Removing an image also deletes its stored label,
    because a label with no image is a row that will silently reattach itself next session.      */
 let labFilter = 'all';
+/* The grader signs in once per sitting, not once per image. */
+const GRADER_KEY = 'wound_vision_grader';
+let labGrader = '';
+try { labGrader = localStorage.getItem(GRADER_KEY) || ''; } catch(e){}
 function filterOpts(){
   const has = f => pool.some(f);
   const o = [['all', `All images (${pool.length})`],
@@ -3377,19 +3427,36 @@ function renderLabeller(){
       onPick(b.dataset.v); labChanged(); });
   };
   /* One wound is one kind of wound. Showing both scales at once invited an image carrying a
-     Wagner grade and an NPIAP stage, which is not a thing that exists. */
+     Wagner grade and an NPIAP stage, which is not a thing that exists.
+
+     Single choice is a dropdown; multiple choice stays chips. A multi-select dropdown on a
+     phone is a scroll-and-modifier-key puzzle, and the tissues are the field a grader touches
+     most often. */
   const pi = it.wtype === 'pi';
-  chips('labType', [['dfu','Diabetic foot ulcer'],['pi','Pressure injury']], v => it.wtype === v,
-        v => { if (it.wtype !== v){ it.wtype = v; it.typeSet = true; it.wagner = null; it.npiap = null; it.ex = {}; } });
-  $('labGradeLab').innerHTML = pi ? 'NPIAP pressure injury stage <em>one only</em>'
-                                  : 'Meggitt–Wagner grade <em>one only</em>';
-  $('labWagner').classList.toggle('hidden', pi);
-  $('labNpiap').classList.toggle('hidden', !pi);
-  chips('labWagner', WAGNER_OPTS, v => it.wagner === v, v => { it.wagner = it.wagner === v ? null : v; });
-  chips('labNpiap',  NPIAP_OPTS,  v => it.npiap === v,  v => { it.npiap  = it.npiap  === v ? null : v; });
+  const drop = (host, opts, cur, onPick, blank) => {
+    const el = $(host);
+    el.innerHTML = (blank === false ? '' : `<option value="">${blank || '\u2014'}</option>`)
+      + opts.map(([v, l]) => `<option value="${v}"${cur === v ? ' selected' : ''}>${l}</option>`).join('');
+    el.onchange = () => { onPick(el.value || null); labChanged(); };
+  };
+
+  /* Who, then what. A grading with nobody's name on it is not a reference standard, so the
+     rest of the form stays dimmed until the grader has signed in for this sitting. */
+  drop('labGrader', GRADERS.concat(['Other']).map(g => [g, g]), labGrader,
+       v => { labGrader = v || ''; try { localStorage.setItem(GRADER_KEY, labGrader); } catch(e){} },
+       'Choose your name\u2026');
+  $('labNeedsGrader').classList.toggle('hidden', !!labGrader);
+  $('labFields').classList.toggle('dimmed', !labGrader);
+
+  drop('labType', [['dfu','Diabetic foot ulcer'],['pi','Pressure injury']], it.wtype,
+       v => { if (v && it.wtype !== v){ it.wtype = v; it.typeSet = true; it.wagner = null; it.npiap = null; it.ex = {}; } },
+       false);
+  $('labGradeLab').textContent = pi ? 'NPIAP pressure injury stage' : 'Meggitt\u2013Wagner grade';
+  drop('labWagner', pi ? NPIAP_OPTS : WAGNER_OPTS, pi ? it.npiap : it.wagner,
+       v => { if (pi) it.npiap = v; else it.wagner = v; }, 'Not graded');
+  drop('labSkin', SKIN_OPTS, it.skin, v => { it.skin = v; }, 'Not recorded');
   renderLabExam(it); renderLabRec(it);
-  chips('labFeats',  FEAT_OPTS,   v => it.feats.has(v), v => { it.feats.has(v) ? it.feats.delete(v) : it.feats.add(v); });
-  chips('labSkin',   SKIN_OPTS,   v => it.skin === v,   v => { it.skin = it.skin === v ? null : v; });
+  chips('labFeats', FEAT_OPTS, v => it.feats.has(v), v => { it.feats.has(v) ? it.feats.delete(v) : it.feats.add(v); });
 
   $('labHint').textContent = labelled(it)
     ? 'A wound is either a foot ulcer or a pressure injury, so it normally carries a Wagner grade or an NPIAP stage, not both.'
@@ -3562,8 +3629,12 @@ function recCount(it){
 
 /* Redraw everything that depends on a label. One call, so no view can drift out of step. */
 function labChanged(){
+  /* Attribution happens here rather than in each control, so a label set by a dropdown carries
+     the grader's name exactly as one set by a chip does. */
+  const it = pool[cur];
+  if (it && labGrader && (labelled(it) || it.skin)) it.rec.grader = labGrader;
   saveLabels(); autoTarget(); fillTargets(); projectClasses(); describeTarget();
-  renderLabeller(); readinessNote(); renderJourney();
+  renderLabeller(); readinessNote(); renderReadyNow(); renderJourney();
 }
 
 $('poolInput') && ($('poolInput').onchange = e => {

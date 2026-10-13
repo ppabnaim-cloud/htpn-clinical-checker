@@ -78,6 +78,9 @@ header small{display:block;font-size:11.5px;opacity:.7;margin-top:1px}
 #modeBar button{flex:none;background:rgba(255,255,255,.17);border:1px solid rgba(255,255,255,.45);color:#fff;font-weight:600}
 #modeBar button:hover{background:rgba(255,255,255,.3)}
 @media (max-width:560px){#modeBar{padding:9px 12px;font-size:12.5px}}
+.locked-note{margin:8px 0 0;font-size:12px;line-height:1.55;color:var(--muted);
+  background:var(--slate-soft);border:1px solid var(--rule);border-radius:8px;padding:8px 11px}
+.locked-note b{color:var(--navy)}
 #buildStamp{display:block;margin-top:7px;font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.03em}
 .lockpill{border:1px solid rgba(255,255,255,.35);background:rgba(28,184,160,.22);color:#fff;
   cursor:pointer;font-weight:600;white-space:nowrap}
@@ -637,6 +640,9 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       <select id="camTarget" class="hidden"></select>
       <input type="range" id="camAlpha" min="0" max="100" value="55" title="overlay opacity">
     </div>
+    <!-- Hiding a feature without saying so reads as a feature that does not exist. Say it is
+         there, say who it is for, and say in one clause why it is not shown by default. -->
+    <p class="locked-note" id="camLocked">Heatmap view is a study-team tool &mdash; <b>enter the admin passcode under Study team to unlock it</b>. It is kept back because at this wound size it points inside the ulcer in only 13&nbsp;% of held-out images, so it is useful for checking the model and misleading as reassurance.</p>
     <div class="readout study-hide" id="overlayRead">
       <p><b>How to read this:</b> <span id="howOverlay"></span></p>
       <p><b>What this shows:</b> <span id="whatOverlay"></span></p>
@@ -1070,7 +1076,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-10-13 &middot; v3.2</span>
+  <span class="study-hide" id="buildStamp">build 2026-10-13 &middot; v3.3</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1146,6 +1152,7 @@ function setStudyMode(on){
      conclude the admin-only panels were leaking. This is that way back. */
   $('lockBtn').classList.toggle('hidden', !on);
   $('modeBar').classList.toggle('hidden', !on);
+  $('camLocked').classList.toggle('hidden', on);
   /* The model card is study-team material: a clinician testing a photograph does not need the
      architecture, and it reads as noise beside the result. */
   $('modelCardSection').classList.toggle('study-only', !on);

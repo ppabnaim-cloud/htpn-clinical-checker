@@ -30,6 +30,13 @@ code{font-family:var(--mono);font-size:.9em}
 .tag{display:inline-block;background:var(--amber);color:var(--navy);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 11px;border-radius:999px}
 .gate-box h2{font-family:var(--serif);font-size:26px;margin:12px 0 6px;color:var(--navy);line-height:1.2}
 .gate-box p{color:var(--muted);font-size:14px;margin-bottom:10px}
+.keypoints{list-style:none;margin:0 0 14px;padding:0}
+.keypoints li{font-size:14.5px;line-height:1.6;color:var(--text);padding:0 0 9px 22px;position:relative}
+.keypoints li::before{content:"";position:absolute;left:0;top:9px;width:7px;height:7px;border-radius:50%;background:var(--teal)}
+.keypoints b{color:var(--navy)}
+details.more{margin-bottom:14px}
+details.more>summary{cursor:pointer;font-size:13px;color:var(--teal-dim);font-weight:600;list-style:revert}
+details.more p{font-size:13.5px;line-height:1.6;color:var(--muted);margin-top:8px}
 .protocol{background:var(--cloud);border-radius:12px;padding:14px 16px;margin:14px 0}
 .protocol h4{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--teal-dim);margin-bottom:8px}
 .protocol ul{list-style:none}
@@ -288,9 +295,6 @@ details.correct[open]>summary{margin-bottom:4px}
 .jnow{margin:11px 0 0;font-size:12.5px;line-height:1.55;color:var(--text);padding:8px 11px;border-radius:8px;
   background:var(--slate-soft);border:1px solid var(--rule)}
 .jnow.ok{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
-details.jmore{margin-top:9px}
-details.jmore>summary{cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;list-style:revert}
-details.jmore[open]>summary{margin-bottom:2px}
 .dimmed{opacity:.45;pointer-events:none}
 .readynow{margin-top:12px;border:1px solid var(--rule);border-radius:10px;padding:10px 12px;background:var(--slate-soft)}
 .readynow b.h{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
@@ -451,13 +455,27 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <div id="gate">
   <div class="gate-box">
     <span class="tag">Research prototype · Not a medical device</span>
-    <h2>Wound Vision — before you take a photograph</h2>
-    <p style="font-family:var(--mono);font-size:12px;color:var(--faint);margin-bottom:12px">A prototype by Dr Naim Bin Abdul Malek</p>
-    <p>This demonstrator analyses wound photographs with a <b>computer model</b> trained on photographs of other wounds — it is software, not a clinician: <b>diabetic foot ulcers</b>, where it outlines the wound and classifies depth and infection appearance, and <b>pressure injuries</b>, where it outlines and measures the wound but does <b>not</b> stage it &mdash; no pressure injury classifier has been trained yet, so NPIAP staging is yours to enter. It is for education and Centre of Excellence demonstration only. It does <b>not</b> replace clinical assessment, probe-to-bone testing, vascular assessment or microbiology, and must not be used to make treatment decisions.</p>
-    <p><b>Why this exists.</b> Earlier and more consistent recognition of a severe diabetic foot ulcer or a deteriorating pressure injury, so that debridement, offloading, vascular assessment and referral happen sooner. The intended benefit is a reduction in major amputation and in permanent disability. That is the aim of the study, not a demonstrated result: no outcome data exist yet, and nothing in this prototype has been shown to change any clinical outcome.</p>
-    <p><b>How to start.</b> Use the demo images provided to see how the app works, then try a photograph of your own. Everything runs on your device; no image is uploaded.</p>
-    <label><input type="checkbox" id="ack1"> I understand this is a research prototype trained on publicly available images and is not validated for clinical use.</label>
-    <label><input type="checkbox" id="ack2"> I will not upload a photograph carrying a patient's name, identity card number or face.</label>
+    <h2>Wound Vision</h2>
+    <p style="font-family:var(--mono);font-size:12px;color:var(--faint);margin-bottom:14px">A prototype by Dr Naim Bin Abdul Malek</p>
+
+    <!-- Three lines, not three paragraphs. Everything material stays on screen; the detail is
+         one tap away for anyone who wants it. A disclaimer nobody reads protects nobody, and a
+         wall of text at the door is the surest way to lose the uptake this phase needs. -->
+    <ul class="keypoints">
+      <li><b>It is software, not a clinician.</b> It looks at a wound photograph and suggests what it sees. It does not replace your examination, and must not decide treatment.</li>
+      <li><b>Nothing is uploaded.</b> The photograph stays on your device.</li>
+      <li><b>To start,</b> tap one of the demo images.</li>
+    </ul>
+
+    <details class="more">
+      <summary>More about this project</summary>
+      <p>For <b>diabetic foot ulcers</b> it outlines the wound and suggests depth and infection appearance. For <b>pressure injuries</b> it outlines and measures only — no pressure injury model has been trained yet, so the NPIAP stage is yours to enter.</p>
+      <p>The aim is earlier recognition of a severe ulcer or a deteriorating pressure injury, so that debridement, offloading, vascular assessment and referral happen sooner — and in time, fewer amputations. That is the aim of the study, not a result: no outcome data exist yet.</p>
+      <p>Built for the Deep Learning Healthcare Centre of Excellence, Hospital Tengku Permaisuri Norashikin.</p>
+    </details>
+
+    <label><input type="checkbox" id="ack1"> I understand this is a research prototype, not validated for clinical use.</label>
+    <label><input type="checkbox" id="ack2"> I will not upload a photograph showing a name, I.C. number or face.</label>
     <button class="btn btn-primary" id="enter" disabled>Continue to the tool</button>
   </div>
 </div>
@@ -481,14 +499,14 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   <div class="gate-box" style="max-width:420px">
     <span class="tag">Study team</span>
     <h2>Enter the study passcode</h2>
-    <p>These screens are for the people grading and training: Dr Naim, the two graders and the two supervisors.</p>
+    <p>For the study team: Dr Naim, the two graders and the two supervisors.</p>
     <div class="field"><label>Passcode</label><input type="password" id="passInput" autocomplete="off"></div>
     <p class="small" id="passMsg" style="min-height:18px;color:#b91c1c"></p>
     <div class="labnav">
       <button class="btn btn-primary" id="passGo">Unlock</button>
       <button class="btn btn-ghost" id="passCancel">Back to assessment</button>
     </div>
-    <div class="note" style="margin-top:12px">This keeps the two jobs apart; it is not a security control. Everything you record stays in this browser and is never sent to a server, so a person who opens these screens on their own device sees their own empty log, not yours. The one real risk is someone using your device while it is unlocked, and no passcode on a web page can prevent that.</div>
+    <div class="note" style="margin-top:12px">This separates the two jobs; it is not a security control. Your data stays in this browser, so someone who opens these screens elsewhere sees an empty app.</div>
   </div>
 </div>
 
@@ -501,10 +519,6 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   <section class="card tight" id="assessJourney">
     <ol class="jstrip" id="jstrip"></ol>
     <p class="jnow" id="jnow"></p>
-    <details class="jmore">
-      <summary>What each step needs</summary>
-      <ol class="journey" id="journeyAssess"></ol>
-    </details>
   </section>
 
   <!-- STEP 1: CAPTURE -->
@@ -976,7 +990,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
   Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
-  <b id="buildStamp">build 2026-10-13 &middot; v2.2</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=22</code><br>
+  <b id="buildStamp">build 2026-10-13 &middot; v2.4</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=24</code><br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>
@@ -2385,19 +2399,14 @@ function renderAssessJourney(){
       + ' Load the next photograph when you are ready.';
   } else {
     nowEl.className = 'jnow';
-    nowEl.innerHTML = `<b>Now: ${steps[cur].k} · ${steps[cur].s}.</b> ${steps[cur].d}`;
+    /* One caveat survives the step it belongs to: a classification made on the whole photograph
+       because no wound was outlined changes how the result should be read, and the user would
+       otherwise never see it once step 2 is ticked off. */
+    const noOutline = lastPred && !lastPred.piOnly && !(lastSeg && lastSeg.found)
+      ? ' <b>Note:</b> no wound outline was found, so the whole photograph was classified — drag a box over the wound in step 2 for a better reading.' : '';
+    nowEl.innerHTML = `<b>Now: ${steps[cur].k} · ${steps[cur].s}.</b> ${steps[cur].d}${noOutline}`;
   }
 
-  const more = $('journeyAssess');
-  more.innerHTML = steps.map((x, i) => {
-    const cls = x.done ? 'done' : i === cur ? 'now' : 'todo';
-    return `<li class="${cls}"><span class="jn">${x.done ? '✓' : x.k}</span>
-      <span class="jt"><b>${x.k} · ${x.s}</b><span>${x.d}</span></span></li>`;
-  }).join('')
-  + `<li class="${log.length ? 'done' : 'todo'}"><span class="jn">●</span><span class="jt"><b>Case log</b>`
-  + `<span>${log.length} case${log.length === 1 ? '' : 's'} recorded in this browser`
-  + (waiting ? `, ${waiting} still waiting for a culture result — tap one in the log to complete it.` : '.')
-  + ' The log is the same record on both tabs, and it is filled in from step 3, never from the training steps.</span></span></li>';
 }
 
 /* ═══════════════ generic model vs model trained here ════════════════

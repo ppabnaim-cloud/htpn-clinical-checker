@@ -793,82 +793,6 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <div id="abxBox"></div>
   </section>
 
-  <!-- STEP 3: GROUND TRUTH -->
-  <section class="card hidden study-hide" id="truth">
-    <div class="step"><span class="n">3</span><h3>Record this case</h3><span class="hint">what you know now</span></div>
-    <p class="small" style="margin-bottom:6px" id="truthIntro"></p>
-    <div class="note" style="margin:0 0 10px">Fill in whatever you have. A culture usually takes three to five days, so the microbiology is often blank at this point — that is expected. The case then appears in the log below under <b>cases waiting for a culture result</b>, and tapping it there completes the organism, the sensitivity and the outcome whenever they arrive.</div>
-    <!-- Applies to both wound types: the patient and the camera, not the wound. -->
-    <div class="row3">
-      <div class="field"><label>Study ID <em style="font-style:normal;color:var(--faint);font-weight:400">optional — taken from the filename if blank</em></label>
-        <input id="gtCase" placeholder="P014" autocomplete="off"></div>
-      <div class="field"><label>Fitzpatrick skin type</label>
-        <select id="gtSkin"><option value="">—</option><option>I</option><option>II</option><option>III</option><option>IV</option><option>V</option><option>VI</option><option>Not assessed</option></select></div>
-      <div class="field"><label>Grader</label>
-        <select id="gtRater"><option value="">—</option></select></div>
-    </div>
-    <div class="field" style="max-width:320px"><label>Capture device</label>
-      <select id="gtDevice"><option value="">—</option><option>Mobile phone</option><option>Digital camera</option><option>Tablet</option><option>Dermatoscope</option><option>Other</option></select></div>
-    <div class="note" style="margin:0 0 10px">Skin type is recorded because the public training sets are predominantly lighter skin; without it, performance in a Malaysian population cannot be reported by skin tone. The capture device is recorded so that variation between cameras can be measured later rather than guessed at. Grader and device stay between photographs; the study ID and skin type clear with each new one.</div>
-    <div id="gtDfu">
-    <div class="row3">
-      <div class="field"><label>Clinician Texas grade</label>
-        <select id="gtGrade"><option value="">—</option><option>0</option><option>1</option><option>2</option><option>3</option></select></div>
-      <div class="field"><label>Texas stage</label>
-        <select id="gtStage"><option value="">—</option><option>A</option><option>B</option><option>C</option><option>D</option></select></div>
-      <div class="field"><label>Wagner grade</label>
-        <select id="gtWagner"><option value="">—</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
-    </div>
-    <div class="row2">
-      <div class="field"><label>Ulcer site</label>
-        <select id="gtSiteDfu"><option value="">—</option><option>Plantar forefoot</option><option>Plantar midfoot</option><option>Heel</option><option>Hallux</option><option>Lesser toe</option><option>Dorsum of foot</option><option>Medial malleolus</option><option>Lateral malleolus</option><option>Amputation stump</option><option>Other</option></select></div>
-      <div class="field"><label>Probe‑to‑bone</label>
-        <select id="gtPtb"><option value="">—</option><option>Negative</option><option>Positive</option><option>Not done</option></select></div>
-      <div class="field"><label>Specimen date</label><input type="date" id="gtDate"></div>
-    </div>
-    <div class="field"><label>Tissue culture &amp; sensitivity — organism(s) isolated <em style="font-style:normal;color:var(--faint);font-weight:400">leave blank if not back yet</em></label>
-      <div id="gtOrgs"></div>
-    </div>
-    <div class="field"><label>Sensitivity pattern / notes</label><textarea id="gtNotes" placeholder="e.g. sensitive to co-amoxiclav, resistant to ciprofloxacin; ESBL negative"></textarea></div>
-    <div class="field" style="max-width:320px"><label>Outcome at follow-up</label>
-      <select id="gtOutcome"><option value="">—</option><option>Healed</option><option>Improving</option><option>Static</option><option>Deteriorated</option><option>Not yet known</option></select></div>
-    </div>
-    <div id="gtPi" class="hidden">
-      <div class="row3">
-        <div class="field"><label>Clinician NPIAP stage</label>
-          <select id="gtNpiap"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>Unstageable</option><option>Deep tissue injury</option></select></div>
-        <div class="field"><label>Blanching test</label>
-          <select id="gtBlanch"><option value="">—</option><option>Blanchable</option><option>Non-blanchable</option><option>Not tested</option></select></div>
-        <div class="field"><label>Deepest structure seen or palpated</label>
-          <select id="gtDeep"><option value="">—</option><option>Dermis</option><option>Adipose</option><option>Fascia</option><option>Muscle</option><option>Tendon</option><option>Bone</option><option>Obscured by slough or eschar</option></select></div>
-      </div>
-      <div class="row3">
-        <div class="field"><label>Body site</label>
-          <select id="gtSite"><option value="">—</option><option>Sacrum</option><option>Coccyx</option><option>Ischial tuberosity</option><option>Heel</option><option>Lateral malleolus</option><option>Greater trochanter</option><option>Occiput</option><option>Ear</option><option>Elbow</option><option>Device-related</option><option>Other</option></select></div>
-      </div>
-      <div class="field"><label>Notes</label><textarea id="gtPiNotes" placeholder="e.g. device-related under mask strap; offloading in place; Braden 12"></textarea></div>
-      <div class="note">There is deliberately no culture and sensitivity field for a pressure injury. Every chronic wound is colonised, so a swab does not establish infection and swabbing is discouraged; infection is a clinical diagnosis. The reference standard for this arm is the adjudicated stage plus the outcome at follow-up, and the outcome is recorded in the case log when it is known.</div>
-    </div>
-    <button class="btn btn-teal" id="saveCase" style="width:100%">Save ground truth to case log</button>
-    <div class="note teal" id="truthNote"></div>
-  </section>
-
-  <!-- CASE LOG -->
-  <!-- MODEL CARD -->
-  <section class="card" id="modelCardSection">
-    <div class="step"><span class="n">i</span><h3>Model card (abridged)</h3></div>
-    <dl class="modelcard" id="modelCard">
-      <dt>Approach</dt><dd>Two models run in sequence, both transfer‑learned from ImageNet and both executed in the browser, so no image leaves the device. <b>Segmentation</b>: a MobileNetV2‑UNet trained on the FUSeg expert wound masks outlines the ulcer and measures it. <b>Classification</b>: a MobileNetV2 with two softmax heads, trained on wound crops taken from those masks, then fine‑tuned over its top 30 layers.</dd>
-      <dt>Why segmentation comes first</dt><dd>On the FUSeg validation split the ulcer occupies a median 1.3 % of the photograph. Grad‑CAM reads a 7×7 grid, so no cell resolves finer than about 2 % of the image, and the heatmap's peak fell inside the true ulcer in only 13 % of 190 held‑out images. Cropping to the segmented wound raised severity accuracy from 84 % to 92.5 %. Segmentation answers "where"; classification answers "what".</dd>
-      <dt>Explainability</dt><dd>The wound outline and its measured area are the primary explanation. Grad‑CAM on the final convolutional map (<code>out_relu</code>) is retained as a sanity check on whether the model reads the wound or the room, and is drawn only inside the crop it actually explains.</dd>
-      <dt>Training data</dt><dd id="mcData">Loading…</dd>
-      <dt>Labels — important caveat</dt><dd>Demonstrator labels are <b>weak labels</b> derived from expert wound masks (wound area for depth/severity) and wound‑bed colour features (slough, eschar for infection). They are not clinician‑adjudicated or culture‑confirmed. Step 3 and the Train tab exist precisely to replace them.</dd>
-      <dt>Held‑out performance (against the weak labels)</dt><dd id="mcPerf">Loading…</dd>
-      <dt>Data source</dt><dd>FUSeg 2021 / AZH Wound and Vascular Center dataset, Wang C. et al., <i>Sci Rep</i> 2020;10:21897, github.com/uwm-bigdata/wound-segmentation.</dd>
-      <dt>Author</dt><dd>Dr Naim Bin Abdul Malek. Built as a demonstrator for the Deep Learning Healthcare Centre of Excellence and as the technical pilot for a DrPH study on diabetic foot ulcer infection classification, extended to pressure injury staging.</dd>
-      <dt>Patient data</dt><dd>Images are processed entirely in this browser and are not transmitted anywhere. Photographs must be de&#8209;identified before use: no name, no identity card number, no face, and no identifying metadata.</dd>
-    </dl>
-  </section>
 </div>
 
 <!-- ═══════════════════════════ TRAIN TAB ═══════════════════════════ -->
@@ -1048,6 +972,22 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <div class="step"><span class="n">D</span><h3>Models on this device</h3></div>
     <div id="modelList"></div>
   </section>
+  <!-- MODEL CARD -->
+  <section class="card" id="modelCardSection">
+    <div class="step"><span class="n">i</span><h3>Model card (abridged)</h3></div>
+    <dl class="modelcard" id="modelCard">
+      <dt>Approach</dt><dd>Two models run in sequence, both transfer‑learned from ImageNet and both executed in the browser, so no image leaves the device. <b>Segmentation</b>: a MobileNetV2‑UNet trained on the FUSeg expert wound masks outlines the ulcer and measures it. <b>Classification</b>: a MobileNetV2 with two softmax heads, trained on wound crops taken from those masks, then fine‑tuned over its top 30 layers.</dd>
+      <dt>Why segmentation comes first</dt><dd>On the FUSeg validation split the ulcer occupies a median 1.3 % of the photograph. Grad‑CAM reads a 7×7 grid, so no cell resolves finer than about 2 % of the image, and the heatmap's peak fell inside the true ulcer in only 13 % of 190 held‑out images. Cropping to the segmented wound raised severity accuracy from 84 % to 92.5 %. Segmentation answers "where"; classification answers "what".</dd>
+      <dt>Explainability</dt><dd>The wound outline and its measured area are the primary explanation. Grad‑CAM on the final convolutional map (<code>out_relu</code>) is retained as a sanity check on whether the model reads the wound or the room, and is drawn only inside the crop it actually explains.</dd>
+      <dt>Training data</dt><dd id="mcData">Loading…</dd>
+      <dt>Labels — important caveat</dt><dd>Demonstrator labels are <b>weak labels</b> derived from expert wound masks (wound area for depth/severity) and wound‑bed colour features (slough, eschar for infection). They are not clinician‑adjudicated or culture‑confirmed. Step 3 and the Train tab exist precisely to replace them.</dd>
+      <dt>Held‑out performance (against the weak labels)</dt><dd id="mcPerf">Loading…</dd>
+      <dt>Data source</dt><dd>FUSeg 2021 / AZH Wound and Vascular Center dataset, Wang C. et al., <i>Sci Rep</i> 2020;10:21897, github.com/uwm-bigdata/wound-segmentation.</dd>
+      <dt>Author</dt><dd>Dr Naim Bin Abdul Malek. Built as a demonstrator for the Deep Learning Healthcare Centre of Excellence and as the technical pilot for a DrPH study on diabetic foot ulcer infection classification, extended to pressure injury staging.</dd>
+      <dt>Patient data</dt><dd>Images are processed entirely in this browser and are not transmitted anywhere. Photographs must be de&#8209;identified before use: no name, no identity card number, no face, and no identifying metadata.</dd>
+    </dl>
+  </section>
+
   <section class="card" id="formularyCard">
     <div class="step"><span class="n">&#9679;</span><h3>Antibiotic formulary</h3><span class="hint">entered by you, not by the app</span></div>
     <p class="small" style="margin-bottom:10px">What the app shows beside an infection grade. It is deliberately empty until you fill it in: empirical choice depends on local resistance, so these have to come from the guideline your hospital follows, not from the software. Every line is shown to the clinician with the source and your name against it.</p>
@@ -1064,6 +1004,70 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     </div>
     <div class="note" style="margin-top:10px" id="nagStatus"></div>
     <div class="note rose" style="margin-top:10px">Once this is filled in the app names drugs, which makes it a prescribing aid rather than a wound classifier. Have it signed off by your antimicrobial stewardship pharmacist or ID consultant before any clinician outside the study team uses it, and re-check it whenever the guideline is revised — the app cannot know that it has been.</div>
+  </section>
+
+  <!-- RECORD A CASE — study team only, which is why it lives in this tab and not
+       in the assessment flow. Hiding it there by CSS was not enough: the class keys off whether
+       the passcode has been entered, not off which tab is open, so a grader who had unlocked saw
+       it in the tester view too. -->
+  <section class="card" id="truth">
+    <div class="step"><span class="n">◆</span><h3>Record a case</h3><span class="hint">the expert grader’s record</span></div>
+    <div class="note" id="truthState" style="margin:0 0 10px"></div>
+    <p class="small" style="margin-bottom:6px" id="truthIntro"></p>
+    <div class="note" style="margin:0 0 10px">Fill in whatever you have. A culture usually takes three to five days, so the microbiology is often blank at this point — that is expected. The case then appears in the log below under <b>cases waiting for a culture result</b>, and tapping it there completes the organism, the sensitivity and the outcome whenever they arrive.</div>
+    <!-- Applies to both wound types: the patient and the camera, not the wound. -->
+    <div class="row3">
+      <div class="field"><label>Study ID <em style="font-style:normal;color:var(--faint);font-weight:400">optional — taken from the filename if blank</em></label>
+        <input id="gtCase" placeholder="P014" autocomplete="off"></div>
+      <div class="field"><label>Fitzpatrick skin type</label>
+        <select id="gtSkin"><option value="">—</option><option>I</option><option>II</option><option>III</option><option>IV</option><option>V</option><option>VI</option><option>Not assessed</option></select></div>
+      <div class="field"><label>Grader</label>
+        <select id="gtRater"><option value="">—</option></select></div>
+    </div>
+    <div class="field" style="max-width:320px"><label>Capture device</label>
+      <select id="gtDevice"><option value="">—</option><option>Mobile phone</option><option>Digital camera</option><option>Tablet</option><option>Dermatoscope</option><option>Other</option></select></div>
+    <div class="note" style="margin:0 0 10px">Skin type is recorded because the public training sets are predominantly lighter skin; without it, performance in a Malaysian population cannot be reported by skin tone. The capture device is recorded so that variation between cameras can be measured later rather than guessed at. Grader and device stay between photographs; the study ID and skin type clear with each new one.</div>
+    <div id="gtDfu">
+    <div class="row3">
+      <div class="field"><label>Clinician Texas grade</label>
+        <select id="gtGrade"><option value="">—</option><option>0</option><option>1</option><option>2</option><option>3</option></select></div>
+      <div class="field"><label>Texas stage</label>
+        <select id="gtStage"><option value="">—</option><option>A</option><option>B</option><option>C</option><option>D</option></select></div>
+      <div class="field"><label>Wagner grade</label>
+        <select id="gtWagner"><option value="">—</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Ulcer site</label>
+        <select id="gtSiteDfu"><option value="">—</option><option>Plantar forefoot</option><option>Plantar midfoot</option><option>Heel</option><option>Hallux</option><option>Lesser toe</option><option>Dorsum of foot</option><option>Medial malleolus</option><option>Lateral malleolus</option><option>Amputation stump</option><option>Other</option></select></div>
+      <div class="field"><label>Probe‑to‑bone</label>
+        <select id="gtPtb"><option value="">—</option><option>Negative</option><option>Positive</option><option>Not done</option></select></div>
+      <div class="field"><label>Specimen date</label><input type="date" id="gtDate"></div>
+    </div>
+    <div class="field"><label>Tissue culture &amp; sensitivity — organism(s) isolated <em style="font-style:normal;color:var(--faint);font-weight:400">leave blank if not back yet</em></label>
+      <div id="gtOrgs"></div>
+    </div>
+    <div class="field"><label>Sensitivity pattern / notes</label><textarea id="gtNotes" placeholder="e.g. sensitive to co-amoxiclav, resistant to ciprofloxacin; ESBL negative"></textarea></div>
+    <div class="field" style="max-width:320px"><label>Outcome at follow-up</label>
+      <select id="gtOutcome"><option value="">—</option><option>Healed</option><option>Improving</option><option>Static</option><option>Deteriorated</option><option>Not yet known</option></select></div>
+    </div>
+    <div id="gtPi" class="hidden">
+      <div class="row3">
+        <div class="field"><label>Clinician NPIAP stage</label>
+          <select id="gtNpiap"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>Unstageable</option><option>Deep tissue injury</option></select></div>
+        <div class="field"><label>Blanching test</label>
+          <select id="gtBlanch"><option value="">—</option><option>Blanchable</option><option>Non-blanchable</option><option>Not tested</option></select></div>
+        <div class="field"><label>Deepest structure seen or palpated</label>
+          <select id="gtDeep"><option value="">—</option><option>Dermis</option><option>Adipose</option><option>Fascia</option><option>Muscle</option><option>Tendon</option><option>Bone</option><option>Obscured by slough or eschar</option></select></div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>Body site</label>
+          <select id="gtSite"><option value="">—</option><option>Sacrum</option><option>Coccyx</option><option>Ischial tuberosity</option><option>Heel</option><option>Lateral malleolus</option><option>Greater trochanter</option><option>Occiput</option><option>Ear</option><option>Elbow</option><option>Device-related</option><option>Other</option></select></div>
+      </div>
+      <div class="field"><label>Notes</label><textarea id="gtPiNotes" placeholder="e.g. device-related under mask strap; offloading in place; Braden 12"></textarea></div>
+      <div class="note">There is deliberately no culture and sensitivity field for a pressure injury. Every chronic wound is colonised, so a swab does not establish infection and swabbing is discouraged; infection is a clinical diagnosis. The reference standard for this arm is the adjudicated stage plus the outcome at follow-up, and the outcome is recorded in the case log when it is known.</div>
+    </div>
+    <button class="btn btn-teal" id="saveCase" style="width:100%">Save ground truth to case log</button>
+    <div class="note teal" id="truthNote"></div>
   </section>
 
   <section class="card" id="logCard">
@@ -1106,7 +1110,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-10-13 &middot; v3.6</span>
+  <span class="study-hide" id="buildStamp">build 2026-10-13 &middot; v3.7</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1183,12 +1187,12 @@ function setStudyMode(on){
   $('lockBtn').classList.toggle('hidden', !on);
   $('modeBar').classList.toggle('hidden', !on);
   $('camLocked').classList.toggle('hidden', on);
-  /* The model card is study-team material: a clinician testing a photograph does not need the
-     architecture, and it reads as noise beside the result. */
-  $('modelCardSection').classList.toggle('study-only', !on);
-  /* Recording a case, the case log and the occlusion test are the study team's work. Someone
-     trying a photograph does not need a reference-standard form, and showing it invites
-     half-filled rows from people who are not grading. */
+  /* The model card and the recording form used to sit in the assessment tab and be hidden by
+     class. That was the wrong mechanism: the class keys off whether the passcode has been
+     entered, so once a grader unlocked, both reappeared in the tester's tab. They now live in
+     the Study team tab, where the tab itself is the boundary and no CSS can leak them.
+     What is left here is the handful of controls genuinely inside the assessment flow \u2014 the
+     Grad-CAM view and the occlusion test. */
   document.querySelectorAll('.study-hide').forEach(x => x.classList.toggle('study-only', !on));
   /* The journey shows one step fewer outside study mode, so it is redrawn when the mode
      changes, not only when the image does. */
@@ -1371,7 +1375,7 @@ function useImage(img, name){
   if ($('gtCase')){ const cid = caseIdOf(name);
     $('gtCase').value = cid === String(name || '').replace(/\.[^.]+$/, '').toUpperCase() ? '' : cid; }
   setCam(segModel ? 1 : 0);
-  $('analyse').classList.remove('hidden'); $('truth').classList.remove('hidden');
+  $('analyse').classList.remove('hidden');
   renderAssessJourney();
   $('results').classList.add('hidden'); $('woundPanel').classList.add('hidden'); $('decide').classList.add('hidden'); $('status').classList.remove('hidden');
   $('analyse').scrollIntoView({behavior:'smooth', block:'start'});
@@ -2737,6 +2741,28 @@ let abxGates = {};                                   // allergy / eGFR / resista
 
    The one thing it is really for: step 3. Forgetting to record the case is silent, costs the
    study a data point, and is discovered weeks later when the numbers do not add up.            */
+/* The recording form and the photograph it describes are now in different tabs, so the form has
+   to say which case it is about. Without this it is a page of blank fields with no stated subject,
+   and the obvious misreading \u2014 that it records whatever you type \u2014 would put gradings against the
+   wrong image. */
+function syncTruthState(){
+  const box = $('truthState'), btn = $('saveCase');
+  if (!box || !btn) return;
+  if (!currentImg){
+    box.className = 'note';
+    box.innerHTML = '<b>No photograph is open.</b> This form records the case you have open in '
+      + '<b>Assess a wound</b>. Open a photograph and work through your findings there first, then '
+      + 'come back here to record it.';
+    btn.disabled = true;
+    return;
+  }
+  box.className = 'note teal';
+  box.innerHTML = `Recording <b>${currentName}</b>, assessed as a `
+    + `<b>${DISEASE === 'pi' ? 'pressure injury' : 'diabetic foot ulcer'}</b>. `
+    + 'Change the photograph or the wound type in <b>Assess a wound</b> and this follows it.';
+  btn.disabled = false;
+}
+
 function renderAssessJourney(){
   const strip = $('jstrip'); if (!strip) return;
   const pi = DISEASE === 'pi';
@@ -2776,12 +2802,12 @@ function renderAssessJourney(){
               : `These are definitions, not predictions — ${rules.filter(([, r]) => !r.label).map(([nm]) => nm).join(' and ')} cannot be determined until the findings they are defined by are answered.`) },
     /* Recording a case is the study team's step; a visitor testing a photograph finishes at
        their own findings, and a fourth step they cannot complete reads as a failure. */
-    { k: '3', s: 'Record the case', studyOnly: true,
+    { k: '3', s: 'Record the case', studyOnly: true, where: ' It is in the <b>Study team</b> tab.',
       done: recorded,
       d: !currentImg ? 'Waiting for a photograph.'
          : thisSession ? 'Saved to the case log. Add the culture and the outcome from the log when they arrive.'
          : recorded ? `Already in the log as ${mine.length === 1 ? 'a case' : mine.length + ' cases'} under this filename and wound type, from ${new Date(mine[0].when).toLocaleDateString()}. Saving again adds another row rather than replacing that one — to change a grading, correct it in the log instead.`
-         : 'Not recorded yet. Without this the case contributes nothing to the reference standard — and it is the easiest step in the whole app to forget.' }
+         : 'Not recorded yet. Without this the case contributes nothing to the reference standard \u2014 and it is the easiest step in the whole app to forget. The form is in the <b>Study team</b> tab.' }
   ];
 
   const shown = steps.filter(x => !x.studyOnly || studyMode);
@@ -2790,6 +2816,8 @@ function renderAssessJourney(){
     const cls = x.done ? 'done' : i === cur ? 'now' : 'todo';
     return `<li class="${cls}"><span class="sn">${x.done ? '✓' : x.k}</span><span class="sl">${x.s}</span></li>`;
   }).join('');
+
+  syncTruthState();
 
   const nowEl = $('jnow');
   if (cur < 0){

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0B1F3A">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%2715%27 fill=%27%230B1F3A%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%277%27 fill=%27%231CB8A0%27/%3E%3C/svg%3E">
-<title>Wound Vision — diabetic foot ulcer &amp; pressure injury AI prototype</title>
+<title>Wound Vision — diabetic foot ulcer &amp; pressure injury assessment</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="vendor/tf.min.js"></script>
@@ -56,6 +56,11 @@ header small{display:block;font-size:11.5px;opacity:.7;margin-top:1px}
 .tabs{max-width:600px;margin:0 auto;display:flex;gap:4px}
 .tabs button{flex:1;border:none;background:transparent;color:rgba(255,255,255,.6);font-weight:600;font-size:13.5px;padding:10px 6px;border-bottom:3px solid transparent}
 .tabs button.on{color:#fff;border-bottom-color:var(--teal)}
+.tabs .lock{font-size:9px;vertical-align:1px;opacity:.75;margin-left:3px}
+#passGate{position:fixed;inset:0;background:rgba(10,20,34,.72);display:grid;place-items:center;
+  padding:20px;z-index:900;overflow-y:auto}
+#passGate.hidden{display:none}
+.study-only{display:none}
 main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:18px;margin-bottom:14px}
 .step{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
@@ -410,22 +415,11 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <span class="tag">Research prototype · Not a medical device</span>
     <h2>Wound Vision — before you take a photograph</h2>
     <p style="font-family:var(--mono);font-size:12px;color:var(--faint);margin-bottom:12px">A prototype by Dr Naim Bin Abdul Malek</p>
-    <p>This demonstrator analyses wound photographs with a deep learning model: <b>diabetic foot ulcers</b>, where it outlines the wound and classifies depth and infection appearance, and <b>pressure injuries</b>, where it outlines and measures the wound but does <b>not</b> stage it &mdash; no pressure injury classifier has been trained yet, so NPIAP staging is yours to enter. It is for education and Centre of Excellence demonstration only. It does <b>not</b> replace clinical assessment, probe-to-bone testing, vascular assessment or microbiology, and must not be used to make treatment decisions.</p>
+    <p>This demonstrator analyses wound photographs with a <b>computer model</b> trained on photographs of other wounds — it is software, not a clinician: <b>diabetic foot ulcers</b>, where it outlines the wound and classifies depth and infection appearance, and <b>pressure injuries</b>, where it outlines and measures the wound but does <b>not</b> stage it &mdash; no pressure injury classifier has been trained yet, so NPIAP staging is yours to enter. It is for education and Centre of Excellence demonstration only. It does <b>not</b> replace clinical assessment, probe-to-bone testing, vascular assessment or microbiology, and must not be used to make treatment decisions.</p>
     <p><b>Why this exists.</b> Earlier and more consistent recognition of a severe diabetic foot ulcer or a deteriorating pressure injury, so that debridement, offloading, vascular assessment and referral happen sooner. The intended benefit is a reduction in major amputation and in permanent disability. That is the aim of the study, not a demonstrated result: no outcome data exist yet, and nothing in this prototype has been shown to change any clinical outcome.</p>
-    <p>A model is only as good as its inputs. Photographs taken under different distances, lighting and angles are the single biggest source of error in wound image AI. Please follow the standardised image acquisition protocol:</p>
-    <div class="protocol">
-      <h4>Standardised image acquisition protocol</h4>
-      <ul>
-        <li><b>Prepare the wound:</b> remove the dressing, irrigate with saline and gently blot dry before photographing.</li>
-        <li><b>Distance and angle:</b> hold the camera 30–40 cm away, perpendicular to the wound surface; the ulcer should fill roughly one third of the frame.</li>
-        <li><b>Lighting:</b> even, diffuse room lighting; flash off; avoid shadows, glare and coloured light.</li>
-        <li><b>Background and scale:</b> plain drape or sheet behind the limb or trunk; place a disposable paper ruler or colour reference beside (not over) the wound. The ruler must carry a study identifier only &mdash; never a name or identity card number.</li>
-        <li><b>Framing:</b> include a margin of peri-wound skin; no faces, name bands, documents or identifiers in the frame.</li>
-        <li><b>Consistency:</b> same device, same settings and same view at every visit so change over time is real, not photographic.</li>
-      </ul>
-    </div>
+    <p><b>How to start.</b> Use the demo images provided to see how the app works, then try a photograph of your own. Everything runs on your device; no image is uploaded.</p>
     <label><input type="checkbox" id="ack1"> I understand this is a research prototype trained on publicly available images and is not validated for clinical use.</label>
-    <label><input type="checkbox" id="ack2"> I will follow the image acquisition protocol and will not upload identifiable patient information.</label>
+    <label><input type="checkbox" id="ack2"> I will not upload a photograph carrying a patient's name, identity card number or face.</label>
     <button class="btn btn-primary" id="enter" disabled>Continue to the tool</button>
   </div>
 </div>
@@ -440,9 +434,25 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   </div>
   <nav class="tabs">
     <button class="on" data-tab="assess" id="tabAssess">Assess a wound</button>
-    <button data-tab="train" id="tabTrain">Train on your data</button>
+    <button data-tab="train" id="tabTrain">Study team <span class="lock" id="tabLock">●</span></button>
   </nav>
 </header>
+
+<!-- Mode switch, not access control. See the comment on unlockStudy(). -->
+<div id="passGate" class="hidden">
+  <div class="gate-box" style="max-width:420px">
+    <span class="tag">Study team</span>
+    <h2>Enter the study passcode</h2>
+    <p>These screens are for the people grading and training: Dr Naim, the two graders and the two supervisors.</p>
+    <div class="field"><label>Passcode</label><input type="password" id="passInput" autocomplete="off"></div>
+    <p class="small" id="passMsg" style="min-height:18px;color:#b91c1c"></p>
+    <div class="labnav">
+      <button class="btn btn-primary" id="passGo">Unlock</button>
+      <button class="btn btn-ghost" id="passCancel">Back to assessment</button>
+    </div>
+    <div class="note" style="margin-top:12px">This keeps the two jobs apart; it is not a security control. Everything you record stays in this browser and is never sent to a server, so a person who opens these screens on their own device sees their own empty log, not yours. The one real risk is someone using your device while it is unlocked, and no passcode on a web page can prevent that.</div>
+  </div>
+</div>
 
 <main>
 <!-- ═══════════════════════════ ASSESS TAB ═══════════════════════════ -->
@@ -495,7 +505,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 
   <!-- STEP 2: ANALYSE -->
   <section class="card hidden" id="analyse">
-    <div class="step"><span class="n">2</span><h3>AI classification</h3><span class="hint" id="timing"></span></div>
+    <div class="step"><span class="n">2</span><h3>Analysis</h3><span class="hint" id="timing"></span></div>
     <div class="viewer" id="viewer">
       <span class="badge" id="imgName">image</span>
       <canvas id="imgCanvas" width="448" height="448"></canvas>
@@ -637,13 +647,9 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       <div class="field"><label>Grader</label>
         <select id="gtRater"><option value="">—</option></select></div>
     </div>
-    <div class="row2">
-      <div class="field"><label>Capture device</label>
-        <select id="gtDevice"><option value="">—</option><option>Mobile phone</option><option>Digital camera</option><option>Tablet</option><option>Dermatoscope</option><option>Other</option></select></div>
-      <div class="field"><label>Lighting / distance protocol followed</label>
-        <select id="gtProto"><option value="">—</option><option>Yes</option><option>Partly</option><option>No</option></select></div>
-    </div>
-    <div class="note" style="margin:0 0 10px">Skin type is recorded because the public training sets are predominantly lighter skin. Without it, performance in a Malaysian population cannot be reported by skin type, and a reviewer will assume it degrades. The device and protocol fields are what make an external validation possible later. Grader and device stay between photographs; the study ID and skin type clear with each new one.</div>
+    <div class="field" style="max-width:320px"><label>Capture device</label>
+      <select id="gtDevice"><option value="">—</option><option>Mobile phone</option><option>Digital camera</option><option>Tablet</option><option>Dermatoscope</option><option>Other</option></select></div>
+    <div class="note" style="margin:0 0 10px">Skin type is recorded because the public training sets are predominantly lighter skin; without it, performance in a Malaysian population cannot be reported by skin tone. The capture device is recorded so that variation between cameras can be measured later rather than guessed at. Grader and device stay between photographs; the study ID and skin type clear with each new one.</div>
     <div id="gtDfu">
     <div class="row3">
       <div class="field"><label>Clinician Texas grade</label>
@@ -906,7 +912,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
   Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
-  <b id="buildStamp">build 2026-09-30 &middot; v1.7</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=17</code><br>
+  <b id="buildStamp">build 2026-10-13 &middot; v2.0</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=20</code><br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>
@@ -958,7 +964,60 @@ const VIEW = 448;                                                          // vi
 const gateCheck = () => { $('enter').disabled = !($('ack1').checked && $('ack2').checked); };
 $('ack1').onchange = $('ack2').onchange = gateCheck;
 $('enter').onclick = () => $('gate').classList.add('hidden');
+/* ── study-team mode ───────────────────────────────────────────────────────────────────────
+   A passcode in a page served as static HTML is not a security control and must never be
+   described as one: the check runs in JavaScript the visitor can read. What it IS good for is
+   keeping two different jobs apart, so a doctor testing a photograph does not wander into the
+   grading screens and start editing the reference standard.
+
+   The reason that is enough here: nothing is stored on a server. Every case and every label
+   lives in the browser that typed it. Someone who guesses the passcode on their own laptop
+   opens an empty app. The real exposure is an unlocked device, which no page-level passcode
+   can address.                                                                               */
+const STUDY_PASS = 'htpn2026';
+const STUDY_KEY  = 'wound_vision_study_mode';
+let studyMode = false;
+try { studyMode = localStorage.getItem(STUDY_KEY) === '1'; } catch(e){}
+
+function setStudyMode(on){
+  studyMode = on;
+  try { localStorage.setItem(STUDY_KEY, on ? '1' : '0'); } catch(e){}
+  $('tabLock').textContent = on ? '○' : '●';
+  $('tabLock').title = on ? 'unlocked' : 'locked';
+  /* The model card is study-team material: a clinician testing a photograph does not need the
+     architecture, and it reads as noise beside the result. */
+  $('modelCardSection').classList.toggle('study-only', !on);
+}
+
+function openTab(name){
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === name));
+  const assess = name === 'assess';
+  $('tab-assess').classList.toggle('hidden', !assess);
+  $('tab-train').classList.toggle('hidden', assess);
+  const log = $('logCard');
+  if (assess) $('modelCardSection').before(log); else $('targetCard').before(log);
+  window.scrollTo({top:0});
+}
+
+$('passGo') && ($('passGo').onclick = () => {
+  if ($('passInput').value.trim() !== STUDY_PASS){
+    $('passMsg').textContent = 'That is not the passcode.'; return;
+  }
+  $('passInput').value = ''; $('passMsg').textContent = '';
+  $('passGate').classList.add('hidden');
+  setStudyMode(true); openTab('train');
+});
+$('passCancel') && ($('passCancel').onclick = () => {
+  $('passGate').classList.add('hidden'); $('passInput').value = ''; $('passMsg').textContent = '';
+});
+$('passInput') && ($('passInput').onkeydown = e => { if (e.key === 'Enter') $('passGo').click(); });
+
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  if (b.dataset.tab === 'train' && !studyMode){
+    $('passGate').classList.remove('hidden');
+    setTimeout(() => $('passInput').focus(), 50);
+    return;
+  }
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
   const assess = b.dataset.tab === 'assess';
   $('tab-assess').classList.toggle('hidden', !assess);
@@ -1096,7 +1155,7 @@ function useImage(img, name){
      specimen's result can never attach to the next case. The grader's initials and the camera
      stay, because they are properties of the clinic session and re-typing them 40 times is how
      a field ends up empty. */
-  ['gtGrade','gtStage','gtWagner','gtPtb','gtOutcome','gtNpiap','gtBlanch','gtDeep','gtSite','gtSiteDfu','gtSkin']   /* not gtRater / gtDevice / gtProto: clinic-session properties */
+  ['gtGrade','gtStage','gtWagner','gtPtb','gtOutcome','gtNpiap','gtBlanch','gtDeep','gtSite','gtSiteDfu','gtSkin']   /* not gtRater / gtDevice: clinic-session properties */
     .forEach(k => { if ($(k)) $(k).value = ''; });
   if ($('gtPiNotes')) $('gtPiNotes').value = '';
   if ($('gtCase')){ const cid = caseIdOf(name);
@@ -1467,7 +1526,7 @@ function renderClass(){
   const showTexas = scheme === 'texas' && it.texas, showWagner = scheme === 'wagner' && it.wagner;
   $('texasPanel').classList.toggle('hidden', !showTexas); $('wagnerPanel').classList.toggle('hidden', !showWagner);
   $('ischField').classList.toggle('hidden', !(it.texas && scheme === 'texas'));
-  if (it.label){ $('classBig').textContent = it.label; $('classDesc').textContent = it.desc; $('caution').textContent = 'AI output is decision support only.'; return; }
+  if (it.label){ $('classBig').textContent = it.label; $('classDesc').textContent = it.desc; $('caution').textContent = 'This output is decision support only.'; return; }
   if (scheme === 'texas' && !it.texas){ $('classBig').textContent = '—'; $('classDesc').textContent = 'This model predicts Wagner grades. Switch to the Wagner scheme.'; $('caution').textContent = ''; return; }
   if (scheme === 'wagner' && !it.wagner){ $('classBig').textContent = '—'; $('classDesc').textContent = 'This model predicts Texas classes. Switch to the Texas scheme.'; $('caution').textContent = ''; return; }
   if (showTexas){
@@ -1480,8 +1539,8 @@ function renderClass(){
     $('classBig').textContent = t.grade + t.stage + (t.unknownIsch ? '?' : '');
     $('classDesc').textContent = `Grade ${t.grade}: ${TEXAS_DESC[t.grade]}. Stage ${t.stage}: ${TEXAS_DESC[t.stage]}.` + (t.unknownIsch ? ' Stage provisional until vascular status is assessed (C/D if ischaemic).' : '');
     $('caution').textContent = active.kind === 'demo'
-      ? 'AI output is decision support only. Grade 0 and Grade 2 are not modelled by the demo model; the depth head separates a superficial (Grade 1‑like) from a deep or extensive (Grade 3‑like) appearance and cannot see tendon, capsule or bone. Confirm depth with probe‑to‑bone and imaging.'
-      : 'AI output is decision support only. Texas depth grades and stages require probe‑to‑bone, vascular assessment and microbiology; the photograph alone cannot establish them.';
+      ? 'This output is decision support only. Grade 0 and Grade 2 are not modelled by the demo model; the depth head separates a superficial (Grade 1‑like) from a deep or extensive (Grade 3‑like) appearance and cannot see tendon, capsule or bone. Confirm depth with probe‑to‑bone and imaging.'
+      : 'This output is decision support only. Texas depth grades and stages require probe‑to‑bone, vascular assessment and microbiology; the photograph alone cannot establish them.';
   }
   if (showWagner){
     const w = it.wagner, l = $('ladder'); l.innerHTML = '';
@@ -1529,7 +1588,7 @@ function jet(v){ const r = Math.max(0, Math.min(1, 1.5 - Math.abs(4*v - 3))), g 
 /* Each overlay gets one sentence on how to interpret it and one on what this dataset actually showed. */
 const OVERLAY_TEXT = {
   0: { how: 'The photograph exactly as both models receive it, centre-cropped to a square, with nothing drawn on top.',
-       what: 'Nothing is inferred in this view — use it to check the acquisition protocol was followed, since distance, angle and lighting are the largest single source of error in wound image AI.' },
+       what: 'Nothing is inferred in this view. It is the photograph exactly as the app received it.' },
   1: { how: 'The teal line is the wound border the segmentation model proposes and the dashed square is the crop handed to the classifier, so every measurement above describes the outlined region only.',
        what: 'On 190 held-out images the predicted centre fell inside the expert-drawn ulcer in 89 % of cases at a mean Dice of 0.85, which means most outlines are close and sloughy borders tend to be under-traced.' },
   2: { how: 'Colour is the model’s attention, not a clinical sign: it shows how strongly each area pushed the score towards the class named in the dropdown, so red means "counted most", never infection, bleeding or erythema.',
@@ -1824,8 +1883,8 @@ function setDisease(d){
      assessing a sacral sore, and vice versa. */
   document.querySelectorAll('.sample').forEach(b => b.classList.toggle('hidden', b.dataset.dis !== (pi ? 'pi' : 'dfu')));
   $('sampleNote').innerHTML = pi
-    ? 'Three pressure injuries from the <b>HTPN wound unit</b>, de-identified before upload &mdash; no ruler, no name, no identity card number, no metadata. They carry no expert mask, so no outline score is shown for them; only the foot ulcer samples have one. Remember that no pressure injury classifier exists, so the app will outline and measure these but leave the staging to you.'
-    : 'Samples A to E are images 0068, 0046, 0729, 0136 and 0971 of the FUSeg 2021 <b>validation</b> split, so the models were never trained on them. Each carries an expert-drawn mask, and the Dice shown is how closely this model\u2019s outline matches that mask on that image &mdash; 0.70 is kept deliberately, because a demo that only shows its best cases is an advertisement. F and G are C and B re-framed into camera and phone shapes, to show that nothing at the edge of the frame is discarded.';
+    ? 'Three pressure injuries from the <b>HTPN wound unit</b>, de-identified before upload. Tap one to see how the app works: it outlines and measures the wound, and the stage is yours to enter because no pressure injury classifier has been trained yet.'
+    : 'Please use the demo images provided to understand how the app works. Tap any one of them and it runs exactly as your own photograph would.';
   $('truthIntro').textContent = pi
     ? 'Record the stage you assigned, the blanching test and the deepest structure you could see or palpate. Outcome at follow-up is the reference standard here, not a swab.'
     : "Record the clinician's classification and the tissue culture & sensitivity result. Logged cases become the labelled dataset for the next training cycle.";
@@ -2122,8 +2181,8 @@ function renderAssessJourney(){
     { k: '1', s: 'Photograph',
       done: !!currentImg,
       d: currentImg ? `<b>${currentName}</b> loaded. Nothing leaves this device.`
-                    : 'Take or upload a photograph. Follow the acquisition protocol — distance, lighting and a plain background are the largest single source of error.' },
-    { k: '2', s: 'AI analysis',
+                    : 'Take or upload a photograph, or tap one of the demo images to see how the app works.' },
+    { k: '2', s: 'Analysis',
       done: !!lastPred,
       d: !currentImg ? 'Waiting for a photograph.'
          : !lastPred ? 'Runs automatically once the image loads.'
@@ -2331,7 +2390,7 @@ $('saveCase').onclick = () => {
     /* The study ID is what makes a patient-level split possible later; if the clinician leaves it
        blank it is derived from the filename, by the same rule the trainer uses. */
     case_id: $('gtCase').value.trim().toUpperCase() || caseIdOf(currentName),
-    skin_type: $('gtSkin').value, device: $('gtDevice').value, protocol: $('gtProto').value,
+    skin_type: $('gtSkin').value, device: $('gtDevice').value, protocol: '',
     grader: $('gtRater').value,
     rater2: '', rater2_wagner: '', rater2_npiap: '',
     gt_grade: $('gtGrade').value, gt_stage: $('gtStage').value, gt_wagner: $('gtWagner').value, probe_to_bone: $('gtPtb').value,
@@ -2605,7 +2664,7 @@ function renderLog(){
       : ([r.gt_grade && r.gt_stage ? r.gt_grade + r.gt_stage : '', r.gt_wagner ? 'W' + r.gt_wagner : ''].filter(Boolean).join(' / ') || '?');
     const tail = pi ? [r.body_site, r.outcome].filter(Boolean).join(' · ') || 'no site recorded'
                     : ((r.organisms || []).join(', ') || 'no C&S yet');
-    const head = pi ? `clinician ${gt} · no model` : `AI ${r.ai_label || '?'} · clinician ${gt}`;
+    const head = pi ? `clinician ${gt} · no model` : `model ${r.ai_label || '?'} · clinician ${gt}`;
     const isOpen = String(openCase) === String(r.id);
     const rev = r.revised ? ` · corrected ×${r.revised}` : '';
     return `<li class="${isOpen ? 'open' : ''}" data-id="${r.id}"><img src="${r.thumb || ''}" alt=""><div class="who"><b>${head}</b><small>${r.image} · ${new Date(r.when).toLocaleString()} · ${tail}${rev}</small></div>${a}${isOpen ? followupHtml(r) : ''}</li>`;
@@ -3640,6 +3699,7 @@ $('gtRater') && ($('gtRater').innerHTML = sel([''].concat(GRADERS, ['Other']), '
 fillTargets(); describeTarget(); renderLabeller(); renderReadiness(); renderJourney(); renderAssessJourney();
 /* Place the case log for whichever tab is showing at load, so it is not stranded in the hidden
    one until the first tab click. */
+setStudyMode(studyMode);
 (() => { const t = document.querySelector('.tabs button.on');
          if (t && t.dataset.tab === 'assess') $('modelCardSection').before($('logCard')); })();
 
@@ -3758,7 +3818,7 @@ $('activateBtn').onclick = async () => {
   const entry = headEntry(trained.head, trained.classes, name, trained.metrics, when); registry[name] = entry; setActive(entry);
   try { const key = 'dfu-head-' + Date.now(); await trained.head.save('indexeddb://' + key); const meta = loadHeadsMeta(); meta.unshift({ key, name, classes: trained.classes, metrics: trained.metrics, when }); localStorage.setItem(HEADS_KEY, JSON.stringify(meta.slice(0, 10))); toast('Model active and saved on this device'); }
   catch(e){ toast('Model active (could not persist: ' + e.message + ')'); }
-  renderModelList(); renderJourney(); $('tabAssess').click();
+  renderModelList(); renderJourney(); openTab('assess');
 };
 $('downloadBtn').onclick = async () => {
   if (!trained) return;

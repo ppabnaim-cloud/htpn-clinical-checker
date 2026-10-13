@@ -307,6 +307,17 @@ details.correct[open]>summary{margin-bottom:4px}
 .sheetstate b{font-weight:700}
 .sheetstate .dot{flex:none;width:9px;height:9px;border-radius:50%;background:currentColor}
 .sheetstate button{margin-left:auto;flex:none}
+.hitl{border:1px solid rgba(28,184,160,.38);background:rgba(28,184,160,.07);border-radius:11px;
+  padding:12px 14px;margin-bottom:14px}
+.hitlbar{display:flex;align-items:stretch;gap:10px}
+.hitlbar .side{flex:1;background:#fff;border:1px solid var(--rule);border-radius:9px;padding:9px 11px;text-align:center}
+.hitlbar .side b{display:block;font-size:21px;font-weight:700;color:var(--navy);line-height:1.2}
+.hitlbar .side span{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.hitlbar .side.you{border-color:rgba(28,184,160,.55);background:rgba(28,184,160,.1)}
+.hitlbar .side.you b{color:#0f766e}
+.hitlbar .vs{align-self:center;font-size:17px;font-weight:700;color:var(--muted)}
+.hitl p{margin:10px 0 0;font-size:12.5px;line-height:1.6;color:var(--text)}
+.hitl p b{color:var(--navy)}
 .askrow{display:flex;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--rule)}
 .askrow:first-child{border-top:0}
 .askrow .q{flex:1;min-width:0}
@@ -599,7 +610,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   <canvas id="scaleCanvas" width="448" height="448"></canvas>
     </div>
     <div class="cam-controls">
-      <div class="seg" id="camToggle"><button data-v="0">Photo</button><button data-v="1" class="on">Wound outline</button><button data-v="3">Tissue</button><button data-v="2">Grad-CAM</button></div>
+      <div class="seg" id="camToggle"><button data-v="0">Photo</button><button data-v="1" class="on">Wound outline</button><button data-v="3">Tissue</button><button data-v="2" class="study-hide">Grad-CAM</button></div>
       <select id="camTarget" class="hidden"></select>
       <input type="range" id="camAlpha" min="0" max="100" value="55" title="overlay opacity">
     </div>
@@ -715,13 +726,25 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 
   <!-- STEP 2b: FINDINGS -> CLASSIFICATION BY RULE -->
   <section class="card hidden" id="decide">
-    <div class="step"><span class="n">2b</span><h3>Findings and classification</h3><span class="hint">rule-based, shows its working</span></div>
-    <p class="small" style="margin-bottom:10px">These classifications are not predicted. Each one is a defined function of findings, so the app lists what the photograph supplies, asks you for what it cannot see, and then applies the published definition. Every answer changes the result below immediately.</p>
+    <div class="step"><span class="n">2b</span><h3>Your examination decides this</h3><span class="hint">human in the loop</span></div>
+
+    <!-- The design argument of the whole app, stated where it happens rather than left for the
+         reader to infer. Wagner, Texas and NPIAP are definitions, not predictions, and most of
+         what defines them cannot be photographed: probing, pulses, systemic signs. So the model
+         stops at what a camera can see and the clinician finishes the job. -->
+    <div class="hitl" id="hitl">
+      <div class="hitlbar">
+        <div class="side cam"><b id="hitlCamN">—</b><span>from the photograph</span></div>
+        <div class="vs">+</div>
+        <div class="side you"><b id="hitlYouN">—</b><span>only you can answer</span></div>
+      </div>
+      <p id="hitlMsg"></p>
+    </div>
 
     <span class="lab">What the photograph supplies</span>
     <div class="findlist" id="autoFind"></div>
 
-    <span class="lab" style="margin-top:14px">What only your examination supplies</span>
+    <span class="lab" style="margin-top:14px">What only your examination supplies <em>the app cannot answer these, and will not guess</em></span>
     <div class="findlist" id="askFind"></div>
 
     <span class="lab" style="margin-top:14px">Classification</span>
@@ -1021,7 +1044,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
   Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
-  <b id="buildStamp">build 2026-10-13 &middot; v2.7</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=27</code><br>
+  <b id="buildStamp">build 2026-10-13 &middot; v2.8</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=28</code><br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>
@@ -1795,6 +1818,32 @@ let answers = { dfu:{}, pi:{} };
    What it can say, and what is most often got wrong, is whether systemic antibiotics are
    indicated at all: an uninfected ulcer should not receive them, and treating one is how
    resistance is manufactured.                                                               */
+/* The human-in-the-loop band, with the actual counts rather than a claim about them. */
+function renderHitl(spec, a, rules){
+  const el = $('hitl'); if (!el) return;
+  const camN = autoFindings().length;
+  const answered = spec.filter(f => a[f.id] !== undefined).length;
+  const settled = rules.filter(([, r]) => r.label).length;
+  $('hitlCamN').textContent = camN;
+  $('hitlYouN').textContent = `${answered}/${spec.length}`;
+  const msg = $('hitlMsg');
+  if (answered === 0)
+    msg.innerHTML = '<b>The app stops here on purpose.</b> Wagner, Texas and NPIAP are definitions, '
+      + 'and most of what defines them cannot be photographed — probing to bone, pulses, a fever. '
+      + 'No classification is produced until you answer below.';
+  else if (answered < spec.length)
+    msg.innerHTML = `<b>${spec.length - answered} answer${spec.length - answered === 1 ? '' : 's'} still needed.</b> `
+      + `The classification updates as you go, and says which findings it is still short of. `
+      + `Change any answer and it changes with you — nothing is fixed by the model.`;
+  else
+    msg.innerHTML = settled === rules.length
+      ? '<b>Complete — and it is your classification, not the model’s.</b> Every grade below follows '
+        + 'from the findings you entered, by published definition. The photograph contributed the '
+        + 'outline and the tissue colours; you contributed what decides the grade.'
+      : '<b>All questions answered.</b> Some definitions remain unsettled because they need findings '
+        + 'this wound type does not supply — the classification below names which.';
+}
+
 function renderAbx(){
   const el = $('abxBox'); if (!el) return;
   /* IWGDF grades a diabetic foot infection; there is no equivalent in the NPIAP system, and
@@ -2033,6 +2082,7 @@ function renderDecide(){
   }
   const rules = DISEASE === 'pi' ? [['NPIAP stage', ruleNpiap(a)]]
                                  : [['Meggitt–Wagner', ruleWagner(a)], ['University of Texas', ruleTexas(a)]];
+  renderHitl(spec, a, rules);
   renderAbx();
   $('ruleOut').innerHTML = rules.map(([name, r]) => {
     const unresolved = [...new Set(r.need)].filter(Boolean);

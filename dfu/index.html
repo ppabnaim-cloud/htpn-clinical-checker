@@ -976,7 +976,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
   Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
-  <b id="buildStamp">build 2026-10-13 &middot; v2.1</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=21</code><br>
+  <b id="buildStamp">build 2026-10-13 &middot; v2.2</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=22</code><br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>
@@ -1038,7 +1038,7 @@ $('enter').onclick = () => $('gate').classList.add('hidden');
    lives in the browser that typed it. Someone who guesses the passcode on their own laptop
    opens an empty app. The real exposure is an unlocked device, which no page-level passcode
    can address.                                                                               */
-const STUDY_PASS = 'htpn2026';
+const STUDY_PASS = '12345678';
 const STUDY_KEY  = 'wound_vision_study_mode';
 let studyMode = false;
 try { studyMode = localStorage.getItem(STUDY_KEY) === '1'; } catch(e){}

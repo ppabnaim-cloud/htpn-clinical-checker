@@ -296,6 +296,38 @@ details.correct[open]>summary{margin-bottom:4px}
   background:var(--slate-soft);border:1px solid var(--rule)}
 .jnow.ok{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
 .dimmed{opacity:.45;pointer-events:none}
+.trainfor{margin-top:14px;border:1px solid var(--rule);border-radius:11px;padding:12px 14px;background:#fff}
+.tfhead{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.trainfor .readynow{margin-top:12px;background:var(--slate-soft)}
+.sheetstate{display:flex;align-items:center;gap:9px;margin:0 0 11px;padding:9px 12px;
+  border-radius:9px;font-size:12.5px;line-height:1.5}
+.sheetstate.on{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}
+.sheetstate.half{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+.sheetstate.off{background:var(--slate-soft);border:1px solid var(--rule);color:var(--muted)}
+.sheetstate b{font-weight:700}
+.sheetstate .dot{flex:none;width:9px;height:9px;border-radius:50%;background:currentColor}
+.sheetstate button{margin-left:auto;flex:none}
+.askrow{display:flex;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--rule)}
+.askrow:first-child{border-top:0}
+.askrow .q{flex:1;min-width:0}
+.askrow .q b{display:block;font-size:13.5px;color:var(--navy);font-weight:600;line-height:1.35}
+.askrow .q em{display:block;font-style:normal;font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:2px}
+.askrow select{flex:0 0 210px;padding:8px 9px;border-radius:8px;border:1px solid var(--line);
+  font-size:13px;background:#fff;color:var(--text)}
+.askrow.done select{border-color:var(--teal);background:rgba(28,184,160,.07);font-weight:600}
+@media (max-width:620px){
+  .askrow{flex-direction:column;align-items:stretch;gap:6px}
+  .askrow select{flex:none;width:100%}
+}
+.tagsel{width:100%;max-width:340px;padding:9px 10px;border-radius:9px;border:1px solid var(--line);
+  font-size:13.5px;background:#fff;color:var(--text)}
+.taglist{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag2{display:inline-flex;align-items:center;gap:6px;background:rgba(28,184,160,.13);
+  border:1px solid rgba(28,184,160,.4);color:#0f766e;border-radius:999px;
+  padding:4px 6px 4px 11px;font-size:12.5px;font-weight:600}
+.tag2 button{border:none;background:rgba(15,118,110,.14);color:#0f766e;width:17px;height:17px;
+  border-radius:50%;font-size:12px;line-height:1;cursor:pointer;padding:0}
+.tag2 button:hover{background:rgba(15,118,110,.3)}
 .readynow{margin-top:12px;border:1px solid var(--rule);border-radius:10px;padding:10px 12px;background:var(--slate-soft)}
 .readynow b.h{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
 .rnrow{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:12.5px}
@@ -670,7 +702,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
         <div id="cmpOut"></div>
       </div>
 
-      <div class="occ" id="occBox">
+      <div class="occ study-hide" id="occBox">
         <div class="occhead">
           <b>Does the wound actually drive this prediction?</b>
           <button class="btn btn-ghost btn-sm" id="occBtn">Run occlusion test</button>
@@ -698,7 +730,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   </section>
 
   <!-- STEP 3: GROUND TRUTH -->
-  <section class="card hidden" id="truth">
+  <section class="card hidden study-hide" id="truth">
     <div class="step"><span class="n">3</span><h3>Record this case</h3><span class="hint">what you know now</span></div>
     <p class="small" style="margin-bottom:6px" id="truthIntro"></p>
     <div class="note" style="margin:0 0 10px">Fill in whatever you have. A culture usually takes three to five days, so the microbiology is often blank at this point — that is expected. The case then appears in the log below under <b>cases waiting for a culture result</b>, and tapping it there completes the organism, the sensitivity and the outcome whenever they arrive.</div>
@@ -780,7 +812,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 
   <!-- the journey, with live state: which step you are on and what is left -->
   <section class="card" id="journeyCard">
-    <div class="step"><span class="n">&#9679;</span><h3>How training works here</h3><span class="hint">five steps, one sitting</span></div>
+    <div class="step"><span class="n">&#9679;</span><h3>How training works here</h3><span class="hint">four steps, one sitting</span></div>
     <ol class="journey" id="journey"></ol>
     <div class="keepbox">
       <b>What survives closing the app</b>
@@ -882,7 +914,29 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <!-- Readiness where the grading happens. The dashboard lower down answers the same
          question, but a grader working through 300 images should not have to scroll to it
          to see whether this hour moved anything. -->
-    <div class="readynow" id="readyNow"></div>
+    <!-- Target and readiness live where the grading happens. They were two cards below this
+         one; the target drives the counts, so reading one meant scrolling to the other. -->
+    <div class="trainfor viz-root" id="targetCard">
+      <div class="tfhead">
+        <div class="field" style="flex:1 1 260px;margin:0"><label>Train the model to predict</label>
+          <select id="trainTarget"></select></div>
+        <div class="field" style="flex:0 0 190px;margin:0"><label>Target per class</label>
+          <select id="targetPreset">
+            <option value="100">minimum &middot; 100</option>
+            <option value="250" selected>pilot &middot; 250</option>
+            <option value="400">thesis &middot; 400</option>
+          </select></div>
+      </div>
+      <div class="readynow" id="readyNow"></div>
+      <div class="note" id="targetNote" style="margin-top:10px"></div>
+      <div class="verdict" id="rVerdict"></div>
+      <div class="note" id="rNote"></div>
+      <div class="tiles hidden"><div class="tile"><b id="rTotal">0</b><span>images</span></div>
+        <div class="tile"><b id="rClasses">0</b><span>classes</span></div>
+        <div class="tile"><b id="rSmallest">&mdash;</b><span>smallest class</span></div>
+        <div class="tile"><b id="rBalance">&mdash;</b><span>imbalance ratio</span></div></div>
+      <div id="rBars" class="hidden"></div>
+    </div>
     <div class="labfilter">
       <label for="labFilter">Show</label>
       <select id="labFilter"></select>
@@ -892,68 +946,13 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <p class="small" style="margin-top:6px;color:var(--muted)">Tap any thumbnail to go back to that image. Tapping a chip that is already on turns it off, so a wrong label is corrected in place &mdash; there is nothing to undo and nothing to re-upload.</p>
   </section>
 
-  <section class="card" id="logCard">
-    <div class="step"><span class="n">&#9679;</span><h3>Case log · model vs ground truth</h3><div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-ghost btn-sm" id="copyTsv">Copy for Sheets</button>
-        <button class="btn btn-ghost btn-sm" id="exportCsv">Export CSV</button>
-        <label class="btn btn-ghost btn-sm" style="cursor:pointer">Import CSV<input type="file" accept=".csv,text/csv" id="importCsv" hidden></label>
-      </div></div>
-    <div class="kpis">
-      <div class="kpi"><b id="kCases">0</b><span>cases logged</span></div>
-      <div class="kpi"><b id="kInf">—</b><span>infection agreement</span></div>
-      <div class="kpi"><b id="kCult">—</b><span>culture positive</span></div>
-      <div class="kpi"><b id="kKappa">—</b><span>inter-rater κ</span></div>
-    </div>
-    <div class="note" id="kappaNote" style="margin:0 0 10px"></div>
-    <div id="pending"></div>
-    <p class="small" style="margin:2px 0 8px;color:var(--muted)">This log is filled in from <b>Assess a wound</b>, step 3 — not from the training steps. Ticking a label on a training image does not add a row here, and is not meant to: the log pairs a model's output against the clinician's ground truth, one patient at a time. It is shown in both tabs because it is the same record. Tap a case to complete what was not known at the bedside — the culture result, and the outcome at follow-up.</p>
-    <ul class="log-list" id="logList"></ul>
-    <p id="logEmpty" class="small" style="margin-top:8px;color:var(--faint)">No cases logged yet.</p>
-    <div class="note" id="logStorage" style="margin-top:10px"></div>
-    <details class="sheetsync" id="sheetSync">
-      <summary>Send straight to a Google Sheet</summary>
-      <p class="small">Paste the web app URL of the Apps Script bound to your sheet. It is stored in this browser only, never in the code. Until a URL is set, nothing is sent anywhere and the copy button remains the way data leaves.</p>
-      <div class="field"><label>Apps Script web app URL</label><input id="sheetUrl" placeholder="https://script.google.com/macros/s/AKfy…/exec"></div>
-      <label class="tickrow"><input type="checkbox" id="sheetAuto"> Send each case automatically when it is saved</label>
-      <div class="labnav">
-        <button class="btn btn-ghost btn-sm" id="sheetTest">Test connection</button>
-        <button class="btn btn-teal btn-sm" id="sheetPush">Send all cases now</button>
-      </div>
-      <div class="small" id="sheetStatus" style="margin-top:8px"></div>
-      <div class="note rose" style="margin-top:10px"><b>What leaves the device.</b> The clinical columns only — grades, stage, probe-to-bone, culture, tissue percentages. Never the photograph and never the thumbnail. Once a URL is set the tool no longer holds to "nothing leaves this device", so record where that sheet lives and who can open it.</div>
-    </details>
-  </section>
 
   <!-- what the model should learn from those ticks -->
-  <section class="card hidden" id="targetCard">
-    <div class="step"><span class="n">C</span><h3>What should the model learn?</h3><span class="hint">supervised learning</span></div>
-    <p class="small" style="margin-bottom:8px">Your ticks are the supervision. Choose which of them the model should predict, and the images carrying that label become the training set. A feature is trained as present against absent, which is why every image needs a tick either way for that feature to be usable.</p>
-    <div class="field"><label>Train to predict</label><select id="trainTarget"></select></div>
-    <div class="note" id="targetNote" style="margin-top:8px"></div>
-  </section>
 
   <!-- dataset readiness: counts per class against a target -->
-  <section class="card viz-root" id="readiness">
-    <div class="step"><span class="n">&#9679;</span><h3>Dataset readiness</h3>
-      <select id="targetPreset" style="margin-left:auto;padding:6px 8px;border-radius:8px;border:1px solid var(--line);font-size:12.5px;max-width:100%">
-        <option value="100">min &middot; 100 per class</option>
-        <option value="250" selected>pilot &middot; 250 per class</option>
-        <option value="400">thesis &middot; 400 per class</option>
-      </select>
-    </div>
-    <div class="tiles">
-      <div class="tile"><b id="rTotal">0</b><span>images</span></div>
-      <div class="tile"><b id="rClasses">0</b><span>classes</span></div>
-      <div class="tile"><b id="rSmallest">&mdash;</b><span>smallest class</span></div>
-      <div class="tile"><b id="rBalance">&mdash;</b><span>imbalance ratio</span></div>
-    </div>
-    <div id="rBars"></div>
-    <div class="verdict" id="rVerdict"></div>
-    <div class="note" id="rNote"></div>
-  </section>
 
   <section class="card">
-    <div class="step"><span class="n">D</span><h3>Transfer learning on this device</h3><span class="hint">frozen backbone · new head</span></div>
+    <div class="step"><span class="n">C</span><h3>Transfer learning on this device</h3><span class="hint">frozen backbone · new head</span></div>
     <p class="small" style="margin-bottom:8px">Every image is passed once through the ImageNet‑pre‑trained MobileNetV2 backbone to obtain a 1,280‑number embedding. A new classification head is then trained on those embeddings, here in the browser. A stratified 20 % of images is held out to estimate performance. Fine‑tuning the backbone itself needs a GPU: use the Colab notebook.</p>
     <div class="row3">
       <div class="field"><label>Epochs</label><input id="tEpochs" type="number" value="40" min="5" max="300"></div>
@@ -982,15 +981,47 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   </section>
 
   <section class="card">
-    <div class="step"><span class="n">E</span><h3>Models on this device</h3></div>
+    <div class="step"><span class="n">D</span><h3>Models on this device</h3></div>
     <div id="modelList"></div>
+  </section>
+  <section class="card" id="logCard">
+    <div class="step"><span class="n">&#9679;</span><h3>Case log · model vs ground truth</h3><div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" id="copyTsv">Copy for Sheets</button>
+        <button class="btn btn-ghost btn-sm" id="exportCsv">Export CSV</button>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer">Import CSV<input type="file" accept=".csv,text/csv" id="importCsv" hidden></label>
+      </div></div>
+    <div class="sheetstate" id="sheetState"></div>
+    <div class="kpis">
+      <div class="kpi"><b id="kCases">0</b><span>cases logged</span></div>
+      <div class="kpi"><b id="kInf">—</b><span>infection agreement</span></div>
+      <div class="kpi"><b id="kCult">—</b><span>culture positive</span></div>
+      <div class="kpi"><b id="kKappa">—</b><span>inter-rater κ</span></div>
+    </div>
+    <div class="note" id="kappaNote" style="margin:0 0 10px"></div>
+    <div id="pending"></div>
+    <p class="small" style="margin:2px 0 8px;color:var(--muted)">Filled in from <b>Assess a wound</b>, step 3 — not from the labelling steps, which produce their own CSV. Tap a case to add what was not known at the bedside: the culture result, and the outcome at follow-up.</p>
+    <ul class="log-list" id="logList"></ul>
+    <p id="logEmpty" class="small" style="margin-top:8px;color:var(--faint)">No cases logged yet.</p>
+    <div class="note" id="logStorage" style="margin-top:10px"></div>
+    <details class="sheetsync" id="sheetSync">
+      <summary>Send straight to a Google Sheet</summary>
+      <p class="small">Paste the web app URL of the Apps Script bound to your sheet. It is stored in this browser only, never in the code. Until a URL is set, nothing is sent anywhere and the copy button remains the way data leaves.</p>
+      <div class="field"><label>Apps Script web app URL</label><input id="sheetUrl" placeholder="https://script.google.com/macros/s/AKfy…/exec"></div>
+      <label class="tickrow"><input type="checkbox" id="sheetAuto"> Send each case automatically when it is saved</label>
+      <div class="labnav">
+        <button class="btn btn-ghost btn-sm" id="sheetTest">Test connection</button>
+        <button class="btn btn-teal btn-sm" id="sheetPush">Send all cases now</button>
+      </div>
+      <div class="small" id="sheetStatus" style="margin-top:8px"></div>
+      <div class="note rose" style="margin-top:10px"><b>What leaves the device.</b> The clinical columns only — grades, stage, probe-to-bone, culture, tissue percentages. Never the photograph and never the thumbnail. Once a URL is set the tool no longer holds to "nothing leaves this device", so record where that sheet lives and who can open it.</div>
+    </details>
   </section>
 </div>
 </main>
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
   Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
-  <b id="buildStamp">build 2026-10-13 &middot; v2.4</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=24</code><br>
+  <b id="buildStamp">build 2026-10-13 &middot; v2.7</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=27</code><br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>
@@ -1065,6 +1096,13 @@ function setStudyMode(on){
   /* The model card is study-team material: a clinician testing a photograph does not need the
      architecture, and it reads as noise beside the result. */
   $('modelCardSection').classList.toggle('study-only', !on);
+  /* Recording a case, the case log and the occlusion test are the study team's work. Someone
+     trying a photograph does not need a reference-standard form, and showing it invites
+     half-filled rows from people who are not grading. */
+  document.querySelectorAll('.study-hide').forEach(x => x.classList.toggle('study-only', !on));
+  /* The journey shows one step fewer outside study mode, so it is redrawn when the mode
+     changes, not only when the image does. */
+  if (typeof renderAssessJourney === 'function') renderAssessJourney();
 }
 
 function openTab(name){
@@ -1072,8 +1110,6 @@ function openTab(name){
   const assess = name === 'assess';
   $('tab-assess').classList.toggle('hidden', !assess);
   $('tab-train').classList.toggle('hidden', assess);
-  const log = $('logCard');
-  if (assess) $('modelCardSection').before(log); else $('targetCard').before(log);
   window.scrollTo({top:0});
 }
 
@@ -1100,11 +1136,9 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   const assess = b.dataset.tab === 'assess';
   $('tab-assess').classList.toggle('hidden', !assess);
   $('tab-train').classList.toggle('hidden', assess);
-  /* The case log belongs in both journeys — after recording a case, and again when completing it
-     days later — but it is ONE element, moved, not two. Two copies would mean duplicate ids, and
-     getElementById would silently return whichever came first in the document. */
-  const log = $('logCard');
-  if (assess) $('modelCardSection').before(log); else $('targetCard').before(log);
+  /* The log is study-team material and lives at the end of that tab only; a visitor testing a
+     photograph has no use for a reference-standard record and should not meet one. */
+  if (assess) renderAssessJourney();
   window.scrollTo({top:0});
 });
 document.querySelectorAll('.src-tabs button').forEach(b => b.onclick = () => {
@@ -1975,14 +2009,19 @@ function renderDecide(){
     `<div class="find"><div class="k">${r.k}<em>${r.why}</em></div><div class="v ${r.cls||''}">${r.v}</div><div class="src">${r.src}</div></div>`).join('');
 
   const spec = ASK[DISEASE], a = answers[DISEASE];
+  /* Each of these is one answer out of two or three, so a dropdown says it in one row where
+     chips took a card. Nine cards of chips was most of a phone screen before any answer. */
   $('askFind').innerHTML = spec.map(f =>
-    `<div class="find ask${a[f.id] ? ' done' : ''}" data-f="${f.id}">
-       <div class="k">${f.q}<em>${f.why}</em></div>
-       <div class="chips">${f.opts.map(([v, l]) => `<button class="chip${a[f.id]===v?' on':''}" data-f="${f.id}" data-v="${v}">${l}</button>`).join('')}</div>
+    `<div class="askrow${a[f.id] ? ' done' : ''}">
+       <div class="q"><b>${f.q}</b><em>${f.why}</em></div>
+       <select data-f="${f.id}">
+         <option value="">— not answered</option>
+         ${f.opts.map(([v, l]) => `<option value="${v}"${a[f.id] === v ? ' selected' : ''}>${l}</option>`).join('')}
+       </select>
      </div>`).join('');
-  $('askFind').querySelectorAll('.chip').forEach(b => b.onclick = () => {
-    const f = b.dataset.f;
-    a[f] = a[f] === b.dataset.v ? undefined : b.dataset.v;
+  $('askFind').querySelectorAll('select').forEach(el => el.onchange = () => {
+    const f = el.dataset.f;
+    if (el.value) a[f] = el.value; else delete a[f];
     renderDecide(); renderAssessJourney();
   });
 
@@ -2376,7 +2415,9 @@ function renderAssessJourney(){
            + (settled.length === rules.length
               ? `Every definition is satisfied: ${settled.map(([, r]) => r.label).join(' · ')}.`
               : `These are definitions, not predictions — ${rules.filter(([, r]) => !r.label).map(([nm]) => nm).join(' and ')} cannot be determined until the findings they are defined by are answered.`) },
-    { k: '3', s: 'Record the case',
+    /* Recording a case is the study team's step; a visitor testing a photograph finishes at
+       their own findings, and a fourth step they cannot complete reads as a failure. */
+    { k: '3', s: 'Record the case', studyOnly: true,
       done: recorded,
       d: !currentImg ? 'Waiting for a photograph.'
          : thisSession ? 'Saved to the case log. Add the culture and the outcome from the log when they arrive.'
@@ -2384,8 +2425,9 @@ function renderAssessJourney(){
          : 'Not recorded yet. Without this the case contributes nothing to the reference standard — and it is the easiest step in the whole app to forget.' }
   ];
 
-  const cur = steps.findIndex(x => !x.done);
-  strip.innerHTML = steps.map((x, i) => {
+  const shown = steps.filter(x => !x.studyOnly || studyMode);
+  const cur = shown.findIndex(x => !x.done);
+  strip.innerHTML = shown.map((x, i) => {
     const cls = x.done ? 'done' : i === cur ? 'now' : 'todo';
     return `<li class="${cls}"><span class="sn">${x.done ? '✓' : x.k}</span><span class="sl">${x.s}</span></li>`;
   }).join('');
@@ -2394,9 +2436,11 @@ function renderAssessJourney(){
   if (cur < 0){
     nowEl.className = 'jnow ok';
 
-    nowEl.innerHTML = `✓ <b>This case is complete.</b> ${log.length} case${log.length === 1 ? '' : 's'} in the log`
-      + (waiting ? `, ${waiting} waiting for a culture result.` : '.')
-      + ' Load the next photograph when you are ready.';
+    nowEl.innerHTML = studyMode
+      ? `✓ <b>This case is complete.</b> ${log.length} case${log.length === 1 ? '' : 's'} in the log`
+        + (waiting ? `, ${waiting} waiting for a culture result.` : '.')
+        + ' Load the next photograph when you are ready.'
+      : '✓ <b>Done.</b> Load another photograph, or try one of the demo images.';
   } else {
     nowEl.className = 'jnow';
     /* One caveat survives the step it belongs to: a classification made on the whole photograph
@@ -2404,7 +2448,7 @@ function renderAssessJourney(){
        otherwise never see it once step 2 is ticked off. */
     const noOutline = lastPred && !lastPred.piOnly && !(lastSeg && lastSeg.found)
       ? ' <b>Note:</b> no wound outline was found, so the whole photograph was classified — drag a box over the wound in step 2 for a better reading.' : '';
-    nowEl.innerHTML = `<b>Now: ${steps[cur].k} · ${steps[cur].s}.</b> ${steps[cur].d}${noOutline}`;
+    nowEl.innerHTML = `<b>Now: ${shown[cur].k} · ${shown[cur].s}.</b> ${shown[cur].d}${noOutline}`;
   }
 
 }
@@ -2662,7 +2706,7 @@ $('saveCase').onclick = () => {
   const log = loadLog(); log.unshift(rec); saveLog(log); savedThisImage = true; renderLog(); renderAssessJourney();
   toast('Case saved to log');
   if ($('sheetAuto') && $('sheetAuto').checked && sheetUrl()) pushToSheet([rec], 'Auto-sent');
-  $('logCard').scrollIntoView({behavior:'smooth', block:'start'});
+  if (studyMode) $('logCard').scrollIntoView({behavior:'smooth', block:'start'});
 };
 /* ═══════════════════════════ completing a case later ═══════════════════════════
    The photograph and the bedside findings are recorded on the day. The culture result is not
@@ -2914,7 +2958,7 @@ function renderLog(){
   const cult = log.filter(r => r.culture_positive !== null);
   $('kCult').textContent = cult.length ? `${cult.filter(r => r.culture_positive).length}/${cult.length}` : '—';
   renderKappa(log);
-  renderStorage(); renderPending(); renderAssessJourney(); labelSheetPush();
+  renderStorage(); renderPending(); renderAssessJourney(); labelSheetPush(); renderSheetState();
   $('logList').innerHTML = log.slice(0, 8).map(r => {
     const a = (r.culture_positive === null || r.p_infection === null) ? '' : `<span class="agree ${(r.p_infection>=0.5)===r.culture_positive?'':'no'}">${(r.p_infection>=0.5)===r.culture_positive?'agrees with C&S':'disagrees with C&S'}</span>`;
     const pi = r.disease === 'pressure injury';
@@ -3032,6 +3076,20 @@ async function pushToSheet(rows, label){
 }
 /* Label the button with the number it will actually send, so an empty log is visible before
    the button is pressed rather than after. */
+/* Say whether the sheet is connected, at the top of the log, rather than leaving it to be
+   discovered inside a collapsed panel. Auto-send has worked for weeks; it just looked absent. */
+function renderSheetState(){
+  const el = $('sheetState'); if (!el) return;
+  const url = sheetUrl(), auto = $('sheetAuto') && $('sheetAuto').checked;
+  const open = () => { const d = $('sheetSync'); if (d){ d.open = true; d.scrollIntoView({behavior:'smooth', block:'center'}); } };
+  if (url && auto)      el.className = 'sheetstate on',   el.innerHTML = '<span class="dot"></span><span><b>Google Sheet connected.</b> Every case is sent the moment you save it.</span>';
+  else if (url)         el.className = 'sheetstate half', el.innerHTML = '<span class="dot"></span><span><b>Google Sheet connected, but sending is manual.</b> Tick <i>send each case automatically</i> below, or press the send button after each clinic.</span>';
+  else                  el.className = 'sheetstate off',  el.innerHTML = '<span class="dot"></span><span><b>Not connected to a Google Sheet.</b> Cases are kept in this browser only — set it up below, or export the CSV regularly.</span>';
+  const b = document.createElement('button');
+  b.className = 'btn btn-ghost btn-sm'; b.textContent = url ? 'Settings' : 'Set up';
+  b.onclick = open; el.appendChild(b);
+}
+
 function labelSheetPush(){
   const b = $('sheetPush'); if (!b) return;
   const k = loadLog().length;
@@ -3046,9 +3104,10 @@ $('sheetUrl').oninput = $('sheetUrl').onchange = () => {
   if (!v) $('sheetStatus').textContent = 'URL cleared — nothing will be sent.';
   else if (bad) $('sheetStatus').innerHTML = `<b>That will not work.</b> ${bad}`;
   else $('sheetStatus').innerHTML = 'Looks right, and saved in this browser. Press <b>Test connection</b>.';
+  renderSheetState();
 };
 try { $('sheetAuto').checked = localStorage.getItem(SHEET_AUTO) === '1'; } catch(e){}
-$('sheetAuto').onchange = () => { try { localStorage.setItem(SHEET_AUTO, $('sheetAuto').checked ? '1' : '0'); } catch(e){} };
+$('sheetAuto').onchange = () => { try { localStorage.setItem(SHEET_AUTO, $('sheetAuto').checked ? '1' : '0'); } catch(e){} renderSheetState(); };
 $('sheetTest').onclick = () => pushToSheet([{ id:'test-' + Date.now(), when:new Date().toISOString(),
   image:'connection test', disease:'test row — delete me', model:'none' }], 'Test');
 $('sheetPush').onclick = () => {
@@ -3235,21 +3294,17 @@ function renderJourney(){
       d: nImg ? `${nImg} image${nImg === 1 ? '' : 's'} loaded, from ${nCase} case${nCase === 1 ? '' : 's'}.`
               : 'Pick as many photographs as you like. They stay on this device and are not uploaded.',
       badge: nImg ? `${nImg} loaded` : 'start here', done: nImg > 0 },
-    { k: 'B', t: 'Tick what each image shows',
+    { k: 'B', t: 'Label, and choose what to train',
       d: !nImg ? 'Needs images first.'
          : nLab < nImg ? `${nLab} of ${nImg} done. A tick is stored the moment you tap it — there is no save button.`
-         : `All ${nImg} ticked. The ticks are kept in this browser even after you close the app.`,
-      badge: nImg ? `${nLab}/${nImg}` : '—', done: nImg > 0 && nLab === nImg, blocked: !nImg },
-    { k: 'C', t: 'Choose what to train',
-      d: !nLab ? 'Needs at least one ticked image.'
-         : `Currently <b>${tgtName}</b>, with ${usable} usable image${usable === 1 ? '' : 's'} across ${rows.length} class${rows.length === 1 ? '' : 'es'}.`,
-      badge: nLab ? `${rows.length} class${rows.length === 1 ? '' : 'es'}` : '—', done: usable > 0, blocked: !nLab },
-    { k: 'D', t: 'Train the model',
+         : `All ${nImg} ticked, training <b>${tgtName}</b> across ${rows.length} class${rows.length === 1 ? '' : 'es'}.`,
+      badge: nImg ? `${nLab}/${nImg}` : '—', done: nImg > 0 && nLab === nImg && usable > 0, blocked: !nImg },
+    { k: 'C', t: 'Train the model',
       d: trainable ? 'Ready. Training runs here in the browser and takes a minute or two.'
          : `Needs two classes with at least four images each; you have ${rows.filter(([, v]) => v.length >= 4).length} `
            + `such class${rows.filter(([, v]) => v.length >= 4).length === 1 ? '' : 'es'}. Below that a held-out split gives a number with no meaning, so the button stays disabled.`,
       badge: trainable ? 'ready' : 'locked', done: haveTrained, blocked: !trainable },
-    { k: 'E', t: 'Keep or export the model',
+    { k: 'D', t: 'Keep or export the model',
       d: nModels ? `${nModels} model${nModels === 1 ? '' : 's'} saved in this browser. Activate one and it is used on the Assess tab.`
                  : 'A trained model is saved in this browser, or downloaded as files.',
       badge: nModels ? `${nModels} saved` : '—', done: nModels > 0, blocked: !haveTrained && !nModels }
@@ -3436,6 +3491,46 @@ $('dirInput').onchange = e => {
     + `${unmatched.join(', ')}. Those images came in unlabelled \u2014 tick them in step B, or rename the `
     + `folder to something the app knows (a Wagner grade, an NPIAP stage, or a tissue name) and load it again.</div>`);
 };
+/* ── picking several things from a dropdown ────────────────────────────────────────────────
+   A row of chips shows every option at once, which is fast but takes a lot of vertical space
+   once there are nine of them, and more once there are twenty-nine. A native <select multiple>
+   is worse on a phone: iOS renders it as a scrolling list and Android needs a long press.
+
+   So: a dropdown that adds, and a tag per choice that removes. One tap to add, one tap on the
+   cross to take it back. Chosen options leave the list, so the dropdown always shows only what
+   is still available, and the tags show the answer at a glance without unfolding anything. */
+function tagPicker(host, groups, selected, onChange, placeholder){
+  const el = typeof host === 'string' ? $(host) : host;
+  if (!el) return;
+  const flat = groups.length && Array.isArray(groups[0][1]) ? groups : [['', groups]];
+  const chosen = new Set(selected || []);
+  const draw = () => {
+    const left = flat.map(([g, list]) => [g, list.filter(o => !chosen.has(o[0]))])
+                     .filter(([, list]) => list.length);
+    el.innerHTML =
+      `<select class="tagsel">`
+      + `<option value="">${left.length ? (placeholder || 'Add\u2026') : 'All options chosen'}</option>`
+      + left.map(([g, list]) => {
+          const opts = list.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+          return g ? `<optgroup label="${g}">${opts}</optgroup>` : opts;
+        }).join('')
+      + `</select>`
+      + (chosen.size ? `<div class="taglist">` + [...chosen].map(v => {
+          let lab = v;
+          flat.forEach(([, list]) => list.forEach(([vv, ll]) => { if (vv === v) lab = ll; }));
+          return `<span class="tag2" data-v="${v}">${lab}<button type="button" aria-label="remove">\u00d7</button></span>`;
+        }).join('') + `</div>` : '');
+    el.querySelector('.tagsel').onchange = e => {
+      if (!e.target.value) return;
+      chosen.add(e.target.value); draw(); onChange([...chosen]);
+    };
+    el.querySelectorAll('.tag2 button').forEach(b => b.onclick = () => {
+      chosen.delete(b.parentNode.dataset.v); draw(); onChange([...chosen]);
+    });
+  };
+  draw();
+}
+
 /* ═══════════════════════════ per-image labelling ═══════════════════════════
    Sorting photographs into folders before uploading them is work done in the wrong place: it
    needs a desktop, it cannot express two labels at once, and a mistake means moving files. So
@@ -3645,7 +3740,7 @@ const viewIdx = () => pool.map((it, i) => matchesFilter(it) ? i : -1).filter(i =
 
 function renderLabeller(){
   $('labelCard').classList.toggle('hidden', !pool.length);
-  $('targetCard').classList.toggle('hidden', !pool.length);
+
   if (!pool.length) return;
   cur = Math.max(0, Math.min(cur, pool.length - 1));
   const it = pool[cur];
@@ -3691,7 +3786,8 @@ function renderLabeller(){
        v => { if (pi) it.npiap = v; else it.wagner = v; }, 'Not graded');
   drop('labSkin', SKIN_OPTS, it.skin, v => { it.skin = v; }, 'Not recorded');
   renderLabExam(it); renderLabRec(it);
-  chips('labFeats', FEAT_OPTS, v => it.feats.has(v), v => { it.feats.has(v) ? it.feats.delete(v) : it.feats.add(v); });
+  tagPicker('labFeats', FEAT_OPTS, [...it.feats],
+            vals => { it.feats = new Set(vals); labChanged(); }, 'Add a finding\u2026');
 
   $('labHint').textContent = labelled(it)
     ? 'A wound is either a foot ulcer or a pressure injury, so it normally carries a Wagner grade or an NPIAP stage, not both.'
@@ -3722,7 +3818,7 @@ function renderLabeller(){
   dn.classList.toggle('hidden', left > 0);
   if (!left) dn.innerHTML = 'All <b>' + pool.length + '</b> image' + (pool.length === 1 ? '' : 's')
     + ' labelled — nothing left for <b>Next unlabelled</b> to jump to, which is why the button looks dead. '
-    + 'The next step is <b>C · choose what to train</b> below. Training needs at least two classes with four '
+    + 'Choose what to train just below, then <b>C · train the model</b>. Training needs at least two classes with four '
     + 'images each, so ' + (pool.length < 8 ? 'this pool is still far too small — keep adding images.' : 'check the counts there.');
 
   /* Flag / clear / remove, and the filter that makes them reachable in a pool of hundreds. */
@@ -3755,13 +3851,17 @@ function renderLabeller(){
 function renderLabExam(it){
   const pi = it.wtype === 'pi', spec = ASK[pi ? 'pi' : 'dfu'];
   const host = $('labAsk');
-  host.innerHTML = spec.map(f => `<div class="labq"><b>${f.q}</b><em>${f.why}</em>
-    <div class="chips">${f.opts.map(([v, l]) =>
-      `<button class="chip${it.ex[f.id] === v ? ' on' : ''}" data-f="${f.id}" data-v="${v}">${l}</button>`).join('')}</div></div>`).join('');
-  host.querySelectorAll('.chip').forEach(b => b.onclick = () => {
-    const f = b.dataset.f;
-    it.ex[f] = it.ex[f] === b.dataset.v ? undefined : b.dataset.v;
-    if (it.ex[f] === undefined) delete it.ex[f];
+  host.innerHTML = spec.map(f =>
+    `<div class="askrow${it.ex[f.id] ? ' done' : ''}">
+       <div class="q"><b>${f.q}</b><em>${f.why}</em></div>
+       <select data-f="${f.id}">
+         <option value="">— not answered</option>
+         ${f.opts.map(([v, l]) => `<option value="${v}"${it.ex[f.id] === v ? ' selected' : ''}>${l}</option>`).join('')}
+       </select>
+     </div>`).join('');
+  host.querySelectorAll('select').forEach(el => el.onchange = () => {
+    const f = el.dataset.f;
+    if (el.value) it.ex[f] = el.value; else delete it.ex[f];
     labChanged();
   });
 
@@ -4006,8 +4106,6 @@ fillTargets(); describeTarget(); renderLabeller(); renderReadiness(); renderJour
 /* Place the case log for whichever tab is showing at load, so it is not stranded in the hidden
    one until the first tab click. */
 setStudyMode(studyMode);
-(() => { const t = document.querySelector('.tabs button.on');
-         if (t && t.dataset.tab === 'assess') $('modelCardSection').before($('logCard')); })();
 
 /* ── Google Drive import (Drive API v3 + Google Identity Services) ── */
 function loadImg(item){ return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = item.url || (item.url = URL.createObjectURL(item.file)); }); }

@@ -70,6 +70,14 @@ header small{display:block;font-size:11.5px;opacity:.7;margin-top:1px}
 /* Single-class specificity ties with .readout and .occ, and those are declared later in the
    sheet, so they won. This rule has to win outright: it decides what a user is shown. */
 .study-only{display:none !important}
+#modeBar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#0f766e;color:#fff;
+  padding:9px 16px;font-size:13px;line-height:1.5}
+#modeBar.hidden{display:none}
+#modeBar span{flex:1;min-width:200px}
+#modeBar b{font-weight:700}
+#modeBar button{flex:none;background:rgba(255,255,255,.17);border:1px solid rgba(255,255,255,.45);color:#fff;font-weight:600}
+#modeBar button:hover{background:rgba(255,255,255,.3)}
+@media (max-width:560px){#modeBar{padding:9px 12px;font-size:12.5px}}
 .lockpill{border:1px solid rgba(255,255,255,.35);background:rgba(28,184,160,.22);color:#fff;
   cursor:pointer;font-weight:600;white-space:nowrap}
 .lockpill:hover{background:rgba(28,184,160,.38)}
@@ -557,6 +565,14 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     </div>
     <div class="note" style="margin-top:12px">This separates the two jobs; it is not a security control. Your data stays in this browser, so someone who opens these screens elsewhere sees an empty app.</div>
   </div>
+</div>
+
+<!-- Which view you are in has to be unmissable. The consequence of getting it wrong is
+     believing an admin-only panel is leaking to testers, and a small pill in the header did not
+     carry that weight. -->
+<div id="modeBar" class="hidden">
+  <span><b>Study team view.</b> You are seeing the grading screens, the case log and the model card. A tester sees none of this.</span>
+  <button class="btn btn-sm" id="modeBarLock">See the tester's view</button>
 </div>
 
 <main>
@@ -1050,7 +1066,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
   Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
-  <b id="buildStamp">build 2026-10-13 &middot; v3.0</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=30</code><br>
+  <b id="buildStamp">build 2026-10-13 &middot; v3.1</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=31</code><br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>
@@ -1126,6 +1142,7 @@ function setStudyMode(on){
      way back: once unlocked, the owner could never see what a tester sees, and would reasonably
      conclude the admin-only panels were leaking. This is that way back. */
   $('lockBtn').classList.toggle('hidden', !on);
+  $('modeBar').classList.toggle('hidden', !on);
   /* The model card is study-team material: a clinician testing a photograph does not need the
      architecture, and it reads as noise beside the result. */
   $('modelCardSection').classList.toggle('study-only', !on);
@@ -1159,10 +1176,12 @@ $('passCancel') && ($('passCancel').onclick = () => {
 });
 $('passInput') && ($('passInput').onkeydown = e => { if (e.key === 'Enter') $('passGo').click(); });
 
-$('lockBtn') && ($('lockBtn').onclick = () => {
+const leaveStudyMode = () => {
   setStudyMode(false); openTab('assess');
   toast('Locked — this is exactly what a tester sees');
-});
+};
+$('lockBtn') && ($('lockBtn').onclick = leaveStudyMode);
+$('modeBarLock') && ($('modeBarLock').onclick = leaveStudyMode);
 
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   if (b.dataset.tab === 'train' && !studyMode){

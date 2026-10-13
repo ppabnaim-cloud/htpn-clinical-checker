@@ -67,7 +67,9 @@ header small{display:block;font-size:11.5px;opacity:.7;margin-top:1px}
 #passGate{position:fixed;inset:0;background:rgba(10,20,34,.72);display:grid;place-items:center;
   padding:20px;z-index:900;overflow-y:auto}
 #passGate.hidden{display:none}
-.study-only{display:none}
+/* Single-class specificity ties with .readout and .occ, and those are declared later in the
+   sheet, so they won. This rule has to win outright: it decides what a user is shown. */
+.study-only{display:none !important}
 main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:18px;margin-bottom:14px}
 .step{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
@@ -614,7 +616,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       <select id="camTarget" class="hidden"></select>
       <input type="range" id="camAlpha" min="0" max="100" value="55" title="overlay opacity">
     </div>
-    <div class="readout" id="overlayRead">
+    <div class="readout study-hide" id="overlayRead">
       <p><b>How to read this:</b> <span id="howOverlay"></span></p>
       <p><b>What this shows:</b> <span id="whatOverlay"></span></p>
       <div class="camlegend hidden" id="camLegend">
@@ -682,11 +684,11 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
           <button class="chip" data-v="?">Not yet assessed</button>
         </div>
       </div>
-      <div class="texas" id="texasPanel">
+      <div class="texas study-hide" id="texasPanel">
         <h4>University of Texas Diabetic Wound Classification</h4>
         <div class="tgrid" id="tgrid"></div>
       </div>
-      <div class="wagner hidden" id="wagnerPanel">
+      <div class="wagner hidden study-hide" id="wagnerPanel">
         <h4>Meggitt–Wagner classification</h4>
         <div class="ladder" id="ladder"></div>
       </div>
@@ -695,7 +697,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
         <div class="big" id="classBig">—</div>
         <div class="desc" id="classDesc"></div>
       </div>
-      <div class="readout" id="classRead">
+      <div class="readout study-hide" id="classRead">
         <p><b>How to read this:</b> <span id="howClass"></span></p>
         <p><b>What this shows:</b> <span id="whatClass"></span></p>
       </div>
@@ -1044,7 +1046,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
   Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
-  <b id="buildStamp">build 2026-10-13 &middot; v2.8</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=28</code><br>
+  <b id="buildStamp">build 2026-10-13 &middot; v2.9</b> &mdash; if this line reads anything older, you are seeing a cached copy; reload with a query string such as <code>?v=29</code><br>
   Research prototype. Not a medical device, not validated, not for clinical decision-making.
 </footer>
 <div class="toast" id="toast"></div>

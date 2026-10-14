@@ -427,6 +427,25 @@ table.keep td.n2{color:#9a3412;font-weight:700;white-space:nowrap}
 .regrow span{flex:1;color:var(--navy);font-weight:600;line-height:1.45}
 .field label em.req{font-style:normal;color:#b4530a;font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;margin-left:5px}
 .field label em.opt{font-style:normal;color:var(--faint);font-weight:600;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;margin-left:5px}
+/* Stat tiles and bars. Colour here is categorical, not clinical — it separates one row from the
+   next and carries no severity meaning, which is why the palette is cool and even rather than
+   red-to-green. The assessment screens keep red for danger; this screen never borrows it. */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:9px}
+.tile{background:#fff;border:1px solid var(--rule);border-radius:11px;padding:11px 12px}
+.tile .v{font-size:25px;font-weight:700;color:var(--navy);line-height:1.1;letter-spacing:-.01em}
+.tile .k{font-size:11px;font-weight:600;color:var(--muted);margin-top:3px;line-height:1.3}
+.tile .s{font-size:10.5px;color:var(--faint);margin-top:2px;font-family:var(--mono)}
+.tile.warn{border-color:#f0c48a;background:#fffaf2}
+.tile.warn .v{color:#b4530a}
+.bars{margin-top:5px}
+.bar{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12px}
+.bar .bl{flex:0 0 108px;color:var(--navy);text-align:right;line-height:1.25}
+.bar .bt{flex:1;background:var(--line);border-radius:4px;height:15px;overflow:hidden}
+.bar .bf{height:100%;background:var(--teal);border-radius:4px;min-width:2px}
+.bar .bf.thin{background:#f0a868}
+.bar .bn{flex:0 0 52px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.bars .empty{font-size:12px;color:var(--faint);padding:6px 0}
+@media (max-width:560px){.bar .bl{flex:0 0 84px;font-size:11px}}
 .regnote{margin-top:9px;font-size:12px;line-height:1.5;color:var(--muted);border-left:2px solid var(--rule);padding-left:9px}
 .regsrc{margin-top:9px;padding-top:8px;border-top:1px solid var(--rule);font-size:11px;color:var(--muted);font-family:var(--mono)}
 @media (max-width:560px){.regrow{flex-direction:column;gap:2px}.regrow b{flex:none}}
@@ -564,6 +583,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   <nav class="tabs">
     <button class="on" data-tab="assess" id="tabAssess">Assess a wound</button>
     <button data-tab="train" id="tabTrain">Study team <span class="lock" id="tabLock">●</span></button>
+    <button data-tab="data" id="tabData">Dashboard <span class="lock" id="tabLock2">●</span></button>
   </nav>
 </header>
 
@@ -875,7 +895,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 
         <details class="labmore" id="labRecBox">
           <summary>Clinical record <span class="cnt" id="labRecCnt"></span></summary>
-          <p class="small" style="margin:6px 0 8px">The same fields as the case log. Most belong to the visit rather than to the photograph, so <b>Copy from previous image</b> fills them from the image before this one — use it for a second view of the same wound.</p>
+          <p class="small" style="margin:6px 0 8px">This <b>is</b> the case log entry — there is no second form to fill in. A row is written as soon as this image has a grader and a grade, and editing here corrects that row rather than adding another. Most of these fields belong to the visit rather than to the photograph, so <b>Copy from previous image</b> fills them from the image before this one — use it for a second view of the same wound.</p>
           <div id="labRec"></div>
           <div class="labnav" style="margin-top:8px">
             <button class="btn btn-ghost btn-sm" id="labCopyPrev">Copy from previous image</button>
@@ -1006,69 +1026,6 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <div class="note rose" style="margin-top:10px">Once this is filled in the app names drugs, which makes it a prescribing aid rather than a wound classifier. Have it signed off by your antimicrobial stewardship pharmacist or ID consultant before any clinician outside the study team uses it, and re-check it whenever the guideline is revised — the app cannot know that it has been.</div>
   </section>
 
-  <!-- RECORD A CASE — study team only, which is why it lives in this tab and not
-       in the assessment flow. Hiding it there by CSS was not enough: the class keys off whether
-       the passcode has been entered, not off which tab is open, so a grader who had unlocked saw
-       it in the tester view too. -->
-  <section class="card" id="truth">
-    <div class="step"><span class="n">◆</span><h3>Record a case</h3><span class="hint">the expert grader’s record</span></div>
-    <div class="note" id="truthState" style="margin:0 0 10px"></div>
-    <p class="small" style="margin-bottom:6px" id="truthIntro"></p>
-    <div class="note" style="margin:0 0 10px">Fill in whatever you have. A culture usually takes three to five days, so the microbiology is often blank at this point — that is expected. The case then appears in the log below under <b>cases waiting for a culture result</b>, and tapping it there completes the organism, the sensitivity and the outcome whenever they arrive.</div>
-    <!-- Applies to both wound types: the patient and the camera, not the wound. -->
-    <div class="row3">
-      <div class="field"><label>Study ID <em style="font-style:normal;color:var(--faint);font-weight:400">optional — taken from the filename if blank</em></label>
-        <input id="gtCase" placeholder="P014" autocomplete="off"></div>
-      <div class="field"><label>Fitzpatrick skin type</label>
-        <select id="gtSkin"><option value="">—</option><option>I</option><option>II</option><option>III</option><option>IV</option><option>V</option><option>VI</option><option>Not assessed</option></select></div>
-      <div class="field"><label>Grader</label>
-        <select id="gtRater"><option value="">—</option></select></div>
-    </div>
-    <div class="field" style="max-width:320px"><label>Capture device</label>
-      <select id="gtDevice"><option value="">—</option><option>Mobile phone</option><option>Digital camera</option><option>Tablet</option><option>Dermatoscope</option><option>Other</option></select></div>
-    <div class="note" style="margin:0 0 10px">Skin type is recorded because the public training sets are predominantly lighter skin; without it, performance in a Malaysian population cannot be reported by skin tone. The capture device is recorded so that variation between cameras can be measured later rather than guessed at. Grader and device stay between photographs; the study ID and skin type clear with each new one.</div>
-    <div id="gtDfu">
-    <div class="row3">
-      <div class="field"><label>Clinician Texas grade</label>
-        <select id="gtGrade"><option value="">—</option><option>0</option><option>1</option><option>2</option><option>3</option></select></div>
-      <div class="field"><label>Texas stage</label>
-        <select id="gtStage"><option value="">—</option><option>A</option><option>B</option><option>C</option><option>D</option></select></div>
-      <div class="field"><label>Wagner grade</label>
-        <select id="gtWagner"><option value="">—</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
-    </div>
-    <div class="row2">
-      <div class="field"><label>Ulcer site</label>
-        <select id="gtSiteDfu"><option value="">—</option><option>Plantar forefoot</option><option>Plantar midfoot</option><option>Heel</option><option>Hallux</option><option>Lesser toe</option><option>Dorsum of foot</option><option>Medial malleolus</option><option>Lateral malleolus</option><option>Amputation stump</option><option>Other</option></select></div>
-      <div class="field"><label>Probe‑to‑bone</label>
-        <select id="gtPtb"><option value="">—</option><option>Negative</option><option>Positive</option><option>Not done</option></select></div>
-      <div class="field"><label>Specimen date</label><input type="date" id="gtDate"></div>
-    </div>
-    <div class="field"><label>Tissue culture &amp; sensitivity — organism(s) isolated <em style="font-style:normal;color:var(--faint);font-weight:400">leave blank if not back yet</em></label>
-      <div id="gtOrgs"></div>
-    </div>
-    <div class="field"><label>Sensitivity pattern / notes</label><textarea id="gtNotes" placeholder="e.g. sensitive to co-amoxiclav, resistant to ciprofloxacin; ESBL negative"></textarea></div>
-    <div class="field" style="max-width:320px"><label>Outcome at follow-up</label>
-      <select id="gtOutcome"><option value="">—</option><option>Healed</option><option>Improving</option><option>Static</option><option>Deteriorated</option><option>Not yet known</option></select></div>
-    </div>
-    <div id="gtPi" class="hidden">
-      <div class="row3">
-        <div class="field"><label>Clinician NPIAP stage</label>
-          <select id="gtNpiap"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>Unstageable</option><option>Deep tissue injury</option></select></div>
-        <div class="field"><label>Blanching test</label>
-          <select id="gtBlanch"><option value="">—</option><option>Blanchable</option><option>Non-blanchable</option><option>Not tested</option></select></div>
-        <div class="field"><label>Deepest structure seen or palpated</label>
-          <select id="gtDeep"><option value="">—</option><option>Dermis</option><option>Adipose</option><option>Fascia</option><option>Muscle</option><option>Tendon</option><option>Bone</option><option>Obscured by slough or eschar</option></select></div>
-      </div>
-      <div class="row3">
-        <div class="field"><label>Body site</label>
-          <select id="gtSite"><option value="">—</option><option>Sacrum</option><option>Coccyx</option><option>Ischial tuberosity</option><option>Heel</option><option>Lateral malleolus</option><option>Greater trochanter</option><option>Occiput</option><option>Ear</option><option>Elbow</option><option>Device-related</option><option>Other</option></select></div>
-      </div>
-      <div class="field"><label>Notes</label><textarea id="gtPiNotes" placeholder="e.g. device-related under mask strap; offloading in place; Braden 12"></textarea></div>
-      <div class="note">There is deliberately no culture and sensitivity field for a pressure injury. Every chronic wound is colonised, so a swab does not establish infection and swabbing is discouraged; infection is a clinical diagnosis. The reference standard for this arm is the adjudicated stage plus the outcome at follow-up, and the outcome is recorded in the case log when it is known.</div>
-    </div>
-    <button class="btn btn-teal" id="saveCase" style="width:100%">Save ground truth to case log</button>
-    <div class="note teal" id="truthNote"></div>
-  </section>
 
   <section class="card" id="logCard">
     <div class="step"><span class="n">&#9679;</span><h3>Case log · model vs ground truth</h3><div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
@@ -1103,6 +1060,57 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     </details>
   </section>
 </div>
+
+<!-- ═══════════════════════════ DASHBOARD TAB ═══════════════════════════ -->
+<!-- Read-only. Everything here is derived from the case log and the labels; nothing is entered
+     on this screen, which is why it can be dense without being a burden. -->
+<div id="tab-data" class="hidden">
+
+  <section class="card tight">
+    <div class="step"><span class="n">▦</span><h3>Data readiness</h3><span class="hint" id="dashWhen"></span></div>
+    <div class="tiles" id="dashTiles"></div>
+    <div class="note" id="dashVerdict" style="margin-top:12px"></div>
+  </section>
+
+  <section class="card">
+    <div class="step"><span class="n">▤</span><h3>Class balance</h3><span class="hint">what the model can learn</span></div>
+    <p class="small" style="margin-bottom:10px">A classifier learns the grades you give it examples of. A grade with
+    three images will be predicted badly however good the architecture, and no amount of training fixes it — only
+    collecting more of that grade does.</p>
+    <div class="row2">
+      <div><span class="lab">Meggitt–Wagner grade</span><div id="dashWagner"></div></div>
+      <div><span class="lab">NPIAP stage</span><div id="dashNpiap"></div></div>
+    </div>
+    <span class="lab" style="margin-top:14px">Findings present in the image</span>
+    <div id="dashFeats"></div>
+  </section>
+
+  <section class="card">
+    <div class="step"><span class="n">▤</span><h3>Microbiology</h3><span class="hint">from the case log</span></div>
+    <p class="small" style="margin-bottom:10px">Organisms isolated, counted across cases with a culture result. A case
+    may grow more than one, so these do not sum to the number of cases.</p>
+    <div id="dashOrgs"></div>
+  </section>
+
+  <section class="card">
+    <div class="step"><span class="n">▤</span><h3>Case mix</h3><span class="hint">who is in the dataset</span></div>
+    <p class="small" style="margin-bottom:10px">Skin type matters most here. The public training sets are
+    predominantly lighter skin, so performance in a Malaysian population cannot be claimed — or disproved —
+    without knowing the spread below.</p>
+    <div class="row2">
+      <div><span class="lab">Fitzpatrick skin type</span><div id="dashSkin"></div></div>
+      <div><span class="lab">Wound type</span><div id="dashType"></div></div>
+    </div>
+    <div class="row2" style="margin-top:12px">
+      <div><span class="lab">Body site</span><div id="dashSite"></div></div>
+      <div><span class="lab">Outcome at follow-up</span><div id="dashOutcome"></div></div>
+    </div>
+    <span class="lab" style="margin-top:14px">Cases per grader</span>
+    <div id="dashGraders"></div>
+  </section>
+
+</div>
+
 </main>
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
@@ -1112,7 +1120,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-10-14 &middot; v3.8</span>
+  <span class="study-hide" id="buildStamp">build 2026-10-14 &middot; v4.0</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1181,8 +1189,8 @@ try { studyMode = localStorage.getItem(STUDY_KEY) === '1'; } catch(e){}
 function setStudyMode(on){
   studyMode = on;
   try { localStorage.setItem(STUDY_KEY, on ? '1' : '0'); } catch(e){}
-  $('tabLock').textContent = on ? '○' : '●';
-  $('tabLock').title = on ? 'unlocked' : 'locked';
+  [$('tabLock'), $('tabLock2')].forEach(el => { if (!el) return;
+    el.textContent = on ? '○' : '●'; el.title = on ? 'unlocked' : 'locked'; });
   /* Study mode persists, which is right for a grader working across days but meant there was no
      way back: once unlocked, the owner could never see what a tester sees, and would reasonably
      conclude the admin-only panels were leaking. This is that way back. */
@@ -1203,6 +1211,8 @@ function setStudyMode(on){
 
 function openTab(name){
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === name));
+  TABS.forEach(t => $('tab-' + t).classList.toggle('hidden', t !== name));
+  if (name === 'data' && typeof renderDashboard === 'function') renderDashboard();
   const assess = name === 'assess';
   $('tab-assess').classList.toggle('hidden', !assess);
   $('tab-train').classList.toggle('hidden', assess);
@@ -1229,19 +1239,21 @@ const leaveStudyMode = () => {
 $('lockBtn') && ($('lockBtn').onclick = leaveStudyMode);
 $('modeBarLock') && ($('modeBarLock').onclick = leaveStudyMode);
 
+const TABS = ['assess', 'train', 'data'];
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
-  if (b.dataset.tab === 'train' && !studyMode){
+  /* Both study-team panes sit behind the same switch. */
+  if (b.dataset.tab !== 'assess' && !studyMode){
     $('passGate').classList.remove('hidden');
     setTimeout(() => $('passInput').focus(), 50);
     return;
   }
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
   const assess = b.dataset.tab === 'assess';
-  $('tab-assess').classList.toggle('hidden', !assess);
-  $('tab-train').classList.toggle('hidden', assess);
-  /* The log is study-team material and lives at the end of that tab only; a visitor testing a
-     photograph has no use for a reference-standard record and should not meet one. */
+  /* Three panes now, so the panes are driven from the list rather than from a boolean that
+     only ever had room for two. */
+  TABS.forEach(t => $('tab-' + t).classList.toggle('hidden', t !== b.dataset.tab));
   if (assess) renderAssessJourney();
+  if (b.dataset.tab === 'data') renderDashboard();
   window.scrollTo({top:0});
 });
 document.querySelectorAll('.src-tabs button').forEach(b => b.onclick = () => {
@@ -1363,19 +1375,7 @@ function useImage(img, name){
   manualBox = null; boxing = false; $('viewer').classList.remove('boxing');
   $('boxBtn').textContent = 'Draw the wound area myself';
   pxPerCm = null; $('scaleBtn').textContent = 'Set scale with the ruler';   // a scale belongs to one photograph only
-  // a culture result belongs to one specimen, so it must not carry over to the next image
-  renderOrgChips($('gtOrgs'), []);
-  ['gtDate','gtNotes'].forEach(k => $(k).value = '');
-  /* Everything that belongs to the patient or the wound clears with the photograph, so one
-     specimen's result can never attach to the next case. The grader's initials and the camera
-     stay, because they are properties of the clinic session and re-typing them 40 times is how
-     a field ends up empty. */
-  ['gtGrade','gtStage','gtWagner','gtPtb','gtOutcome','gtNpiap','gtBlanch','gtDeep','gtSite','gtSiteDfu','gtSkin']   /* not gtRater / gtDevice: clinic-session properties */
-    .forEach(k => { if ($(k)) $(k).value = ''; });
-  if ($('gtPiNotes')) $('gtPiNotes').value = '';
   abxGates = {};                                     // allergy and renal function belong to the patient
-  if ($('gtCase')){ const cid = caseIdOf(name);
-    $('gtCase').value = cid === String(name || '').replace(/\.[^.]+$/, '').toUpperCase() ? '' : cid; }
   setCam(segModel ? 1 : 0);
   $('analyse').classList.remove('hidden');
   renderAssessJourney();
@@ -2319,7 +2319,7 @@ function renderDecide(){
     // a settled stage is the clinician's own conclusion, so it prefills the ground-truth field
     const r = ruleNpiap(a), map = { 'NPIAP stage 1':'1','NPIAP stage 2':'2','NPIAP stage 3':'3','NPIAP stage 4':'4',
                                     'Unstageable':'Unstageable','Deep tissue injury':'Deep tissue injury' };
-    if ($('gtNpiap')) $('gtNpiap').value = map[r.label] || '';
+
   }
   const rules = DISEASE === 'pi' ? [['NPIAP stage', ruleNpiap(a)]]
                                  : [['Meggitt–Wagner', ruleWagner(a)], ['University of Texas', ruleTexas(a)]];
@@ -2386,20 +2386,12 @@ function setDisease(d){
   const pi = d === 'pi';
   $('schemeRow').classList.toggle('hidden', pi);
   $('ischField').classList.toggle('hidden', pi);
-  $('gtDfu').classList.toggle('hidden', pi);
-  $('gtPi').classList.toggle('hidden', !pi);
   /* Each tile declares the wound type it belongs to; a foot ulcer must not be offered to someone
      assessing a sacral sore, and vice versa. */
   document.querySelectorAll('.sample').forEach(b => b.classList.toggle('hidden', b.dataset.dis !== (pi ? 'pi' : 'dfu')));
   $('sampleNote').innerHTML = pi
     ? 'Three pressure injuries from the <b>HTPN wound unit</b>, de-identified before upload. Tap one to see how the app works: it outlines and measures the wound, and the stage is yours to enter because no pressure injury classifier has been trained yet.'
     : 'Please use the demo images provided to understand how the app works. Tap any one of them and it runs exactly as your own photograph would.';
-  $('truthIntro').textContent = pi
-    ? 'Record the stage you assigned, the blanching test and the deepest structure you could see or palpate. Outcome at follow-up is the reference standard here, not a swab.'
-    : "Record the clinician's classification and the tissue culture & sensitivity result. Logged cases become the labelled dataset for the next training cycle.";
-  $('truthNote').textContent = pi
-    ? 'The clinician’s NPIAP stage, under adjudication, is the reference standard for this arm, with outcome at follow-up as the clinical endpoint. Stored locally in this browser only for the prototype.'
-    : "Culture & sensitivity is the reference standard for infection. The clinician's Texas or Wagner class is the reference standard for the classification head. Stored locally in this browser only for the prototype.";
   if (currentImg) renderDecide();
   renderAssessJourney();            // the questions and the rules both change with the wound type
   // the built-in heads are diabetic-foot-ulcer heads; re-run so the right path is taken
@@ -2743,28 +2735,6 @@ let abxGates = {};                                   // allergy / eGFR / resista
 
    The one thing it is really for: step 3. Forgetting to record the case is silent, costs the
    study a data point, and is discovered weeks later when the numbers do not add up.            */
-/* The recording form and the photograph it describes are now in different tabs, so the form has
-   to say which case it is about. Without this it is a page of blank fields with no stated subject,
-   and the obvious misreading \u2014 that it records whatever you type \u2014 would put gradings against the
-   wrong image. */
-function syncTruthState(){
-  const box = $('truthState'), btn = $('saveCase');
-  if (!box || !btn) return;
-  if (!currentImg){
-    box.className = 'note';
-    box.innerHTML = '<b>No photograph is open.</b> This form records the case you have open in '
-      + '<b>Assess a wound</b>. Open a photograph and work through your findings there first, then '
-      + 'come back here to record it.';
-    btn.disabled = true;
-    return;
-  }
-  box.className = 'note teal';
-  box.innerHTML = `Recording <b>${currentName}</b>, assessed as a `
-    + `<b>${DISEASE === 'pi' ? 'pressure injury' : 'diabetic foot ulcer'}</b>. `
-    + 'Change the photograph or the wound type in <b>Assess a wound</b> and this follows it.';
-  btn.disabled = false;
-}
-
 function renderAssessJourney(){
   const strip = $('jstrip'); if (!strip) return;
   const pi = DISEASE === 'pi';
@@ -2809,7 +2779,7 @@ function renderAssessJourney(){
       d: !currentImg ? 'Waiting for a photograph.'
          : thisSession ? 'Saved to the case log. Add the culture and the outcome from the log when they arrive.'
          : recorded ? `Already in the log as ${mine.length === 1 ? 'a case' : mine.length + ' cases'} under this filename and wound type, from ${new Date(mine[0].when).toLocaleDateString()}. Saving again adds another row rather than replacing that one — to change a grading, correct it in the log instead.`
-         : 'Not recorded yet. Without this the case contributes nothing to the reference standard \u2014 and it is the easiest step in the whole app to forget. The form is in the <b>Study team</b> tab.' }
+         : 'Not recorded yet. Grade this image in <b>step B</b> of the Study team tab \u2014 the case log is written from it, so there is no separate form to fill in.' }
   ];
 
   const shown = steps.filter(x => !x.studyOnly || studyMode);
@@ -2818,8 +2788,6 @@ function renderAssessJourney(){
     const cls = x.done ? 'done' : i === cur ? 'now' : 'todo';
     return `<li class="${cls}"><span class="sn">${x.done ? '✓' : x.k}</span><span class="sl">${x.s}</span></li>`;
   }).join('');
-
-  syncTruthState();
 
   const nowEl = $('jnow');
   if (cur < 0){
@@ -3057,46 +3025,6 @@ $('occBtn') && ($('occBtn').onclick = async () => {
 const LOG_KEY = 'dfu_vision_cases_v1';
 const loadLog = () => { try { return JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); } catch(e){ return []; } };
 const saveLog = l => { try { localStorage.setItem(LOG_KEY, JSON.stringify(l)); } catch(e){ toast('Could not save (storage blocked)'); } };
-$('saveCase').onclick = () => {
-  if (!lastPred) return toast('Analyse an image first');
-  const thumb = (() => { const c = document.createElement('canvas'); c.width = c.height = 96; c.getContext('2d').drawImage($('imgCanvas'), 0, 0, 96, 96); return c.toDataURL('image/jpeg', 0.6); })();
-  const orgs = orgChosen($('gtOrgs'));
-  /* piOnly cases carry no model prediction by design: the heads are not run on a wound type they
-     were never trained on, so the record must not imply one was produced. */
-  const scored = !lastPred.piOnly;
-  const it = scored ? interpret() : { label: '' };
-  const ai_label = scored ? (it.label || (it.texas ? it.texas.grade + it.texas.stage : '') + (it.wagner ? (it.texas ? ' / ' : '') + 'W' + it.wagner.grade : '')) : '';
-  const demo = scored && active.kind === 'demo';
-  const t = lastTissue;
-  const rec = { id: Date.now(), when: new Date().toISOString(), image: currentName, thumb, model: scored ? active.name : 'none (segmentation only)',
-    disease: DISEASE === 'pi' ? 'pressure injury' : 'diabetic foot ulcer', ai_label,
-    p_severe: demo ? +lastPred.grade[1].toFixed(3) : null, p_infection: demo ? +lastPred.infection[1].toFixed(3) : null,
-    probs: (!scored || active.kind === 'demo') ? null : Object.fromEntries(active.classes.map((c, i) => [c, +lastPred.probs[i].toFixed(3)])),
-    wound_area_frac: lastSeg && lastSeg.found ? +(lastSeg.areaFrac / ((fit && fit.frac) || 1)).toFixed(4) : null,
-    /* Whether the clinician drew the region of interest matters: a hand-drawn box changes the
-       prediction, so a record that does not say which was used cannot be audited. */
-    roi_source: lastBox ? (lastBox.manual ? 'clinician-drawn' : 'model outline') : 'whole photograph',
-    roi_source_px: lastBox && fit ? Math.round(lastBox.s / fit.scale) : null,
-    tissue: t ? { granulation: +t.frac.gran.toFixed(3), slough: +t.frac.slough.toFixed(3), necrosis: +t.frac.necro.toFixed(3),
-                  pale: +t.frac.pale.toFixed(3), periwound_delta_a: t.dA === null ? null : +t.dA.toFixed(2) } : null,
-    /* The study ID is what makes a patient-level split possible later; if the clinician leaves it
-       blank it is derived from the filename, by the same rule the trainer uses. */
-    case_id: $('gtCase').value.trim().toUpperCase() || caseIdOf(currentName),
-    skin_type: $('gtSkin').value, device: $('gtDevice').value, protocol: '',
-    grader: $('gtRater').value,
-    rater2: '', rater2_wagner: '', rater2_npiap: '',
-    gt_grade: $('gtGrade').value, gt_stage: $('gtStage').value, gt_wagner: $('gtWagner').value, probe_to_bone: $('gtPtb').value,
-    /* Usually blank at the bedside, because a culture takes days — the log's follow-up editor
-       writes the same fields later. Either route is fine; neither is guessed. */
-    specimen_date: $('gtDate').value, organisms: orgs, sensitivity_notes: $('gtNotes').value.trim(),
-    culture_positive: culturePositive(orgs), outcome: $('gtOutcome').value, pi_date: '',
-    npiap_stage: $('gtNpiap').value, blanching: $('gtBlanch').value, deepest_structure: $('gtDeep').value,
-    body_site: (DISEASE === 'pi' ? $('gtSite').value : $('gtSiteDfu').value), pi_notes: $('gtPiNotes').value.trim() };
-  const log = loadLog(); log.unshift(rec); saveLog(log); savedThisImage = true; renderLog(); renderAssessJourney();
-  toast('Case saved to log');
-  if ($('sheetAuto') && $('sheetAuto').checked && sheetUrl()) pushToSheet([rec], 'Auto-sent');
-  if (studyMode) $('logCard').scrollIntoView({behavior:'smooth', block:'start'});
-};
 /* ═══════════════════════════ completing a case later ═══════════════════════════
    The photograph and the bedside findings are recorded on the day. The culture result is not
    available for three to five days, and the healing outcome not for weeks, so neither belongs on
@@ -3141,22 +3069,24 @@ let openCase = null;
 /* The bedside card and the log's follow-up editor offer the same organism list and the same
    mutual exclusion, because they write the same fields — one at the trolley if the result
    happens to be back, one days later when it is not. */
-function renderOrgChips(host, selected){
-  const chosen = new Set(selected || []);
-  host.innerHTML = ORG_GROUPS.map(([g, list]) =>
-    `<div class="orggroup"><span>${g}</span><div class="chips">${list.map(o =>
-      `<button type="button" class="chip${chosen.has(o) ? ' on' : ''}" data-v="${o}">${o}</button>`).join('')}</div></div>`).join('');
-  host.querySelectorAll('.chip').forEach(b => b.onclick = () => {
-    const v = b.dataset.v, wasOn = b.classList.contains('on'), all = [...host.querySelectorAll('.chip')];
-    if (!wasOn){
-      if (ORG_SENTINELS.includes(v)) all.forEach(x => x.classList.remove('on'));
-      else all.filter(x => ORG_SENTINELS.includes(x.dataset.v)).forEach(x => x.classList.remove('on'));
-    }
-    b.classList.toggle('on', !wasOn);
-  });
-}
 const orgChosen = host => [...host.querySelectorAll('.chip.on')].map(b => b.dataset.v);
-renderOrgChips($('gtOrgs'), []);
+
+/* Twenty-seven organism chips was the largest remaining block of them. The sentinels
+   ("No growth", "Skin flora only", "Specimen not sent") are mutually exclusive with a named
+   organism, which the picker enforces rather than trusting the user to notice. */
+function orgPicker(host, selected, onChange){
+  const el = typeof host === 'string' ? $(host) : host;
+  if (!el) return;
+  let chosen = (selected || []).slice();
+  const groups = ORG_GROUPS.map(([g, list]) => [g, list.map(o => [o, o])]);
+  const draw = () => tagPicker(el, groups, chosen, next => {
+    const added = next.filter(x => !chosen.includes(x));
+    if (added.some(x => ORG_SENTINELS.includes(x))) next = added.filter(x => ORG_SENTINELS.includes(x)).slice(-1);
+    else if (added.length) next = next.filter(x => !ORG_SENTINELS.includes(x));
+    chosen = next; draw(); onChange && onChange(chosen.slice());
+  }, 'Add an organism\u2026');
+  draw();
+}
 
 const sel = (opts, cur) => opts.map(o =>
   `<option value="${o}"${String(cur || '') === o ? ' selected' : ''}>${o || '—'}</option>`).join('');
@@ -3166,12 +3096,7 @@ function followupHtml(r){
   const pi = r.disease === 'pressure injury';
   return `<div class="followup" data-id="${r.id}">
     ${pi ? '' : `<span class="lab">Tissue culture &amp; sensitivity <em>reference standard for infection</em></span>
-    <div data-role="orgs">${ORG_GROUPS.map(([g, list]) =>
-      `<div class="orggroup"><span>${g}</span><div class="chips">${list.map(o =>
-        `<button class="chip${orgs.has(o) ? ' on' : ''}" data-v="${o}">${o}</button>`).join('')}</div></div>`).join('')
-      + (() => { const extra = [...orgs].filter(o => !ORG_LIST.includes(o));
-                 return extra.length ? `<div class="orggroup"><span>Recorded earlier</span><div class="chips">${extra.map(o =>
-                   `<button class="chip on" data-v="${o}">${o}</button>`).join('')}</div></div>` : ''; })()}</div>
+    <div data-role="orgs" data-orgs="${encodeURIComponent(JSON.stringify([...orgs]))}"></div>
     <div class="row2" style="margin-top:8px">
       <div class="field"><label>Specimen date</label><input type="date" data-role="date" value="${r.specimen_date || ''}"></div>
       <div class="field"><label>Sensitivity / notes</label><input data-role="notes" value="${(r.sensitivity_notes || '').replace(/"/g, '&quot;')}" placeholder="sensitive to co-amoxiclav; ESBL negative"></div>
@@ -3215,17 +3140,15 @@ function followupHtml(r){
 
 function wireFollowup(li, r){
   const box = li.querySelector('.followup'); if (!box) return;
-  box.querySelectorAll('[data-role="orgs"] .chip').forEach(b => b.onclick = e => {
-    e.stopPropagation();
-    const v = b.dataset.v, wasOn = b.classList.contains('on');
-    const all = [...box.querySelectorAll('[data-role="orgs"] .chip')];
-    if (!wasOn){
-      // a result and an organism cannot both be true of one specimen
-      if (ORG_SENTINELS.includes(v)) all.forEach(x => x.classList.remove('on'));
-      else all.filter(x => ORG_SENTINELS.includes(x.dataset.v)).forEach(x => x.classList.remove('on'));
-    }
-    b.classList.toggle('on', !wasOn);
-  });
+  const oh = box.querySelector('[data-role="orgs"]');
+  if (oh){
+    /* Organisms recorded before this build may not be in the current list; they are carried
+       through rather than silently dropped when the row is edited. */
+    let start = []; try { start = JSON.parse(decodeURIComponent(oh.dataset.orgs || '[]')); } catch(e){}
+    oh._orgs = start.slice();
+    orgPicker(oh, start, list => { oh._orgs = list; });
+    oh.onclick = e => e.stopPropagation();
+  }
   box.onclick = e => e.stopPropagation();
   box.querySelector('[data-role="close"]').onclick = () => { openCase = null; renderLog(); };
   box.querySelector('[data-role="del"]').onclick = () => {
@@ -3236,7 +3159,8 @@ function wireFollowup(li, r){
   box.querySelector('[data-role="save"]').onclick = () => {
     const log = loadLog(), rec = log.find(x => String(x.id) === String(r.id));
     if (!rec) return;
-    const org = [...box.querySelectorAll('[data-role="orgs"] .chip.on')].map(b => b.dataset.v);
+    const oh = box.querySelector('[data-role="orgs"]');
+    const org = oh && oh._orgs ? oh._orgs : [];
     if (org.length){
       rec.organisms = org;
       rec.culture_positive = culturePositive(org);
@@ -3481,6 +3405,84 @@ function renderSheetState(){
 
 /* The formulary editor. Kept plain: six text fields per severity, because a guideline table is
    prose and forcing it into structured dose fields would lose the footnotes that matter. */
+/* ── Dashboard ────────────────────────────────────────────────────────────────────────────
+   Every number is counted from the case log or the label pool at render time. Nothing is cached
+   and nothing is entered here, so there is no second copy of the truth to drift. */
+const dashPct = (n, max) => max ? Math.round(n / max * 100) : 0;
+
+function barRows(counts, opts){
+  const o = opts || {};
+  const entries = Object.entries(counts).filter(([, v]) => v > 0);
+  if (!entries.length) return `<div class="bars"><div class="empty">${o.empty || 'Nothing recorded yet.'}</div></div>`;
+  if (o.order) entries.sort((a, b) => o.order.indexOf(a[0]) - o.order.indexOf(b[0]));
+  else entries.sort((a, b) => b[1] - a[1]);
+  const max = Math.max(...entries.map(([, v]) => v));
+  return '<div class="bars">' + entries.map(([k, v]) =>
+    `<div class="bar"><span class="bl">${k}</span>
+       <span class="bt"><span class="bf${o.thinUnder && v < o.thinUnder ? ' thin' : ''}" style="width:${Math.max(dashPct(v, max), 2)}%"></span></span>
+       <span class="bn">${v}${o.pctOf ? ' \u00b7 ' + dashPct(v, o.pctOf) + '%' : ''}</span></div>`).join('') + '</div>';
+}
+
+const tally = (rows, fn) => rows.reduce((m, r) => { const k = fn(r); if (k) m[k] = (m[k] || 0) + 1; return m; }, {});
+
+function renderDashboard(){
+  if (!$('dashTiles')) return;
+  const log = loadLog();
+  const dfu = log.filter(r => r.disease !== 'pressure injury');
+  const graders = new Set(log.map(r => r.grader).filter(Boolean));
+  const cultured = dfu.filter(r => (r.organisms || []).length);
+  const awaiting = dfu.length - cultured.length;
+  const outcomes = log.filter(r => r.outcome).length;
+  const noSkin = log.filter(r => !r.skin_type).length;
+
+  /* An image graded by two people is what the inter-rater statistic is computed from. Counting
+     them here, rather than only at the point of computing kappa, shows the shortfall early \u2014
+     when it can still be fixed by asking the second grader for another sitting. */
+  const byImage = {};
+  log.forEach(r => { (byImage[r.image] = byImage[r.image] || new Set()).add(r.grader || '?'); });
+  const doubled = Object.values(byImage).filter(s => s.size > 1).length;
+
+  const tiles = [
+    ['v', log.length, 'Cases in the log', 'all graders'],
+    ['v', Object.keys(byImage).length, 'Images graded', 'distinct photographs'],
+    ['v', graders.size, 'Graders', [...graders].join(', ') || 'none yet'],
+    [doubled ? 'v' : 'w', doubled, 'Double-graded', doubled ? 'available for \u03ba' : '\u03ba not computable'],
+    [awaiting ? 'w' : 'v', awaiting, 'Awaiting culture', 'foot ulcers only'],
+    [outcomes ? 'v' : 'w', outcomes, 'With an outcome', 'follow-up recorded'],
+    [noSkin ? 'w' : 'v', noSkin, 'Missing skin type', noSkin ? 'cannot report by tone' : 'complete']
+  ];
+  $('dashTiles').innerHTML = tiles.map(([k, v, lab, sub]) =>
+    `<div class="tile${k === 'w' ? ' warn' : ''}"><div class="v">${v}</div><div class="k">${lab}</div><div class="s">${sub}</div></div>`).join('');
+  $('dashWhen').textContent = log.length ? 'counted just now' : 'nothing recorded yet';
+
+  /* The verdict names the single thing most worth doing next, rather than listing every gap.
+     A list of seven problems is read as noise; one named next step is read as an instruction. */
+  const v = $('dashVerdict');
+  if (!log.length) v.innerHTML = '<b>No cases yet.</b> Grade an image in <b>step B</b> of the Study team tab and a row appears here.';
+  else if (!doubled) v.innerHTML = `<b>Nothing is double-graded.</b> Inter-rater agreement cannot be computed from ${log.length} case${log.length === 1 ? '' : 's'} read by one person each. Have the second grader read a share of the same images.`;
+  else if (noSkin) v.innerHTML = `<b>${noSkin === 1 ? '1 case carries' : noSkin + ' cases carry'} no skin type.</b> Performance by skin tone is the claim this study exists to support, and it cannot be reported for rows where the field is blank.`;
+  else if (awaiting) v.innerHTML = `<b>${awaiting} foot ulcer${awaiting === 1 ? '' : 's'} still awaiting a culture result.</b> Open the case log and complete them as the results arrive.`;
+  else v.innerHTML = '<b>Nothing obvious is missing.</b> Keep collecting \u2014 the limit now is how many cases there are, not what is recorded about them.';
+
+  const F = n => n;
+  $('dashWagner').innerHTML  = barRows(tally(dfu, r => r.gt_wagner ? 'Wagner ' + r.gt_wagner : ''), { order: ['Wagner 0','Wagner 1','Wagner 2','Wagner 3','Wagner 4','Wagner 5'], thinUnder: 10, empty: 'No Wagner grades recorded.' });
+  $('dashNpiap').innerHTML   = barRows(tally(log.filter(r => r.disease === 'pressure injury'), r => r.npiap_stage ? 'Stage ' + r.npiap_stage : ''), { thinUnder: 10, empty: 'No pressure injuries recorded.' });
+  $('dashSkin').innerHTML    = barRows(tally(log, r => r.skin_type ? 'Type ' + r.skin_type : ''), { pctOf: log.length, empty: 'No skin types recorded.' });
+  $('dashType').innerHTML    = barRows(tally(log, r => r.disease === 'pressure injury' ? 'Pressure injury' : 'Foot ulcer'), { pctOf: log.length });
+  $('dashSite').innerHTML    = barRows(tally(log, r => r.body_site), { empty: 'No body sites recorded.' });
+  $('dashOutcome').innerHTML = barRows(tally(log, r => r.outcome), { empty: 'No outcomes recorded yet.' });
+  $('dashGraders').innerHTML = barRows(tally(log, r => r.grader), { empty: 'No grader recorded.' });
+
+  const orgCount = {};
+  cultured.forEach(r => (r.organisms || []).forEach(o => { orgCount[o] = (orgCount[o] || 0) + 1; }));
+  $('dashOrgs').innerHTML = barRows(orgCount, { pctOf: cultured.length || 1, empty: 'No culture results recorded yet.' });
+
+  const feat = {}, flab = Object.fromEntries(FEAT_OPTS);
+  (typeof pool !== 'undefined' ? pool : []).forEach(it =>
+    (it.feats || []).forEach(f => { const k = flab[f] || f; feat[k] = (feat[k] || 0) + 1; }));
+  $('dashFeats').innerHTML = barRows(feat, { thinUnder: 10, empty: 'No findings ticked yet. These come from the images loaded in step B this session.' });
+}
+
 function renderFormulary(){
   const host = $('nagRows'); if (!host) return;
   const f = loadFormulary(), rows = f.rows || {};
@@ -4038,6 +4040,47 @@ const poolCases = () => new Set(pool.map(it => caseIdOf(it.name)));
 const LABELS_KEY = 'wv_labels_v1';
 const labKey = it => it.name + '|' + (it.file ? it.file.size : 0);
 function loadLabels(){ try { return JSON.parse(localStorage.getItem(LABELS_KEY) || '{}'); } catch(e){ return {}; } }
+/* Section B and the old "Record a case" form asked for the same things twice: grader, wound
+   type, grade, skin type, site, probe-to-bone, culture, outcome. Entering them twice is not a
+   safeguard, it is two chances to disagree with yourself. Section B is now the single place a
+   case is graded, and the case log is written from it.
+
+   The row is keyed on the image and the grader, so correcting a label corrects the row rather
+   than adding a second one \u2014 and two graders reading the same image still produce two rows,
+   which is what the inter-rater statistic needs. */
+function labelToCase(it){
+  const pi = it.wtype === 'pi', r = it.rec || {};
+  return { id: 'B|' + labKey(it) + '|' + (r.grader || ''), src: 'graded in step B',
+    when: new Date().toISOString(), image: it.name, thumb: '',
+    model: 'not run \u2014 graded from the image list', ai_label: '',
+    p_severe: null, p_infection: null, probs: null, wound_area_frac: null,
+    roi_source: '', roi_source_px: null, tissue: null,
+    disease: pi ? 'pressure injury' : 'diabetic foot ulcer',
+    case_id: (r.case_id || '').trim().toUpperCase() || caseIdOf(it.name),
+    skin_type: it.skin || '', device: r.device || '', protocol: r.proto || '',
+    grader: r.grader || '', rater2: r.reviewer || '', rater2_wagner: '', rater2_npiap: '',
+    gt_grade: r.grade || '', gt_stage: r.stage || '', gt_wagner: it.wagner || '',
+    probe_to_bone: r.ptb || '', specimen_date: r.spec_date || '',
+    organisms: r.organisms || [], sensitivity_notes: r.sens || '',
+    culture_positive: culturePositive(r.organisms || []), outcome: r.outcome || '', pi_date: '',
+    npiap_stage: it.npiap || '', blanching: r.blanch || '', deepest_structure: r.deepest || '',
+    body_site: r.site || '', pi_notes: r.notes || '' };
+}
+
+function syncLabelsToLog(){
+  const log = loadLog(); let changed = false;
+  pool.forEach(it => {
+    const r = it.rec || {};
+    if (!r.grader || !(it.wagner || it.npiap)) return;   // not graded yet; nothing to record
+    const row = labelToCase(it), i = log.findIndex(x => String(x.id) === row.id);
+    if (i < 0){ log.unshift(row); changed = true; return; }
+    row.when = log[i].when;                              // keep the first time it was recorded
+    row.revisions = log[i].revisions;
+    if (JSON.stringify(log[i]) !== JSON.stringify(row)){ log[i] = row; changed = true; }
+  });
+  if (changed){ saveLog(log); if (typeof renderLog === 'function') renderLog(); }
+}
+
 function saveLabels(){
   const m = loadLabels();
   pool.forEach(it => { const k = labKey(it);
@@ -4070,7 +4113,7 @@ function addToPool(items){
   cur = firstUnlabelled < 0 ? 0 : firstUnlabelled;
   const restored = pool.filter(labelled).length;
   if (restored) toast(`${restored} image${restored === 1 ? '' : 's'} already labelled \u2014 ticks restored`);
-  saveLabels(); autoTarget(); fillTargets(); projectClasses(); describeTarget();
+  saveLabels(); syncLabelsToLog(); autoTarget(); fillTargets(); projectClasses(); describeTarget();
   renderLabeller(); readinessNote(); renderReadyNow(); renderJourney();
 }
 const poolUrl = it => it.url || (it.url = URL.createObjectURL(it.file));
@@ -4350,7 +4393,8 @@ function renderLabRec(it){
   const txt = (key, label, ph) => `<div class="field"><label>${label}</label>
     <input data-k="${key}" value="${String(it.rec[key] || '').replace(/"/g, '&quot;')}" placeholder="${ph || ''}"></div>`;
   host.innerHTML = `<div class="row2">
-      ${recField(it, 'grader', 'Grader', GRADERS.concat(['Other']))}
+      <div class="field"><label>Study ID <em>blank takes it from the filename</em></label>
+        <input data-k="case_id" value="${String(it.rec.case_id || '').replace(/"/g, '&quot;')}" placeholder="${caseIdOf(it.name)}"></div>
       ${recField(it, 'reviewer', 'Independent reviewer', GRADERS.concat(['Other']), 'second opinion')}
     </div>
     ${(it.rec.grader === 'Other' || it.rec.reviewer === 'Other') ? txt('grader_other', 'Name of the other grader or reviewer', 'Dr …') : ''}
@@ -4387,11 +4431,10 @@ function renderLabRec(it){
   });
   const orgHost = host.querySelector('[data-role="labOrgs"]');
   if (orgHost){
-    renderOrgChips(orgHost, it.rec.organisms || []);
-    orgHost.querySelectorAll('.chip').forEach(b => { const prev = b.onclick;
-      b.onclick = e => { prev && prev(e); it.rec.organisms = orgChosen(orgHost);
-                         if (!it.rec.organisms.length) delete it.rec.organisms;
-                         saveLabels(); recCount(it); }; });
+    orgPicker(orgHost, it.rec.organisms || [], list => {
+      if (list.length) it.rec.organisms = list; else delete it.rec.organisms;
+      saveLabels(); recCount(it);
+    });
   }
   recCount(it);
 }
@@ -4408,7 +4451,7 @@ function labChanged(){
      the grader's name exactly as one set by a chip does. */
   const it = pool[cur];
   if (it && labGrader && (labelled(it) || it.skin)) it.rec.grader = labGrader;
-  saveLabels(); autoTarget(); fillTargets(); projectClasses(); describeTarget();
+  saveLabels(); syncLabelsToLog(); autoTarget(); fillTargets(); projectClasses(); describeTarget();
   renderLabeller(); readinessNote(); renderReadyNow(); renderJourney();
 }
 
@@ -4540,7 +4583,6 @@ function describeTarget(){
 /* One list of graders, used on the bedside card, in the training labeller and for the second
    reading, so the same person is one value in the column rather than three spellings of it.
    Filled here because GRADERS and sel are both declared further down the file. */
-$('gtRater') && ($('gtRater').innerHTML = sel([''].concat(GRADERS, ['Other']), ''));
 renderFormulary();
 
 fillTargets(); describeTarget(); renderLabeller(); renderReadiness(); renderJourney(); renderAssessJourney();

@@ -8,9 +8,12 @@ culture & sensitivity) so that every case becomes a labelled training example fo
 
 Live path once deployed with the rest of this repository on Vercel: `https://<your-app>.vercel.app/dfu/`
 
-> **Disclaimer.** Research prototype. Not a medical device, not validated, not for clinical decision-making.
-> Trained on a small public dataset with weak (rule-derived) labels. The app opens with this disclaimer and with the
-> standardised image acquisition protocol, and will not proceed until both are acknowledged.
+> **What this is for.** A clinical decision support tool, built to bring detection and treatment forward so that
+> fewer patients lose a limb and fewer are left permanently disabled. It supports the clinician's judgement rather
+> than replacing it.
+>
+> **Where it stands.** Under evaluation. Trained so far on a small public dataset with weak (rule-derived) labels,
+> with outcomes still to be studied. The app opens by stating this, and will not proceed until it is acknowledged.
 
 ## What the demo shows (30 seconds)
 

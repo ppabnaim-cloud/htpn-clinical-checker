@@ -1146,7 +1146,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-10-17 &middot; v4.6</span>
+  <span class="study-hide" id="buildStamp">build 2026-10-17 &middot; v4.7</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -4984,6 +4984,18 @@ $('trainBtn').onclick = async () => {
     $('trainStop').classList.add('hidden');
   }
 };
+/* Which grading scheme a locally-trained head speaks, so the Assess screen shows the matching
+   panel. Lost in the same aborted edit that took log() with it, and with the same consequence:
+   headEntry() threw, so pressing "Use this model in Assess" registered nothing and saved nothing.
+   The model trained perfectly and was then dropped on the floor. */
+function guessScheme(classes){
+  const all = (classes || []).join(' ').toLowerCase();
+  if (all.indexOf('wagner') >= 0) return 'wagner';
+  if (all.indexOf('npiap') >= 0)  return 'npiap';
+  if (all.indexOf('texas') >= 0 || /\b[0-3][abcd]\b/.test(all)) return 'texas';
+  return null;                    // a feature head (slough, necrosis) belongs to no grading scheme
+}
+
 function headEntry(head, classes, name, metrics, when){
   const tailIn = tf.input({ shape: [7, 7, EMB] }); let y = tf.layers.globalAveragePooling2d({}).apply(tailIn); y = head.apply(y);
   return { kind: 'head', name, classes, conv: backbone, tail: tf.model({ inputs: tailIn, outputs: y }), head, inputRange: '[-1,1]', scheme: guessScheme(classes), metrics, when };
@@ -4991,12 +5003,21 @@ function headEntry(head, classes, name, metrics, when){
 const HEADS_KEY = 'dfu_vision_heads_v1';
 const loadHeadsMeta = () => { try { return JSON.parse(localStorage.getItem(HEADS_KEY) || '[]'); } catch(e){ return []; } };
 $('activateBtn').onclick = async () => {
-  if (!trained) return;
+  /* This button threw for weeks and said nothing, so a completed 30-minute run was discarded in
+     silence. Anything that can lose that much work states its failure. */
+  if (!trained) return toast('Train a model first');
+  try {
   const name = `My model ${new Date().toLocaleDateString()} (${trained.classes.length} classes)`; const when = new Date().toISOString();
   const entry = headEntry(trained.head, trained.classes, name, trained.metrics, when); registry[name] = entry; setActive(entry);
   try { const key = 'dfu-head-' + Date.now(); await trained.head.save('indexeddb://' + key); const meta = loadHeadsMeta(); meta.unshift({ key, name, classes: trained.classes, metrics: trained.metrics, when }); localStorage.setItem(HEADS_KEY, JSON.stringify(meta.slice(0, 10))); toast('Model active and saved on this device'); }
   catch(e){ toast('Model active (could not persist: ' + e.message + ')'); }
   renderModelList(); renderJourney(); openTab('assess');
+  } catch (e) {
+    console.error(e);
+    log('\nCould not keep the model: ' + (e && e.message ? e.message : e)
+      + '\nThe trained model is still in memory \u2014 do not reload. Report this message.');
+    toast('Could not keep the model \u2014 see the log');
+  }
 };
 $('downloadBtn').onclick = async () => {
   if (!trained) return;

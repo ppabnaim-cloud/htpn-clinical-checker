@@ -968,6 +968,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       <div class="field"><label>Flip augmentation</label><select id="tAug"><option value="1">On (×3)</option><option value="0">Off</option></select></div>
     </div>
     <button class="btn btn-primary" id="trainBtn" disabled>Train model</button>
+    <button class="btn btn-ghost btn-sm hidden" id="trainStop" style="width:100%;margin-top:6px">Stop training</button>
     <p class="small" id="trainBlock" style="margin-top:8px"></p>
     <div class="progress"><i id="trainProg"></i></div>
     <div class="trainlog" id="trainLog">Waiting for data…</div>
@@ -1042,7 +1043,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     </div>
     <div class="note" id="kappaNote" style="margin:0 0 10px"></div>
     <div id="pending"></div>
-    <p class="small" style="margin:2px 0 8px;color:var(--muted)">Filled in from <b>Assess a wound</b>, step 3 — not from the labelling steps, which produce their own CSV. Tap a case to add what was not known at the bedside: the culture result, and the outcome at follow-up.</p>
+    <p class="small" style="margin:2px 0 8px;color:var(--muted)">Written from your grading in <b>step B</b> — one row per image per grader. Tap a case to add what was not known when you graded it: the culture result, and the outcome at follow-up.</p>
     <ul class="log-list" id="logList"></ul>
     <p id="logEmpty" class="small" style="margin-top:8px;color:var(--faint)">No cases logged yet.</p>
     <div class="note" id="logStorage" style="margin-top:10px"></div>
@@ -1120,7 +1121,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-10-17 &middot; v4.1</span>
+  <span class="study-hide" id="buildStamp">build 2026-10-17 &middot; v4.2</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -4064,9 +4065,9 @@ function loadLabels(){ try { return JSON.parse(localStorage.getItem(LABELS_KEY) 
    The row is keyed on the image and the grader, so correcting a label corrects the row rather
    than adding a second one \u2014 and two graders reading the same image still produce two rows,
    which is what the inter-rater statistic needs. */
-function labelToCase(it){
+function labelToCase(it, key){
   const pi = it.wtype === 'pi', r = it.rec || {};
-  return { id: 'B|' + labKey(it) + '|' + (r.grader || ''), src: 'graded in step B',
+  return { id: 'B|' + (key || labKey(it)) + '|' + (r.grader || ''), src: 'graded in step B',
     when: new Date().toISOString(), image: it.name, thumb: '',
     model: 'not run \u2014 graded from the image list', ai_label: '',
     p_severe: null, p_infection: null, probs: null, wound_area_frac: null,
@@ -4083,18 +4084,33 @@ function labelToCase(it){
     body_site: r.site || '', pi_notes: r.notes || '' };
 }
 
+/* Reads the STORED labels, not the in-memory image list. That distinction is the whole bug this
+   replaces: a browser cannot hold on to the files you picked, so after a reload the image list is
+   empty while every label is still in storage. Syncing from the list meant a grader could label
+   441 images, reload, and find two rows in the log \u2014 the labels were never lost, but nothing was
+   turning them into cases. Reading the store means the log can be rebuilt with no files present
+   at all. */
 function syncLabelsToLog(){
-  const log = loadLog(); let changed = false;
-  pool.forEach(it => {
-    const r = it.rec || {};
-    if (!r.grader || !(it.wagner || it.npiap)) return;   // not graded yet; nothing to record
-    const row = labelToCase(it), i = log.findIndex(x => String(x.id) === row.id);
+  const store = loadLabels(), log = loadLog();
+  let changed = false, written = 0;
+  Object.keys(store).forEach(k => {
+    const v = store[k], r = v.r || {};
+    if (!r.grader || !(v.w || v.n)) return;              // not graded, or graded by nobody
+    const it = { name: k.split('|')[0], wtype: v.t || 'dfu', wagner: v.w || null,
+                 npiap: v.n || null, skin: v.s || '', rec: r };
+    const row = labelToCase(it, k), i = log.findIndex(x => String(x.id) === row.id);
+    written++;
     if (i < 0){ log.unshift(row); changed = true; return; }
     row.when = log[i].when;                              // keep the first time it was recorded
     row.revisions = log[i].revisions;
     if (JSON.stringify(log[i]) !== JSON.stringify(row)){ log[i] = row; changed = true; }
   });
-  if (changed){ saveLog(log); if (typeof renderLog === 'function') renderLog(); }
+  if (changed){
+    saveLog(log);
+    if (typeof renderLog === 'function') renderLog();
+    if (typeof renderDashboard === 'function') renderDashboard();
+  }
+  return written;
 }
 
 function saveLabels(){
@@ -4601,6 +4617,14 @@ function describeTarget(){
    Filled here because GRADERS and sel are both declared further down the file. */
 renderFormulary();
 
+/* Labels already in storage become case rows at start-up, so a grader who labelled before this
+   existed does not have to touch 441 images again to see them in the log. It is keyed and
+   idempotent, so running it on every load cannot duplicate anything. */
+try {
+  const n = syncLabelsToLog();
+  if (n) console.info(`case log synced from ${n} graded labels`);
+} catch (e) { console.error('could not sync labels to the case log', e); }
+
 fillTargets(); describeTarget(); renderLabeller(); renderReadiness(); renderJourney(); renderAssessJourney();
 /* Place the case log for whichever tab is showing at load, so it is not stranded in the hidden
    one until the first tab click. */
@@ -4671,6 +4695,7 @@ let trained = null;   // { head, classes, metrics, cm }
    dead: the click handler calls this on its first line, so with log() undefined the handler threw
    a ReferenceError immediately after disabling the button and before doing anything else \u2014
    leaving a greyed button, a "Ready" message and a log still showing its placeholder. */
+let trainAbort = false;
 function log(msg, reset){
   const el = $('trainLog'); if (!el) return;
   el.textContent = reset ? String(msg) : (el.textContent ? el.textContent + '\n' : '') + msg;
@@ -4684,7 +4709,17 @@ $('trainBtn').onclick = async () => {
   const classes = [...data.classes.entries()].filter(([, v]) => v.length >= 4).map(([k]) => k).sort();
   const epochs = +$('tEpochs').value || 40, hidden = +$('tHidden').value || 128, aug = $('tAug').value === '1';
   const t0 = performance.now();
-  log(`Classes: ${classes.join(', ')}\nExtracting MobileNetV2 embeddings on ${tf.getBackend()}…`, true);
+  trainAbort = false; $('trainStop').classList.remove('hidden');
+  const be = tf.getBackend();
+  log(`Classes: ${classes.join(', ')}`, true);
+  /* The backend is the single biggest determinant of how long this takes, and it is the one thing
+     the user cannot see. WebGL uses the graphics card; the CPU fallback is roughly an order of
+     magnitude slower, which is the difference between a coffee and an afternoon. */
+  log(be === 'webgl'
+    ? 'Backend: webgl (graphics card). This is the fast path.'
+    : `Backend: ${be} — the graphics card is not being used, so this will be SLOW. Expect roughly ten times longer than normal. Close other tabs, or turn off flip augmentation below to cut the work to a third.`);
+  log(`Flip augmentation is ${aug ? 'ON, so each training image is embedded three times' : 'off'}.`);
+  log('Extracting embeddings… progress appears below, one line per 10 images.');
   // 80/20 split by CASE, not by image — see splitByCase
   const sp = splitByCase(classes);
   sp.notes.forEach(log);
@@ -4696,7 +4731,20 @@ $('trainBtn').onclick = async () => {
       embs.forEach(e => { (isVal ? vaX : trX).push(e); (isVal ? vaY : trY).push(r.ci); }); }
     catch(e){ log(`skipped ${r.it.name}: ${e.message}`); }
     done++; $('trainProg').style.width = (done / total * 60) + '%';
-    if (done % 5 === 0){ log(`  ${done}/${total} images embedded`); await sleep(0); }
+    /* The first image is logged immediately. Waiting for five before saying anything is what made
+       a slow run indistinguishable from a dead one. */
+    if (done === 1) log(`  1/${total} embedded — it is running.`);
+    else if (done % 10 === 0 || done === total){
+      const rate = (performance.now() - t0) / done;                       // ms per image so far
+      const left = Math.round(rate * (total - done) / 1000);
+      log(`  ${done}/${total} embedded · about ${left > 90 ? Math.round(left/60) + ' min' : left + ' s'} left`);
+    }
+    if (done % 5 === 0) await sleep(0);                                   // let the page repaint
+    if (trainAbort){
+      log(`\nStopped by you after ${done} of ${total} images. Nothing was trained and nothing was lost — your labels are untouched.`);
+      $('trainProg').style.width = '0%'; $('trainStop').classList.add('hidden');
+      $('trainBtn').disabled = false; return;
+    }
   }
   log(`Training head on ${trX.length} embeddings (${trY.length ? classes.length : 0} classes), validating on ${vaX.length} held-out images…`);
   const xs = tf.tensor2d(trX), ys = tf.oneHot(tf.tensor1d(trY, 'int32'), classes.length), xv = tf.tensor2d(vaX), yv = tf.oneHot(tf.tensor1d(vaY, 'int32'), classes.length);
@@ -4729,6 +4777,7 @@ $('trainBtn').onclick = async () => {
     toast('Training failed \u2014 see the log under the button');
   } finally {
     $('trainBtn').disabled = false;
+    $('trainStop').classList.add('hidden');
   }
 };
 function headEntry(head, classes, name, metrics, when){

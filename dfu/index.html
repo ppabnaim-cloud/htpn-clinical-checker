@@ -1087,6 +1087,14 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   </section>
 
   <section class="card">
+    <div class="step"><span class="n">▤</span><h3>Training history</h3><span class="hint">what the model has actually seen</span></div>
+    <p class="small" style="margin-bottom:10px">Every completed run, most recent first — including runs made before the
+    ground truth was complete, which is what the early ones are. The class counts sit beside the accuracy so a high
+    number on a thin class cannot be mistaken for a good result.</p>
+    <div id="dashRuns"></div>
+  </section>
+
+  <section class="card">
     <div class="step"><span class="n">▤</span><h3>Microbiology</h3><span class="hint">from the case log</span></div>
     <p class="small" style="margin-bottom:10px">Organisms isolated, counted across cases with a culture result. A case
     may grow more than one, so these do not sum to the number of cases.</p>
@@ -1121,7 +1129,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-10-17 &middot; v4.2</span>
+  <span class="study-hide" id="buildStamp">build 2026-10-17 &middot; v4.3</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3457,7 +3465,17 @@ function renderDashboard(){
   log.forEach(r => { (byImage[r.image] = byImage[r.image] || new Set()).add(r.grader || '?'); });
   const doubled = Object.values(byImage).filter(s => s.size > 1).length;
 
+  const seen = Object.keys(loadSeen()).length;
+  const runs = loadRuns();
+  const last = runs[0] || null;
+  const labelled_n = Object.keys(loadLabels()).length;
+  const withTissue = log.filter(r => r.findings_n > 0).length;
+
   const tiles = [
+    ['v', seen, 'Images uploaded', 'ever, across all sittings'],
+    [labelled_n < seen ? 'w' : 'v', labelled_n, 'Images labelled', labelled_n < seen ? (seen - labelled_n) + ' still untouched' : 'all of them'],
+    [last ? 'v' : 'w', last ? last.n_train_images : 0, 'Used in last training', last ? `+ ${last.n_val} held out` : 'never trained'],
+    [withTissue ? 'v' : 'w', withTissue, 'With tissue findings', withTissue ? 'of ' + log.length + ' cases' : 'can be added later'],
     ['v', log.length, 'Cases in the log', 'all graders'],
     ['v', Object.keys(byImage).length, 'Images graded', 'distinct photographs'],
     ['v', graders.size, 'Graders', [...graders].join(', ') || 'none yet'],
@@ -3491,6 +3509,22 @@ function renderDashboard(){
   const orgCount = {};
   cultured.forEach(r => (r.organisms || []).forEach(o => { orgCount[o] = (orgCount[o] || 0) + 1; }));
   $('dashOrgs').innerHTML = barRows(orgCount, { pctOf: cultured.length || 1, empty: 'No culture results recorded yet.' });
+
+  /* Training history. A run made before the ground truth was complete is still worth recording \u2014
+     it is how you show the model improving as the reference standard fills in. The accuracy is
+     shown next to the class counts it was obtained from, so a good number on thin classes cannot
+     be read as a good result. */
+  const rh = $('dashRuns');
+  if (rh){
+    rh.innerHTML = !runs.length
+      ? '<div class="bars"><div class="empty">No training run has completed yet. Step C in the Study team tab.</div></div>'
+      : '<table class="keep"><tr><th>when</th><th>label</th><th>trained on</th><th>held out</th><th>accuracy</th><th>macro F1</th></tr>'
+        + runs.slice(0, 10).map(r => `<tr><td>${new Date(r.when).toLocaleString()}</td>
+            <td>${r.target || '?'}</td>
+            <td>${r.n_train_images} images${r.aug ? ' (\u00d73 flips)' : ''}<br><small>${Object.entries(r.per_class || {}).map(([c, n]) => c + ' ' + n).join(' \u00b7 ')}</small></td>
+            <td>${r.n_val}</td><td>${(r.accuracy * 100).toFixed(0)} %</td><td>${r.macro_f1.toFixed(2)}</td></tr>`).join('')
+        + '</table>';
+  }
 
   const feat = {}, flab = Object.fromEntries(FEAT_OPTS);
   (typeof pool !== 'undefined' ? pool : []).forEach(it =>
@@ -4054,6 +4088,24 @@ const poolCases = () => new Set(pool.map(it => caseIdOf(it.name)));
    file back without the user choosing it again, and the 5 MB quota could not hold them anyway)
    but the labels can, keyed by filename and byte size. Choose the same folder again and every
    tick comes back onto the right image.                                                      */
+/* Two things the app could count only for the current session, and so could not report at all:
+   how many images have ever been put through it, and what the model was actually trained on. The
+   image list empties on every reload, so both have to be written down rather than counted. */
+const SEEN_KEY  = 'wv_seen_images_v1';
+const RUNS_KEY  = 'wv_train_runs_v1';
+const loadSeen  = () => { try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '{}'); } catch(e){ return {}; } };
+const loadRuns  = () => { try { return JSON.parse(localStorage.getItem(RUNS_KEY) || '[]'); } catch(e){ return []; } };
+function noteSeen(items){
+  const m = loadSeen(); const now = new Date().toISOString();
+  items.forEach(it => { const k = labKey(it); if (!m[k]) m[k] = { name: it.name, first: now }; });
+  try { localStorage.setItem(SEEN_KEY, JSON.stringify(m)); } catch(e){ /* counting is not worth a crash */ }
+  return Object.keys(m).length;
+}
+function noteRun(run){
+  const l = loadRuns(); l.unshift(run);
+  try { localStorage.setItem(RUNS_KEY, JSON.stringify(l.slice(0, 40))); } catch(e){}
+}
+
 const LABELS_KEY = 'wv_labels_v1';
 const labKey = it => it.name + '|' + (it.file ? it.file.size : 0);
 function loadLabels(){ try { return JSON.parse(localStorage.getItem(LABELS_KEY) || '{}'); } catch(e){ return {}; } }
@@ -4081,7 +4133,12 @@ function labelToCase(it, key){
     organisms: r.organisms || [], sensitivity_notes: r.sens || '',
     culture_positive: culturePositive(r.organisms || []), outcome: r.outcome || '', pi_date: '',
     npiap_stage: it.npiap || '', blanching: r.blanch || '', deepest_structure: r.deepest || '',
-    body_site: r.site || '', pi_notes: r.notes || '' };
+    body_site: r.site || '', pi_notes: r.notes || '',
+    /* The tissue findings are graded in step B and often filled in on a later pass, after the
+       grade itself. Carrying them on the row means a grader can come back to them without the
+       row having to be created again. */
+    findings: (it.feats || []).join('; '),
+    findings_n: (it.feats || []).length };
 }
 
 /* Reads the STORED labels, not the in-memory image list. That distinction is the whole bug this
@@ -4097,7 +4154,7 @@ function syncLabelsToLog(){
     const v = store[k], r = v.r || {};
     if (!r.grader || !(v.w || v.n)) return;              // not graded, or graded by nobody
     const it = { name: k.split('|')[0], wtype: v.t || 'dfu', wagner: v.w || null,
-                 npiap: v.n || null, skin: v.s || '', rec: r };
+                 npiap: v.n || null, skin: v.s || '', rec: r, feats: v.f || [] };
     const row = labelToCase(it, k), i = log.findIndex(x => String(x.id) === row.id);
     written++;
     if (i < 0){ log.unshift(row); changed = true; return; }
@@ -4141,6 +4198,7 @@ function addToPool(items){
     if (prev && prev.t){ rec.wtype = prev.t; rec.typeSet = !!prev.ts; }   // the wound type is remembered even when nothing was ticked
     pool.push(rec);
   });
+  noteSeen(pool);            // uploads are counted once, and the count survives the reload
   const firstUnlabelled = pool.findIndex(it => !labelled(it));
   cur = firstUnlabelled < 0 ? 0 : firstUnlabelled;
   const restored = pool.filter(labelled).length;
@@ -4765,6 +4823,13 @@ $('trainBtn').onclick = async () => {
   $('mAcc').textContent = (acc*100).toFixed(0) + ' %'; $('mF1').textContent = f1.toFixed(2); $('mN').textContent = vaY.length; $('mTime').textContent = ((performance.now() - t0)/1000).toFixed(0) + ' s';
   $('cmTable').innerHTML = `<tr><th>true ⟍ predicted</th>${classes.map(c => `<th>${c}</th>`).join('')}</tr>` + cm.map((r, i) => `<tr><th>${classes[i]}</th>${r.map((v, j) => `<td class="${i===j?'diag':''}">${v}</td>`).join('')}</tr>`).join('');
   $('prTable').innerHTML = `<tr><th>class</th><th>n</th><th>precision</th><th>recall</th><th>F1</th></tr>` + per.map(x => `<tr><th>${x.c}</th><td>${x.n}</td><td>${(x.p*100).toFixed(0)} %</td><td>${(x.r*100).toFixed(0)} %</td><td>${x.f1.toFixed(2)}</td></tr>`).join('');
+  /* Written down so the dashboard can say what the model was trained on, including a run made
+     before the ground truth was complete \u2014 which is most of them, early on. */
+  noteRun({ when: new Date().toISOString(), target: ($('trainTarget') || {}).value || '',
+            classes, n_train_images: total - sp.nVal, n_val: vaY.length, n_cases: sp.nCases,
+            accuracy: +acc.toFixed(4), macro_f1: +f1.toFixed(4), epochs, aug,
+            per_class: Object.fromEntries(classes.map((c, i) => [c, counts[i]])) });
+  if (typeof renderDashboard === 'function') renderDashboard();
   $('trainResults').classList.remove('hidden'); renderJourney();
   log(`Done in ${((performance.now() - t0)/1000).toFixed(0)} s. Held-out accuracy ${(acc*100).toFixed(0)} %, macro F1 ${f1.toFixed(2)}.`);
   } catch (e) {

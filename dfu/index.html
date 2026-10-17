@@ -826,8 +826,8 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       <b>What survives closing the app</b>
       <table class="keep">
         <tr><td>Your ticks and labels</td><td class="y">Kept</td><td>Stored in this browser. Choose the same images again and every tick comes back on the right one.</td></tr>
-        <tr><td>Trained models</td><td class="y">Kept</td><td>Saved in this browser under step E.</td></tr>
-        <tr><td>The case log</td><td class="y">Kept</td><td>A separate record, filled in from <b>Assess a wound</b>, not from here.</td></tr>
+        <tr><td>Trained models</td><td class="y">Kept</td><td>Saved in this browser under step D.</td></tr>
+        <tr><td>The case log</td><td class="y">Kept</td><td>Written from your grading in <b>step B</b> \u2014 one row per image per grader. There is no separate form.</td></tr>
         <tr><td>The image files</td><td class="n2">Not kept</td><td>A browser cannot hold on to files you picked. Choose the same folder again each session &mdash; your labels reattach to them automatically.</td></tr>
       </table>
       <p class="small" style="margin:8px 0 0">Nothing is uploaded anywhere. That is why nothing can be restored from a server, and why the <b>Export</b> buttons are the only way your work leaves this device. Export the labels CSV and the case log at the end of each sitting.</p>
@@ -1120,7 +1120,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-10-14 &middot; v4.0</span>
+  <span class="study-hide" id="buildStamp">build 2026-10-17 &middot; v4.1</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1322,7 +1322,11 @@ async function loadModel(){
   fillModelCard();
   setActive(preferred);
   await loadSavedHeads();
-  $('trainBtn').disabled = !dataReady();
+  /* Was: trainBtn.disabled = !dataReady(). That set the button's state without touching the line
+     that explains it, so a button disabled here kept whatever message was last written \u2014
+     including "Ready. Training runs here in the browser" above a button that does nothing.
+     refreshData() writes both, so the two can no longer disagree. */
+  refreshData();
   if (currentImg) runInference();
 }
 async function fillModelCard(){
@@ -1350,7 +1354,17 @@ function setActive(entry){
   if (entry.scheme === 'wagner') setScheme('wagner'); else if (entry.scheme === 'texas') setScheme('texas');
   if (currentImg && backbone) runInference();
 }
-loadModel().catch(e => { $('modelPill').textContent = 'model: failed'; $('statusText').textContent = 'Model failed to load: ' + e.message; console.error(e); });
+loadModel().catch(e => {
+  $('modelPill').textContent = 'model: failed';
+  $('statusText').textContent = 'Model failed to load: ' + e.message;
+  /* The Train button depends on the backbone, so a failure here is the most likely reason it is
+     off. Saying so next to the button beats leaving the reason in the console. */
+  if ($('trainBlock')) $('trainBlock').innerHTML = `<b>Why this button is off.</b> The MobileNetV2 `
+    + `backbone did not load, so there is nothing to extract embeddings with (${e.message}). `
+    + `Reload the page; if it keeps failing the model files are not being served.`;
+  if ($('trainBtn')) $('trainBtn').disabled = true;
+  console.error(e);
+});
 
 /* ═══════════════════════════ image intake ═══════════════════════════ */
 function useImage(img, name){
@@ -3679,7 +3693,9 @@ function addSamples(cls, items){ if (!data.classes.has(cls)) data.classes.set(cl
    today and simply not publish the number. */
 const MIN_TO_RUN = 4;
 function trainBlocker(){
-  if (!backbone) return 'The MobileNetV2 backbone is still loading. Give it a moment.';
+  if (!backbone) return 'The MobileNetV2 backbone is still loading \u2014 it is a few megabytes and '
+    + 'is fetched once per visit. This line updates itself the moment it arrives; nothing is lost '
+    + 'in the meantime and your ticks are already saved.';
   const rows = [...data.classes.entries()].filter(([, v]) => v.length);
   if (!rows.length) return 'Nothing to train on yet. Tick some images in step B.';
   const ok = rows.filter(([, v]) => v.length >= MIN_TO_RUN);
@@ -4651,9 +4667,20 @@ function splitByCase(classes){
 }
 
 let trained = null;   // { head, classes, metrics, cm }
+/* The running commentary under the Train button. Its absence is what made the button appear
+   dead: the click handler calls this on its first line, so with log() undefined the handler threw
+   a ReferenceError immediately after disabling the button and before doing anything else \u2014
+   leaving a greyed button, a "Ready" message and a log still showing its placeholder. */
+function log(msg, reset){
+  const el = $('trainLog'); if (!el) return;
+  el.textContent = reset ? String(msg) : (el.textContent ? el.textContent + '\n' : '') + msg;
+  el.scrollTop = el.scrollHeight;
+}
+
 $('trainBtn').onclick = async () => {
   if (!dataReady()) return;
   $('trainBtn').disabled = true; $('trainResults').classList.add('hidden');
+  try {
   const classes = [...data.classes.entries()].filter(([, v]) => v.length >= 4).map(([k]) => k).sort();
   const epochs = +$('tEpochs').value || 40, hidden = +$('tHidden').value || 128, aug = $('tAug').value === '1';
   const t0 = performance.now();
@@ -4690,8 +4717,19 @@ $('trainBtn').onclick = async () => {
   $('mAcc').textContent = (acc*100).toFixed(0) + ' %'; $('mF1').textContent = f1.toFixed(2); $('mN').textContent = vaY.length; $('mTime').textContent = ((performance.now() - t0)/1000).toFixed(0) + ' s';
   $('cmTable').innerHTML = `<tr><th>true ⟍ predicted</th>${classes.map(c => `<th>${c}</th>`).join('')}</tr>` + cm.map((r, i) => `<tr><th>${classes[i]}</th>${r.map((v, j) => `<td class="${i===j?'diag':''}">${v}</td>`).join('')}</tr>`).join('');
   $('prTable').innerHTML = `<tr><th>class</th><th>n</th><th>precision</th><th>recall</th><th>F1</th></tr>` + per.map(x => `<tr><th>${x.c}</th><td>${x.n}</td><td>${(x.p*100).toFixed(0)} %</td><td>${(x.r*100).toFixed(0)} %</td><td>${x.f1.toFixed(2)}</td></tr>`).join('');
-  $('trainResults').classList.remove('hidden'); $('trainBtn').disabled = false; renderJourney();
+  $('trainResults').classList.remove('hidden'); renderJourney();
   log(`Done in ${((performance.now() - t0)/1000).toFixed(0)} s. Held-out accuracy ${(acc*100).toFixed(0)} %, macro F1 ${f1.toFixed(2)}.`);
+  } catch (e) {
+    /* Whatever goes wrong, the button comes back and the reason is on screen rather than in the
+       console. A disabled control with no explanation is the one failure a user cannot act on. */
+    console.error(e);
+    log('\nTraining stopped: ' + (e && e.message ? e.message : e)
+        + '\nThe button is live again. If this repeats, export the labels CSV before reloading.');
+    $('trainProg').style.width = '0%';
+    toast('Training failed \u2014 see the log under the button');
+  } finally {
+    $('trainBtn').disabled = false;
+  }
 };
 function headEntry(head, classes, name, metrics, when){
   const tailIn = tf.input({ shape: [7, 7, EMB] }); let y = tf.layers.globalAveragePooling2d({}).apply(tailIn); y = head.apply(y);

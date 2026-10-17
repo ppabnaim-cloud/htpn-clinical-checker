@@ -1071,6 +1071,23 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <div class="step"><span class="n">▦</span><h3>Data readiness</h3><span class="hint" id="dashWhen"></span></div>
     <div class="tiles" id="dashTiles"></div>
     <div class="note" id="dashVerdict" style="margin-top:12px"></div>
+
+    <!-- Reachable with no images loaded, which is the whole point: the files you picked do not
+         survive a reload, so a control that lives in the labelling card is unreachable exactly
+         when this problem needs fixing. -->
+    <div id="labAttrBox" class="note hidden" style="margin-top:10px">
+      <b><span id="labAttrN">0</span> graded labels have no grader recorded.</b>
+      The name is stamped onto the image on screen as you tick, so anything labelled in bulk — or
+      before a name was chosen — carries none. They still count as graded; they simply cannot be
+      attributed, and attribution is what inter-rater agreement is computed from.
+      <div class="row2" style="margin-top:9px">
+        <div class="field"><label>Attribute them to</label><select id="labAttrWho"></select></div>
+        <div class="field"><label>&nbsp;</label><button class="btn btn-teal btn-sm" id="labAttrGo">Attribute</button></div>
+      </div>
+      <p class="small" style="margin:6px 0 0">Only for labels that are genuinely one person's. If
+      another grader produced some of them, let them attribute their own — a wrong name here turns
+      two independent readings into one, and the agreement statistic silently becomes meaningless.</p>
+    </div>
   </section>
 
   <section class="card">
@@ -1129,7 +1146,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-10-17 &middot; v4.3</span>
+  <span class="study-hide" id="buildStamp">build 2026-10-17 &middot; v4.4</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1221,7 +1238,7 @@ function setStudyMode(on){
 function openTab(name){
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === name));
   TABS.forEach(t => $('tab-' + t).classList.toggle('hidden', t !== name));
-  if (name === 'data' && typeof renderDashboard === 'function') renderDashboard();
+  if (name === 'data' && typeof renderDashboard === 'function'){ renderDashboard(); renderAttrBox(); }
   const assess = name === 'assess';
   $('tab-assess').classList.toggle('hidden', !assess);
   $('tab-train').classList.toggle('hidden', assess);
@@ -1262,7 +1279,7 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
      only ever had room for two. */
   TABS.forEach(t => $('tab-' + t).classList.toggle('hidden', t !== b.dataset.tab));
   if (assess) renderAssessJourney();
-  if (b.dataset.tab === 'data') renderDashboard();
+  if (b.dataset.tab === 'data'){ renderDashboard(); renderAttrBox(); }
   window.scrollTo({top:0});
 });
 document.querySelectorAll('.src-tabs button').forEach(b => b.onclick = () => {
@@ -3465,17 +3482,23 @@ function renderDashboard(){
   log.forEach(r => { (byImage[r.image] = byImage[r.image] || new Set()).add(r.grader || '?'); });
   const doubled = Object.values(byImage).filter(s => s.size > 1).length;
 
-  const seen = Object.keys(loadSeen()).length;
+  /* Images added before this count existed left no trace in the seen store, but every one of
+     them that was labelled left a key in the label store. Counting the union means the number is
+     honest about the past instead of reading zero beside 465 labels. */
+  const seenKeys = new Set(Object.keys(loadSeen()).concat(Object.keys(loadLabels())));
+  const seen = seenKeys.size;
   const runs = loadRuns();
   const last = runs[0] || null;
   const labelled_n = Object.keys(loadLabels()).length;
   const withTissue = log.filter(r => r.findings_n > 0).length;
+  const noGrader = log.filter(r => !r.grader).length;
 
   const tiles = [
     ['v', seen, 'Images uploaded', 'ever, across all sittings'],
     [labelled_n < seen ? 'w' : 'v', labelled_n, 'Images labelled', labelled_n < seen ? (seen - labelled_n) + ' still untouched' : 'all of them'],
     [last ? 'v' : 'w', last ? last.n_train_images : 0, 'Used in last training', last ? `+ ${last.n_val} held out` : 'never trained'],
     [withTissue ? 'v' : 'w', withTissue, 'With tissue findings', withTissue ? 'of ' + log.length + ' cases' : 'can be added later'],
+    [noGrader ? 'w' : 'v', noGrader, 'No grader recorded', noGrader ? 'attribute them below' : 'all attributed'],
     ['v', log.length, 'Cases in the log', 'all graders'],
     ['v', Object.keys(byImage).length, 'Images graded', 'distinct photographs'],
     ['v', graders.size, 'Graders', [...graders].join(', ') || 'none yet'],
@@ -3492,6 +3515,7 @@ function renderDashboard(){
      A list of seven problems is read as noise; one named next step is read as an instruction. */
   const v = $('dashVerdict');
   if (!log.length) v.innerHTML = '<b>No cases yet.</b> Grade an image in <b>step B</b> of the Study team tab and a row appears here.';
+  else if (noGrader === log.length) v.innerHTML = `<b>None of these ${log.length} cases has a grader recorded.</b> The name is stamped onto the image on screen as you tick, so labels made in bulk or before a name was chosen carry none. Nothing is lost \u2014 use the box below to put a name on them, and have the other grader do the same for theirs.`;
   else if (!doubled) v.innerHTML = `<b>Nothing is double-graded.</b> Inter-rater agreement cannot be computed from ${log.length} case${log.length === 1 ? '' : 's'} read by one person each. Have the second grader read a share of the same images.`;
   else if (noSkin) v.innerHTML = `<b>${noSkin === 1 ? '1 case carries' : noSkin + ' cases carry'} no skin type.</b> Performance by skin tone is the claim this study exists to support, and it cannot be reported for rows where the field is blank.`;
   else if (awaiting) v.innerHTML = `<b>${awaiting} foot ulcer${awaiting === 1 ? '' : 's'} still awaiting a culture result.</b> Open the case log and complete them as the results arrive.`;
@@ -4152,7 +4176,11 @@ function syncLabelsToLog(){
   let changed = false, written = 0;
   Object.keys(store).forEach(k => {
     const v = store[k], r = v.r || {};
-    if (!r.grader || !(v.w || v.n)) return;              // not graded, or graded by nobody
+    /* Requiring a grader here is what silently discarded 465 labels. The name is stamped onto the
+       image being viewed at the time, so anything labelled in bulk, or before a name was chosen,
+       carries none \u2014 and those labels are not worth less than the others. A grade makes a case;
+       the attribution is recorded as missing rather than used to throw the case away. */
+    if (!(v.w || v.n)) return;                           // no grade yet, so there is no case
     const it = { name: k.split('|')[0], wtype: v.t || 'dfu', wagner: v.w || null,
                  npiap: v.n || null, skin: v.s || '', rec: r, feats: v.f || [] };
     const row = labelToCase(it, k), i = log.findIndex(x => String(x.id) === row.id);
@@ -4204,7 +4232,7 @@ function addToPool(items){
   const restored = pool.filter(labelled).length;
   if (restored) toast(`${restored} image${restored === 1 ? '' : 's'} already labelled \u2014 ticks restored`);
   saveLabels(); syncLabelsToLog(); autoTarget(); fillTargets(); projectClasses(); describeTarget();
-  renderLabeller(); readinessNote(); renderReadyNow(); renderJourney();
+  renderLabeller(); readinessNote(); renderReadyNow(); renderJourney(); renderAttrBox();
 }
 const poolUrl = it => it.url || (it.url = URL.createObjectURL(it.file));
 
@@ -4536,13 +4564,63 @@ function recCount(it){
 }
 
 /* Redraw everything that depends on a label. One call, so no view can drift out of step. */
+/* Bulk attribution. The honest framing matters more than the mechanism here: this writes one
+   name across many labels, and if the wrong name goes on, two independent readings collapse into
+   one and kappa quietly becomes a lie. So it names the person, states the number, and warns. */
+function renderAttrBox(){
+  const box = $('labAttrBox'); if (!box) return;
+  const store = loadLabels();
+  const n = Object.keys(store).filter(k => {
+    const v = store[k]; return (v.w || v.n) && !((v.r || {}).grader);
+  }).length;
+  $('labAttrN').textContent = n;
+  const who = $('labAttrWho');
+  if (who && !who.options.length)
+    who.innerHTML = '<option value="">\u2014 choose a name</option>'
+      + GRADERS.map(g => `<option value="${g}">${g}</option>`).join('');
+  box.classList.toggle('hidden', n === 0);
+}
+
+$('labAttrGo') && ($('labAttrGo').onclick = () => {
+  const who = ($('labAttrWho') || {}).value || '';
+  if (!who) return toast('Choose a name first');
+  const store = loadLabels(); const touched = []; let n = 0;
+  Object.keys(store).forEach(k => {
+    const v = store[k];
+    if ((v.w || v.n) && !((v.r || {}).grader)){ v.r = v.r || {}; v.r.grader = who; touched.push(k); n++; }
+  });
+  if (!n) return toast('Nothing to attribute');
+  try { localStorage.setItem(LABELS_KEY, JSON.stringify(store)); }
+  catch(e){ return toast('Could not save \u2014 storage is full'); }
+
+  /* The grader is part of the row's key, so attributing a label changes which row it belongs to.
+     The existing row is RENAMED rather than left behind: creating the new one and abandoning the
+     old gave two rows per image, which the dashboard then read as double-grading and offered up
+     for a kappa that would have been computed against a copy of itself. Renaming also keeps any
+     culture result or outcome typed into the log, which lives on the row and not in the store. */
+  const log = loadLog(); let moved = 0;
+  touched.forEach(k => {
+    const from = 'B|' + k + '|', to = 'B|' + k + '|' + who;
+    const i = log.findIndex(x => String(x.id) === from);
+    if (i < 0) return;
+    if (log.some(x => String(x.id) === to)){ log.splice(i, 1); moved++; return; }  // already there
+    log[i].id = to; log[i].grader = who; moved++;
+  });
+  if (moved) saveLog(log);
+  /* The in-memory copies have to agree with the store, or the next tick writes the blank back. */
+  pool.forEach(it => { const v = store[labKey(it)]; if (v && v.r && v.r.grader) it.rec.grader = v.r.grader; });
+  syncLabelsToLog(); renderAttrBox(); renderLog();
+  if (typeof renderDashboard === 'function') renderDashboard();
+  toast(`${n} label${n === 1 ? '' : 's'} attributed to ${who}`);
+});
+
 function labChanged(){
   /* Attribution happens here rather than in each control, so a label set by a dropdown carries
      the grader's name exactly as one set by a chip does. */
   const it = pool[cur];
   if (it && labGrader && (labelled(it) || it.skin)) it.rec.grader = labGrader;
   saveLabels(); syncLabelsToLog(); autoTarget(); fillTargets(); projectClasses(); describeTarget();
-  renderLabeller(); readinessNote(); renderReadyNow(); renderJourney();
+  renderLabeller(); readinessNote(); renderReadyNow(); renderJourney(); renderAttrBox();
 }
 
 $('poolInput') && ($('poolInput').onchange = e => {
@@ -4681,6 +4759,7 @@ renderFormulary();
 try {
   const n = syncLabelsToLog();
   if (n) console.info(`case log synced from ${n} graded labels`);
+  renderAttrBox();
 } catch (e) { console.error('could not sync labels to the case log', e); }
 
 fillTargets(); describeTarget(); renderLabeller(); renderReadiness(); renderJourney(); renderAssessJourney();

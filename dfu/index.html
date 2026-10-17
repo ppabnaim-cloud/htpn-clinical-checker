@@ -1146,7 +1146,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-10-17 &middot; v4.5</span>
+  <span class="study-hide" id="buildStamp">build 2026-10-17 &middot; v4.6</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3514,6 +3514,7 @@ function renderDashboard(){
      honest about the past instead of reading zero beside 465 labels. */
   const seenKeys = new Set(Object.keys(loadSeen()).concat(Object.keys(loadLabels())));
   const seen = seenKeys.size;
+  const files = (typeof pool !== 'undefined') ? pool.length : 0;
   const runs = loadRuns();
   const last = runs[0] || null;
   const labelled_n = Object.keys(loadLabels()).length;
@@ -3521,7 +3522,12 @@ function renderDashboard(){
   const noGrader = log.filter(r => !r.grader).length;
 
   const tiles = [
-    ['v', seen, 'Images uploaded', 'ever, across all sittings'],
+    ['v', seen, 'Images ever uploaded', 'across all sittings · not loaded now'],
+    /* The single most misleading number in this app was "images uploaded", which counts every
+       image ever seen and so reads as "the images are in the app". Training needs the FILES, and
+       a browser drops them on every reload. The two are now side by side, and the second is amber
+       whenever it is the thing blocking a training run. */
+    [files ? 'v' : 'w', files, 'Image files loaded now', files ? 'ready to train' : 'none — re-select them in step A to train'],
     [labelled_n < seen ? 'w' : 'v', labelled_n, 'Images labelled', labelled_n < seen ? (seen - labelled_n) + ' still untouched' : 'all of them'],
     [last ? 'v' : 'w', last ? last.n_train_images : 0, 'Used in last training', last ? `+ ${last.n_val} held out` : 'never trained'],
     [withTissue ? 'v' : 'w', withTissue, 'With tissue findings', withTissue ? 'of ' + log.length + ' cases' : 'can be added later'],
@@ -3542,6 +3548,7 @@ function renderDashboard(){
      A list of seven problems is read as noise; one named next step is read as an instruction. */
   const v = $('dashVerdict');
   if (!log.length) v.innerHTML = '<b>No cases yet.</b> Grade an image in <b>step B</b> of the Study team tab and a row appears here.';
+  else if (!files && !runs.length) v.innerHTML = `<b>No image files are loaded, so training cannot run.</b> ${labelled_n} labels are safely stored, but a browser cannot keep the files you picked and training reads the pixels, not the labels. Open <b>step A</b> in the Study team tab and re-select the same images \u2014 your ticks reattach by themselves \u2014 then train in step C and press <b>\u201cUse this model in Assess\u201d</b> in step D to keep the result.`;
   else if (noGrader === log.length) v.innerHTML = `<b>None of these ${log.length} cases has a grader recorded.</b> The name is stamped onto the image on screen as you tick, so labels made in bulk or before a name was chosen carry none. Nothing is lost \u2014 use the box below to put a name on them, and have the other grader do the same for theirs.`;
   else if (!doubled) v.innerHTML = `<b>Nothing is double-graded.</b> Inter-rater agreement cannot be computed from ${log.length} case${log.length === 1 ? '' : 's'} read by one person each. Have the second grader read a share of the same images.`;
   else if (noSkin) v.innerHTML = `<b>${noSkin === 1 ? '1 case carries' : noSkin + ' cases carry'} no skin type.</b> Performance by skin tone is the claim this study exists to support, and it cannot be reported for rows where the field is blank.`;
@@ -3783,7 +3790,20 @@ function trainBlocker(){
     + 'is fetched once per visit. This line updates itself the moment it arrives; nothing is lost '
     + 'in the meantime and your ticks are already saved.';
   const rows = [...data.classes.entries()].filter(([, v]) => v.length);
-  if (!rows.length) return 'Nothing to train on yet. Tick some images in step B.';
+  if (!rows.length){
+    /* "Tick some images" is actively wrong for the commonest case: hundreds of images ARE ticked,
+       their labels are in storage, and what is missing is the files, which a browser drops on
+       every reload. Being told to do the thing you have already done is worse than being told
+       nothing. */
+    const stored = Object.keys(loadLabels()).length;
+    if (stored && !pool.length)
+      return `${stored} labels are stored, but no image <b>files</b> are loaded \u2014 a browser cannot `
+           + `keep the files you picked, and training reads the pixels rather than the labels. `
+           + `Re-select the same images in <b>step A</b> and every tick comes back on the right one.`;
+    if (pool.length && !stored)
+      return `${pool.length} images are loaded but none is graded yet. Give them a grade in step B.`;
+    return 'Nothing to train on yet. Add images in step A and grade them in step B.';
+  }
   const ok = rows.filter(([, v]) => v.length >= MIN_TO_RUN);
   if (ok.length >= 2) return null;
   const thin = rows.filter(([, v]) => v.length < MIN_TO_RUN)
@@ -4867,7 +4887,16 @@ function log(msg, reset){
 }
 
 $('trainBtn').onclick = async () => {
-  if (!dataReady()) return;
+  /* A bare `return` here meant a press of Train could do nothing at all and say nothing at all \u2014
+     indistinguishable from a press that started a run which then produced no output. If the
+     button was reachable but the data is not ready, the reason is now stated. */
+  if (!dataReady()){
+    const why = trainBlocker();
+    log('Training did not start.\n' + String(why || '').replace(/<[^>]+>/g, ''), true);
+    toast('Training did not start \u2014 see the log');
+    refreshData();
+    return;
+  }
   $('trainBtn').disabled = true; $('trainResults').classList.add('hidden');
   try {
   const classes = [...data.classes.entries()].filter(([, v]) => v.length >= 4).map(([k]) => k).sort();

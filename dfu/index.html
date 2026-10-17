@@ -1146,7 +1146,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-10-17 &middot; v4.4</span>
+  <span class="study-hide" id="buildStamp">build 2026-10-17 &middot; v4.5</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1617,6 +1617,10 @@ async function runInference(reuseSeg){
   /* A clinician-drawn box overrides the segmenter's. On real photographs the segmenter
      sometimes under-traces a large sloughy wound badly, and when it does, no amount of
      downstream cleverness recovers it — but a finger can. */
+  /* A demo image tapped in the first second or two gets here before the models have finished
+     loading and active is still null. That threw, and the tester saw a frozen analysis with the
+     reason only in the console. */
+  if (!active){ $('statusText').textContent = 'Still loading the model \u2014 this will run by itself in a moment.'; return; }
   lastBox = manualBox ? manualBox : ((active.wantsRoi && lastSeg && lastSeg.found) ? roiBox(lastSeg) : null);
   drawSegOverlay(lastSeg, lastBox); showWound(lastSeg);
   lastTissue = tissueMap(lastSeg); renderTissue(lastTissue);
@@ -2898,11 +2902,34 @@ async function runComparison(){
 
   let right;
   if (!mine.length){
+    /* "Not built yet" was true but useless: there are four different reasons this box is empty
+       and they need four different actions. A local model exists only after a run completes AND
+       is kept, and a trained model that was never kept is lost on reload \u2014 so the box now names
+       the step that is actually outstanding. */
+    const runs  = (typeof loadRuns  === 'function') ? loadRuns()  : [];
+    const lab   = (typeof loadLabels === 'function') ? Object.keys(loadLabels()).length : 0;
+    const files = (typeof pool !== 'undefined') ? pool.length : 0;
+    let why;
+    if (runs.length)
+      why = `A model <b>was</b> trained here on ${new Date(runs[0].when).toLocaleDateString()}
+             (${runs[0].n_train_images} images), but it was never kept, so it did not survive the
+             reload. Train again in <b>step C</b> and then press
+             <b>\u201cUse this model in Assess\u201d</b> in step D \u2014 that button is what puts a model in
+             this box. Training alone does not.`;
+    else if (lab && !files)
+      why = `${lab} labels are stored, but the image <b>files</b> are not loaded. A browser cannot
+             keep the files you picked, and training reads the pixels, not the labels. Re-select the
+             same images in <b>step A</b> \u2014 your ticks reattach automatically \u2014 then train in
+             <b>step C</b> and keep the model in step D.`;
+    else if (!lab)
+      why = `Nothing has been graded yet. Grade images in <b>step B</b> of the Study team tab until
+             two classes each have a usable number, then train in <b>step C</b>.`;
+    else
+      why = `${lab} labels are stored and the images are loaded. Train in <b>step C</b>, then press
+             <b>\u201cUse this model in Assess\u201d</b> in step D to put the result in this box.`;
     right = `<div class="cmpcard none"><h5>Trained on our patients</h5>
       <div class="who">Not built yet</div>
-      <div class="sub">No model has been trained on HTPN images so far. This is what the grading
-      work in the study-team screens produces: once two classes reach a usable size, a model
-      trained here appears in this box beside the generic one.</div></div>`;
+      <div class="sub">${why}</div></div>`;
   } else {
     const m = mine[0];
     const v = (await readOut(m))[0];
@@ -4911,6 +4938,10 @@ $('trainBtn').onclick = async () => {
   if (typeof renderDashboard === 'function') renderDashboard();
   $('trainResults').classList.remove('hidden'); renderJourney();
   log(`Done in ${((performance.now() - t0)/1000).toFixed(0)} s. Held-out accuracy ${(acc*100).toFixed(0)} %, macro F1 ${f1.toFixed(2)}.`);
+  /* The model exists only in memory at this point. Saying so here is the difference between a
+     model that survives the next reload and an afternoon repeated. */
+  log('\nThis model is in memory ONLY. Press "Use this model in Assess" in step D to keep it \u2014 '
+    + 'without that it is lost when you reload, and the comparison box stays empty.');
   } catch (e) {
     /* Whatever goes wrong, the button comes back and the reason is on screen rather than in the
        console. A disabled control with no explanation is the one failure a user cannot act on. */

@@ -1146,7 +1146,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-10-17 &middot; v4.7</span>
+  <span class="study-hide" id="buildStamp">build 2026-10-21 &middot; v4.8</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1625,9 +1625,13 @@ async function runInference(reuseSeg){
   drawSegOverlay(lastSeg, lastBox); showWound(lastSeg);
   lastTissue = tissueMap(lastSeg); renderTissue(lastTissue);
   showCrop(lastBox);
-  if (DISEASE === 'pi' && active.kind === 'demo'){
+  /* The old test was `DISEASE === 'pi' && active.kind === 'demo'`, which let a locally trained
+     head run on any wound type. A Wagner head then printed a Wagner grade for a sacral pressure
+     sore, which is not a rough answer but a wrong kind of answer. */
+  const mismatch = headMismatch(active, DISEASE);
+  if ((DISEASE === 'pi' && active.kind === 'demo') || mismatch){
     if (lastActs){ lastActs.dispose(); lastActs = null; }
-    lastPred = { ms: performance.now() - t0, views: 0, piOnly: true };
+    lastPred = { ms: performance.now() - t0, views: 0, piOnly: true, mismatch: mismatch || null };
     showPiResults();
     return;
   }
@@ -2436,6 +2440,14 @@ function setDisease(d){
   $('sampleNote').innerHTML = pi
     ? 'Three pressure injuries from the <b>HTPN wound unit</b>, de-identified before upload. Tap one to see how the app works: it outlines and measures the wound, and the stage is yours to enter because no pressure injury classifier has been trained yet.'
     : 'Please use the demo images provided to understand how the app works. Tap any one of them and it runs exactly as your own photograph would.';
+  /* Switching wound type changes which model is even entitled to answer. If the active one is not,
+     and a model for this wound type exists, select it \u2014 and say so, because a model changing
+     underneath a grader without a word is its own kind of error. */
+  const mm = headMismatch(active, d);
+  if (mm){
+    const fit = localHeads().find(x => headDisease(x.classes) === d);
+    if (fit){ setActive(fit); toast(`Switched to ${fit.name} \u2014 it grades a ${DIS_NAME(d)}`); }
+  }
   if (currentImg) renderDecide();
   renderAssessJourney();            // the questions and the rules both change with the wound type
   // the built-in heads are diabetic-foot-ulcer heads; re-run so the right path is taken
@@ -2453,6 +2465,24 @@ function showPiResults(){
   if (+$('camToggle').querySelector('.on').dataset.v === 2) setCam(1);
   if ($('occBox')) $('occBox').classList.add('hidden');   // no classifier ran, so nothing to perturb
   if ($('cmpBox')) $('cmpBox').classList.add('hidden');
+  /* A pressure injury with no NPIAP model is one situation; a pressure injury with a foot-ulcer
+     model loaded is a different one, and the difference matters to whoever is reading the screen.
+     Silence here would look like the app had simply failed. */
+  const mm = lastPred && lastPred.mismatch;
+  if ($('piMismatch')) $('piMismatch').remove();
+  if (mm){
+    const el = document.createElement('div');
+    el.id = 'piMismatch'; el.className = 'need';
+    el.style.margin = '10px 0 0';
+    el.innerHTML = `<b>The active model does not grade this wound type.</b> `
+      + `<b>${active.name}</b> predicts ${active.classes.join(', ')}, which grades a `
+      + `<b>${DIS_NAME(mm)}</b>. This image is a <b>${DIS_NAME(DISEASE)}</b>. Wagner and Texas grade `
+      + `a diabetic foot ulcer; NPIAP stages a pressure injury \u2014 they describe different things, `
+      + `so no grade is shown rather than the wrong kind of grade. The outline, the measurement and `
+      + `the tissue percentages above are unaffected; they do not depend on the classifier. `
+      + `Switch model under <b>Models on this device</b>, or train one on ${DIS_NAME(DISEASE)} images.`;
+    const host = $('results'); if (host) host.appendChild(el);
+  }
   renderPiOut(); renderDecide(); renderAssessJourney();
 }
 
@@ -2930,8 +2960,20 @@ async function runComparison(){
     right = `<div class="cmpcard none"><h5>Trained on our patients</h5>
       <div class="who">Not built yet</div>
       <div class="sub">${why}</div></div>`;
+  } else if (mine.every(m => headMismatch(m, DISEASE))) {
+    /* A local model exists but none of them grades this wound type. Saying so is the honest
+       answer; printing a Wagner grade for a pressure injury would not be. */
+    const m = mine[0], d = headDisease(m.classes);
+    right = `<div class="cmpcard none"><h5>Trained on our patients</h5>
+      <div class="who">Not for this wound type</div>
+      <div class="sub"><b>${m.name}</b> was trained to predict
+      ${m.classes.join(', ')}, which grades a <b>${DIS_NAME(d)}</b>. This image is a
+      <b>${DIS_NAME(DISEASE)}</b>, and the two use different scales: Wagner and Texas grade a
+      diabetic foot ulcer, NPIAP stages a pressure injury. Applying one to the other is a category
+      error, not an approximation, so no prediction is shown. Train a model on
+      ${DIS_NAME(DISEASE)} images to fill this box.</div></div>`;
   } else {
-    const m = mine[0];
+    const m = mine.find(x => !headMismatch(x, DISEASE)) || mine[0];
     const v = (await readOut(m))[0];
     const i = v.indexOf(Math.max(...v));
     right = `<div class="cmpcard"><h5>Trained on our patients</h5>
@@ -4988,6 +5030,26 @@ $('trainBtn').onclick = async () => {
    panel. Lost in the same aborted edit that took log() with it, and with the same consequence:
    headEntry() threw, so pressing "Use this model in Assess" registered nothing and saved nothing.
    The model trained perfectly and was then dropped on the floor. */
+/* Wagner and Texas grade a diabetic foot ulcer. NPIAP stages a pressure injury. They are not
+   interchangeable scales applied to the same thing \u2014 they are definitions of different things,
+   and a Wagner grade on a sacral pressure sore is not an approximation, it is a category error.
+   A head trained on tissue findings (slough, necrosis) describes a wound bed and is valid for
+   both, so it returns null and is not restricted. */
+function headDisease(classes){
+  const all = (classes || []).join(' ').toLowerCase();
+  if (all.indexOf('npiap') >= 0) return 'pi';
+  if (all.indexOf('wagner') >= 0 || all.indexOf('texas') >= 0) return 'dfu';
+  return null;                                   // a feature head belongs to neither and to both
+}
+const DIS_NAME = d => d === 'pi' ? 'pressure injury' : 'diabetic foot ulcer';
+
+/* True when the active model must not be asked about the wound type on screen. */
+function headMismatch(entry, disease){
+  if (!entry || entry.kind !== 'head') return null;
+  const d = headDisease(entry.classes);
+  return (d && d !== disease) ? d : null;
+}
+
 function guessScheme(classes){
   const all = (classes || []).join(' ').toLowerCase();
   if (all.indexOf('wagner') >= 0) return 'wagner';
@@ -4998,7 +5060,7 @@ function guessScheme(classes){
 
 function headEntry(head, classes, name, metrics, when){
   const tailIn = tf.input({ shape: [7, 7, EMB] }); let y = tf.layers.globalAveragePooling2d({}).apply(tailIn); y = head.apply(y);
-  return { kind: 'head', name, classes, conv: backbone, tail: tf.model({ inputs: tailIn, outputs: y }), head, inputRange: '[-1,1]', scheme: guessScheme(classes), metrics, when };
+  return { kind: 'head', name, classes, conv: backbone, tail: tf.model({ inputs: tailIn, outputs: y }), head, inputRange: '[-1,1]', scheme: guessScheme(classes), disease: headDisease(classes), metrics, when };
 }
 const HEADS_KEY = 'dfu_vision_heads_v1';
 const loadHeadsMeta = () => { try { return JSON.parse(localStorage.getItem(HEADS_KEY) || '[]'); } catch(e){ return []; } };
@@ -5034,7 +5096,11 @@ async function loadSavedHeads(){
 }
 function renderModelList(){
   const rows = Object.values(registry);
-  $('modelList').innerHTML = rows.map(e => `<div class="model-row"><div class="who"><b>${e.name}</b><small>${e.kind === 'demo' ? 'MobileNetV2 · 2 heads · FUSeg weak labels' : `${e.classes.length} classes: ${e.classes.join(', ')}` + (e.metrics && e.metrics.accuracy !== undefined ? ` · held-out acc ${(e.metrics.accuracy*100).toFixed(0)} %` : '') + (e.when ? ` · ${new Date(e.when).toLocaleDateString()}` : '')}</small></div>${active === e ? '<span class="agree">active</span>' : `<button class="btn btn-ghost btn-sm" data-name="${e.name}">Use</button>`}</div>`).join('') || '<p class="small">No models yet.</p>';
+  /* The wound type a model covers is a property a grader has to know before trusting its output,
+     so it is on the row rather than inferred from the class names. */
+  const covers = e => { const d = e.kind === 'demo' ? 'dfu' : headDisease(e.classes);
+    return d ? DIS_NAME(d) : 'any wound type'; };
+  $('modelList').innerHTML = rows.map(e => `<div class="model-row"><div class="who"><b>${e.name}</b><small>${e.kind === 'demo' ? 'MobileNetV2 · 2 heads · FUSeg weak labels' : `${e.classes.length} classes: ${e.classes.join(', ')}` + (e.metrics && e.metrics.accuracy !== undefined ? ` · held-out acc ${(e.metrics.accuracy*100).toFixed(0)} %` : '') + (e.when ? ` · ${new Date(e.when).toLocaleDateString()}` : '')}<br>covers: <b>${covers(e)}</b></small></div>${active === e ? '<span class="agree">active</span>' : `<button class="btn btn-ghost btn-sm" data-name="${e.name}">Use</button>`}</div>`).join('') || '<p class="small">No models yet.</p>';
   $('modelList').querySelectorAll('button[data-name]').forEach(b => b.onclick = () => { setActive(registry[b.dataset.name]); toast(`Active: ${b.dataset.name}`); });
 }
 </script>

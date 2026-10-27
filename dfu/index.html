@@ -534,8 +534,37 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 .tablewrap{overflow-x:auto}
 .mstat{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
 @media (max-width:420px){.mstat{grid-template-columns:repeat(2,1fr)}}
-.armbar{display:block;margin-top:3px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase}
-.armbar b{color:var(--teal);font-weight:700}
+/* ── which arm, said loudly ───────────────────────────────────────────────────────────────
+   Two wound types graded on different scales, from two links that otherwise look identical. The
+   arm is the single most consequential fact on the screen, so it is set in the display face at
+   near-heading size rather than whispered in 10px monospace under the byline. */
+.armbar{display:inline-block;margin-top:7px;padding:4px 13px 5px;border-radius:999px;
+        background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18);
+        font-family:var(--serif);font-size:19px;font-weight:400;letter-spacing:.01em;line-height:1.25}
+.armbar b{color:var(--teal);font-weight:400}
+@media (max-width:420px){.armbar{font-size:16.5px;padding:3px 10px 4px}}
+
+/* The arm named inside a card heading, which is a smaller context than the header. */
+.hint .arm-name{font-size:14px;font-weight:700;color:var(--teal-dim);letter-spacing:0;text-transform:none}
+
+/* ── the pressure injury theme ────────────────────────────────────────────────────────────
+   The two arms were indistinguishable at a glance, which matters when the difference decides
+   which scale applies. Pressure injury takes the indigo-violet already in the palette.
+
+   Deliberately NOT amber, rose or green: those three carry clinical severity meaning throughout
+   the app — amber for a thin class or a missing field, rose for a critical infection, green for
+   uninfected. An arm identity painted in a severity colour would spend a signal that must never
+   be misread. Violet belongs to no clinical scale here, which is exactly why it is free to mean
+   "this is the pressure injury app". */
+body.arm-pi{
+  --navy:#251A49; --navy-mid:#372a60;
+  --teal:#8B7FE8; --teal-dim:#5F4FCC; --teal-glow:rgba(139,127,232,.15);
+}
+/* The accent has two jobs that pull opposite ways: light enough to read on the dark header,
+   dark enough to sit behind white button text. One value cannot do both, so the button takes the
+   darker tone \u2014 4.8:1 against white rather than 3.3:1. */
+body.arm-pi .btn-teal{background:var(--teal-dim)}
+body.arm-pi .armbar{background:rgba(255,255,255,.15)}
 .model-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:13px}
 .model-row .who{flex:1}
 .model-row .who b{color:var(--navy)}
@@ -1201,7 +1230,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-10-27 &middot; v5.1</span>
+  <span class="study-hide" id="buildStamp">build 2026-10-27 &middot; v5.2</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -2529,6 +2558,10 @@ function renderPiOut(){
 function setDisease(d){
   DISEASE = d;
   document.querySelectorAll('.arm-name').forEach(el => { el.textContent = ARM_LABEL[d] || d; });
+  /* The palette follows the wound type, not only the locked link, so the unlocked development
+     view shows the same thing a grader would see. */
+  document.body.classList.toggle('arm-pi', d === 'pi');
+  document.body.classList.toggle('arm-dfu', d !== 'pi');
   $('diseaseToggle').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === d));
   const pi = d === 'pi';
   $('schemeRow').classList.toggle('hidden', pi);

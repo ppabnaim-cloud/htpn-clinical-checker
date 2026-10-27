@@ -534,6 +534,8 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 .tablewrap{overflow-x:auto}
 .mstat{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
 @media (max-width:420px){.mstat{grid-template-columns:repeat(2,1fr)}}
+.armbar{display:block;margin-top:3px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase}
+.armbar b{color:var(--teal);font-weight:700}
 .model-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:13px}
 .model-row .who{flex:1}
 .model-row .who b{color:var(--navy)}
@@ -576,6 +578,9 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     <div>
       <h1>Wound <span>Vision</span></h1>
       <small>Dr Naim Bin Abdul Malek · Deep Learning Healthcare Centre of Excellence</small>
+      <!-- Which wound type this link grades. On screen at all times, because every scale, panel
+           and model below depends on it and a grader should never have to infer it. -->
+      <small class="armbar"><b class="arm-name">—</b></small>
     </div>
     <span class="pill" id="modelPill">model: loading…</span>
     <button class="pill lockpill hidden" id="lockBtn" title="Return to the tester's view">Study team · lock</button>
@@ -1063,18 +1068,21 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 </div>
 
 <!-- ═══════════════════════════ DASHBOARD TAB ═══════════════════════════ -->
-<!-- Read-only. Everything here is derived from the case log and the labels; nothing is entered
-     on this screen, which is why it can be dense without being a burden. -->
+<!-- Read-only, and scoped to one arm. The two wound types are graded on different scales —
+     Wagner and Texas for a diabetic foot ulcer, NPIAP for a pressure injury — so they do not
+     share a template. Pooling them produced a card in which a Wagner grade and an NPIAP stage
+     sat in the same column, which is not a summary of anything. -->
 <div id="tab-data" class="hidden">
 
   <section class="card tight">
-    <div class="step"><span class="n">▦</span><h3>Data readiness</h3><span class="hint" id="dashWhen"></span></div>
+    <div class="step"><span class="n">▦</span><h3>Data readiness</h3>
+      <span class="hint"><b class="arm-name">—</b> · <span id="dashWhen"></span></span></div>
     <div class="tiles" id="dashTiles"></div>
     <div class="note" id="dashVerdict" style="margin-top:12px"></div>
 
-    <!-- Reachable with no images loaded, which is the whole point: the files you picked do not
-         survive a reload, so a control that lives in the labelling card is unreachable exactly
-         when this problem needs fixing. -->
+    <!-- Reachable with no images loaded, which is the point: the files you picked do not survive
+         a reload, so a control living in the labelling card is unreachable exactly when this
+         needs fixing. -->
     <div id="labAttrBox" class="note hidden" style="margin-top:10px">
       <b><span id="labAttrN">0</span> graded labels have no grader recorded.</b>
       The name is stamped onto the image on screen as you tick, so anything labelled in bulk — or
@@ -1084,24 +1092,94 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
         <div class="field"><label>Attribute them to</label><select id="labAttrWho"></select></div>
         <div class="field"><label>&nbsp;</label><button class="btn btn-teal btn-sm" id="labAttrGo">Attribute</button></div>
       </div>
-      <p class="small" style="margin:6px 0 0">Only for labels that are genuinely one person's. If
+      <p class="small" style="margin:6px 0 0">Only for labels that are genuinely one person’s. If
       another grader produced some of them, let them attribute their own — a wrong name here turns
       two independent readings into one, and the agreement statistic silently becomes meaningless.</p>
     </div>
   </section>
 
-  <section class="card">
-    <div class="step"><span class="n">▤</span><h3>Class balance</h3><span class="hint">what the model can learn</span></div>
-    <p class="small" style="margin-bottom:10px">A classifier learns the grades you give it examples of. A grade with
-    three images will be predicted badly however good the architecture, and no amount of training fixes it — only
-    collecting more of that grade does.</p>
-    <div class="row2">
-      <div><span class="lab">Meggitt–Wagner grade</span><div id="dashWagner"></div></div>
-      <div><span class="lab">NPIAP stage</span><div id="dashNpiap"></div></div>
-    </div>
-    <span class="lab" style="margin-top:14px">Findings present in the image</span>
-    <div id="dashFeats"></div>
-  </section>
+  <!-- ─── DIABETIC FOOT ULCER ─────────────────────────────────────────────── -->
+  <div data-arm="dfu">
+    <section class="card">
+      <div class="step"><span class="n">▤</span><h3>Grading · Wagner and Texas</h3><span class="hint">what the model can learn</span></div>
+      <p class="small" style="margin-bottom:10px">A classifier learns the grades you give it examples of. A grade with
+      three images will be predicted badly however good the architecture, and no amount of training fixes it — only
+      collecting more of that grade does. Amber marks a class under 10.</p>
+      <div class="row2">
+        <div><span class="lab">Meggitt–Wagner grade</span><div id="dashWagner"></div></div>
+        <div><span class="lab">University of Texas grade</span><div id="dashTexasG"></div></div>
+      </div>
+      <div class="row2" style="margin-top:12px">
+        <div><span class="lab">Texas stage</span><div id="dashTexasS"></div></div>
+        <div><span class="lab">Probe-to-bone</span><div id="dashPtb"></div></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="step"><span class="n">▤</span><h3>Microbiology</h3><span class="hint">the reference standard for infection</span></div>
+      <p class="small" style="margin-bottom:10px">Organisms isolated, counted across cases with a culture result. A case
+      may grow more than one, so these do not sum to the number of cases. A deep tissue specimen is the standard here,
+      not a surface swab.</p>
+      <div id="dashOrgs"></div>
+    </section>
+
+    <section class="card">
+      <div class="step"><span class="n">▤</span><h3>Case mix</h3><span class="hint">who is in the dataset</span></div>
+      <p class="small" style="margin-bottom:10px">Skin type matters most. The public training sets are predominantly
+      lighter skin, so performance in a Malaysian population cannot be claimed — or disproved — without the spread below.</p>
+      <div class="row2">
+        <div><span class="lab">Fitzpatrick skin type</span><div id="dashSkinD"></div></div>
+        <div><span class="lab">Ulcer site</span><div id="dashSiteD"></div></div>
+      </div>
+      <div class="row2" style="margin-top:12px">
+        <div><span class="lab">Outcome at follow-up</span><div id="dashOutD"></div></div>
+        <div><span class="lab">Cases per grader</span><div id="dashGradD"></div></div>
+      </div>
+      <span class="lab" style="margin-top:14px">Findings present in the image</span>
+      <div id="dashFeatD"></div>
+    </section>
+  </div>
+
+  <!-- ─── PRESSURE INJURY ─────────────────────────────────────────────────── -->
+  <div data-arm="pi">
+    <section class="card">
+      <div class="step"><span class="n">▤</span><h3>Staging · NPIAP</h3><span class="hint">what the model can learn</span></div>
+      <p class="small" style="margin-bottom:10px">NPIAP stages describe depth, and two of them cannot be assigned from a
+      photograph at all: stage 1 needs the blanching test and an Unstageable injury has a base nobody can see. Those two
+      are the ones a camera will always get wrong, so watch their counts rather than the overall total. Amber marks a
+      class under 10.</p>
+      <div class="row2">
+        <div><span class="lab">NPIAP stage</span><div id="dashNpiap"></div></div>
+        <div><span class="lab">Blanching test</span><div id="dashBlanch"></div></div>
+      </div>
+      <div class="row2" style="margin-top:12px">
+        <div><span class="lab">Deepest structure seen</span><div id="dashDeep"></div></div>
+        <div><span class="lab">Body site</span><div id="dashSiteP"></div></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="step"><span class="n">▤</span><h3>Reference standard</h3><span class="hint">outcome, not culture</span></div>
+      <div class="note" style="margin:0 0 10px">There is deliberately no microbiology panel on this arm. Every chronic
+      wound is colonised, so a swab of a pressure injury does not establish infection and swabbing is discouraged;
+      infection here is a clinical diagnosis. The reference standard for this arm is the adjudicated stage plus the
+      outcome at follow-up.</div>
+      <div class="row2">
+        <div><span class="lab">Outcome at follow-up</span><div id="dashOutP"></div></div>
+        <div><span class="lab">Cases per grader</span><div id="dashGradP"></div></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="step"><span class="n">▤</span><h3>Case mix</h3><span class="hint">who is in the dataset</span></div>
+      <p class="small" style="margin-bottom:10px">Skin type matters most. Non-blanchable erythema over intact skin is
+      the stage most easily missed on darker skin, and that is a stage 1 — the one the camera cannot see anyway.</p>
+      <div class="row2">
+        <div><span class="lab">Fitzpatrick skin type</span><div id="dashSkinP"></div></div>
+        <div><span class="lab">Findings present in the image</span><div id="dashFeatP"></div></div>
+      </div>
+    </section>
+  </div>
 
   <section class="card">
     <div class="step"><span class="n">▤</span><h3>Training history</h3><span class="hint">what the model has actually seen</span></div>
@@ -1109,30 +1187,6 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
     ground truth was complete, which is what the early ones are. The class counts sit beside the accuracy so a high
     number on a thin class cannot be mistaken for a good result.</p>
     <div id="dashRuns"></div>
-  </section>
-
-  <section class="card">
-    <div class="step"><span class="n">▤</span><h3>Microbiology</h3><span class="hint">from the case log</span></div>
-    <p class="small" style="margin-bottom:10px">Organisms isolated, counted across cases with a culture result. A case
-    may grow more than one, so these do not sum to the number of cases.</p>
-    <div id="dashOrgs"></div>
-  </section>
-
-  <section class="card">
-    <div class="step"><span class="n">▤</span><h3>Case mix</h3><span class="hint">who is in the dataset</span></div>
-    <p class="small" style="margin-bottom:10px">Skin type matters most here. The public training sets are
-    predominantly lighter skin, so performance in a Malaysian population cannot be claimed — or disproved —
-    without knowing the spread below.</p>
-    <div class="row2">
-      <div><span class="lab">Fitzpatrick skin type</span><div id="dashSkin"></div></div>
-      <div><span class="lab">Wound type</span><div id="dashType"></div></div>
-    </div>
-    <div class="row2" style="margin-top:12px">
-      <div><span class="lab">Body site</span><div id="dashSite"></div></div>
-      <div><span class="lab">Outcome at follow-up</span><div id="dashOutcome"></div></div>
-    </div>
-    <span class="lab" style="margin-top:14px">Cases per grader</span>
-    <div id="dashGraders"></div>
   </section>
 
 </div>
@@ -1146,7 +1200,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-10-21 &middot; v4.8</span>
+  <span class="study-hide" id="buildStamp">build 2026-10-27 &middot; v5.0</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -2395,7 +2449,32 @@ function renderDecide(){
    no camera can record: whether erythema blanches under finger pressure, whether muscle or bone is
    directly palpable, and whether a discolouration persists. Marking them is the same discipline the
    Texas ischaemia axis already follows — the model claims only what the modality supports.        */
-let DISEASE = 'dfu';
+/* ── the arm ──────────────────────────────────────────────────────────────────────────────
+   Wagner and Texas grade a diabetic foot ulcer. NPIAP stages a pressure injury. Running both
+   through one screen with a toggle meant every panel had to remember which it was looking at,
+   and the ones that forgot produced a Wagner grade for a sacral sore and a dashboard that
+   averaged two scales into one card.
+
+   The arm is now fixed for the whole session by the link you open:
+       /dfu/            diabetic foot ulcer
+       /pi/             pressure injury   (redirects to /dfu/?arm=pi)
+   With an arm locked there is no toggle to get wrong, and every screen filters to it. One
+   codebase and one set of models \u2014 the segmentation model is 12 MB and identical for both \u2014
+   behind two front doors. */
+const ARM = (() => {
+  try {
+    const q = new URLSearchParams(location.search).get('arm');
+    if (q === 'pi' || q === 'dfu') return q;
+    /* In production each arm has its own path, so the link alone fixes the arm with no query
+       string to lose. A local file or a bare index.html stays unlocked, which is what a developer
+       wants and no grader ever sees. */
+    if (/\/pi\/?$/.test(location.pathname))  return 'pi';
+    if (/\/dfu\/?$/.test(location.pathname)) return 'dfu';
+  } catch(e){}
+  return null;                       // unlocked: the toggle is shown, as before
+})();
+const ARM_LABEL = { dfu: 'Diabetic foot ulcer', pi: 'Pressure injury' };
+let DISEASE = ARM || 'dfu';
 
 
 /* For a pressure injury, step 2 reports what the camera genuinely contributes and points at
@@ -2430,6 +2509,7 @@ function renderPiOut(){
 
 function setDisease(d){
   DISEASE = d;
+  document.querySelectorAll('.arm-name').forEach(el => { el.textContent = ARM_LABEL[d] || d; });
   $('diseaseToggle').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === d));
   const pi = d === 'pi';
   $('schemeRow').classList.toggle('hidden', pi);
@@ -3373,7 +3453,11 @@ function renderKappa(log){
 }
 
 function renderLog(){
-  const log = loadLog(); $('kCases').textContent = log.length; $('logEmpty').classList.toggle('hidden', log.length > 0);
+  /* This arm's cases only. A log mixing Wagner grades and NPIAP stages in one list cannot be
+     read down a column, and the agreement figures above it would be computed across two scales. */
+  const isPi = DISEASE === 'pi';
+  const log = loadLog().filter(r => (r.disease === 'pressure injury') === isPi);
+  $('kCases').textContent = log.length; $('logEmpty').classList.toggle('hidden', log.length > 0);
   const withCult = log.filter(r => r.culture_positive !== null && r.p_infection !== null);
   const agree = withCult.filter(r => (r.p_infection >= 0.5) === r.culture_positive).length;
   $('kInf').textContent = withCult.length ? `${Math.round(100*agree/withCult.length)} %` : '—';
@@ -3536,88 +3620,103 @@ const tally = (rows, fn) => rows.reduce((m, r) => { const k = fn(r); if (k) m[k]
 
 function renderDashboard(){
   if (!$('dashTiles')) return;
-  const log = loadLog();
-  const dfu = log.filter(r => r.disease !== 'pressure injury');
-  const graders = new Set(log.map(r => r.grader).filter(Boolean));
-  const cultured = dfu.filter(r => (r.organisms || []).length);
-  const awaiting = dfu.length - cultured.length;
-  const outcomes = log.filter(r => r.outcome).length;
-  const noSkin = log.filter(r => !r.skin_type).length;
+  const pi = DISEASE === 'pi';
 
-  /* An image graded by two people is what the inter-rater statistic is computed from. Counting
-     them here, rather than only at the point of computing kappa, shows the shortfall early \u2014
-     when it can still be fixed by asking the second grader for another sitting. */
-  const byImage = {};
-  log.forEach(r => { (byImage[r.image] = byImage[r.image] || new Set()).add(r.grader || '?'); });
-  const doubled = Object.values(byImage).filter(s => s.size > 1).length;
+  /* Only this arm's cases. Pooling the two was the defect: a card cannot meaningfully average a
+     Wagner grade and an NPIAP stage, because they are not two measurements of one thing. */
+  const all = loadLog();
+  const log = all.filter(r => (r.disease === 'pressure injury') === pi);
+  const other = all.length - log.length;
 
-  /* Images added before this count existed left no trace in the seen store, but every one of
-     them that was labelled left a key in the label store. Counting the union means the number is
-     honest about the past instead of reading zero beside 465 labels. */
+  document.querySelectorAll('#tab-data [data-arm]').forEach(el =>
+    el.classList.toggle('hidden', el.dataset.arm !== (pi ? 'pi' : 'dfu')));
+  document.querySelectorAll('.arm-name').forEach(el => { el.textContent = ARM_LABEL[pi ? 'pi' : 'dfu']; });
+
   const seenKeys = new Set(Object.keys(loadSeen()).concat(Object.keys(loadLabels())));
   const seen = seenKeys.size;
   const files = (typeof pool !== 'undefined') ? pool.length : 0;
-  const runs = loadRuns();
+  const runs = loadRuns().filter(r => pi ? r.target === 'npiap' : r.target !== 'npiap');
   const last = runs[0] || null;
-  const labelled_n = Object.keys(loadLabels()).length;
+  const labelled_n = Object.keys(loadLabels()).filter(k => {
+    const v = loadLabels()[k]; return ((v.t || 'dfu') === 'pi') === pi;
+  }).length;
   const withTissue = log.filter(r => r.findings_n > 0).length;
-  const noGrader = log.filter(r => !r.grader).length;
+  const noGrader   = log.filter(r => !r.grader).length;
+  const graders    = new Set(log.map(r => r.grader).filter(Boolean));
+  const outcomes   = log.filter(r => r.outcome).length;
+  const noSkin     = log.filter(r => !r.skin_type).length;
 
+  const byImage = {};
+  log.forEach(r => { (byImage[r.image] = byImage[r.image] || new Set()).add(r.grader || '?'); });
+  const doubled = Object.values(byImage).filter(x => x.size > 1).length;
+
+  /* The tiles differ by arm, not only in their numbers. "Awaiting culture" is a foot-ulcer
+     question; a pressure injury is not cultured, so counting it there would invent a gap that
+     ought not to be filled. */
   const tiles = [
-    ['v', seen, 'Images ever uploaded', 'across all sittings · not loaded now'],
-    /* The single most misleading number in this app was "images uploaded", which counts every
-       image ever seen and so reads as "the images are in the app". Training needs the FILES, and
-       a browser drops them on every reload. The two are now side by side, and the second is amber
-       whenever it is the thing blocking a training run. */
-    [files ? 'v' : 'w', files, 'Image files loaded now', files ? 'ready to train' : 'none — re-select them in step A to train'],
-    [labelled_n < seen ? 'w' : 'v', labelled_n, 'Images labelled', labelled_n < seen ? (seen - labelled_n) + ' still untouched' : 'all of them'],
-    [last ? 'v' : 'w', last ? last.n_train_images : 0, 'Used in last training', last ? `+ ${last.n_val} held out` : 'never trained'],
-    [withTissue ? 'v' : 'w', withTissue, 'With tissue findings', withTissue ? 'of ' + log.length + ' cases' : 'can be added later'],
-    [noGrader ? 'w' : 'v', noGrader, 'No grader recorded', noGrader ? 'attribute them below' : 'all attributed'],
-    ['v', log.length, 'Cases in the log', 'all graders'],
-    ['v', Object.keys(byImage).length, 'Images graded', 'distinct photographs'],
+    ['v', seen, 'Images ever uploaded', 'all arms \u00b7 not loaded now'],
+    [files ? 'v' : 'w', files, 'Image files loaded now', files ? 'ready to train' : 'none \u2014 re-select in step A'],
+    [labelled_n ? 'v' : 'w', labelled_n, 'Labelled on this arm', pi ? 'pressure injuries' : 'foot ulcers'],
+    [last ? 'v' : 'w', last ? last.n_train_images : 0, 'Used in last training', last ? `+ ${last.n_val} held out` : 'never trained on this arm'],
+    ['v', log.length, 'Cases in the log', pi ? 'pressure injuries only' : 'foot ulcers only'],
     ['v', graders.size, 'Graders', [...graders].join(', ') || 'none yet'],
     [doubled ? 'v' : 'w', doubled, 'Double-graded', doubled ? 'available for \u03ba' : '\u03ba not computable'],
-    [awaiting ? 'w' : 'v', awaiting, 'Awaiting culture', 'foot ulcers only'],
+    [noGrader ? 'w' : 'v', noGrader, 'No grader recorded', noGrader ? 'attribute them above' : 'all attributed'],
     [outcomes ? 'v' : 'w', outcomes, 'With an outcome', 'follow-up recorded'],
-    [noSkin ? 'w' : 'v', noSkin, 'Missing skin type', noSkin ? 'cannot report by tone' : 'complete']
+    [noSkin ? 'w' : 'v', noSkin, 'Missing skin type', noSkin ? 'cannot report by tone' : 'complete'],
+    [withTissue ? 'v' : 'w', withTissue, 'With tissue findings', withTissue ? 'of ' + log.length + ' cases' : 'can be added later']
   ];
+  if (!pi) tiles.splice(9, 0,
+    [log.filter(r => !(r.organisms || []).length).length ? 'w' : 'v',
+     log.filter(r => !(r.organisms || []).length).length, 'Awaiting culture', 'deep tissue specimen']);
+
   $('dashTiles').innerHTML = tiles.map(([k, v, lab, sub]) =>
     `<div class="tile${k === 'w' ? ' warn' : ''}"><div class="v">${v}</div><div class="k">${lab}</div><div class="s">${sub}</div></div>`).join('');
-  $('dashWhen').textContent = log.length ? 'counted just now' : 'nothing recorded yet';
+  $('dashWhen').textContent = log.length ? 'counted just now' : 'nothing on this arm yet';
 
-  /* The verdict names the single thing most worth doing next, rather than listing every gap.
-     A list of seven problems is read as noise; one named next step is read as an instruction. */
   const v = $('dashVerdict');
-  if (!log.length) v.innerHTML = '<b>No cases yet.</b> Grade an image in <b>step B</b> of the Study team tab and a row appears here.';
-  else if (!files && !runs.length) v.innerHTML = `<b>No image files are loaded, so training cannot run.</b> ${labelled_n} labels are safely stored, but a browser cannot keep the files you picked and training reads the pixels, not the labels. Open <b>step A</b> in the Study team tab and re-select the same images \u2014 your ticks reattach by themselves \u2014 then train in step C and press <b>\u201cUse this model in Assess\u201d</b> in step D to keep the result.`;
-  else if (noGrader === log.length) v.innerHTML = `<b>None of these ${log.length} cases has a grader recorded.</b> The name is stamped onto the image on screen as you tick, so labels made in bulk or before a name was chosen carry none. Nothing is lost \u2014 use the box below to put a name on them, and have the other grader do the same for theirs.`;
-  else if (!doubled) v.innerHTML = `<b>Nothing is double-graded.</b> Inter-rater agreement cannot be computed from ${log.length} case${log.length === 1 ? '' : 's'} read by one person each. Have the second grader read a share of the same images.`;
-  else if (noSkin) v.innerHTML = `<b>${noSkin === 1 ? '1 case carries' : noSkin + ' cases carry'} no skin type.</b> Performance by skin tone is the claim this study exists to support, and it cannot be reported for rows where the field is blank.`;
-  else if (awaiting) v.innerHTML = `<b>${awaiting} foot ulcer${awaiting === 1 ? '' : 's'} still awaiting a culture result.</b> Open the case log and complete them as the results arrive.`;
-  else v.innerHTML = '<b>Nothing obvious is missing.</b> Keep collecting \u2014 the limit now is how many cases there are, not what is recorded about them.';
+  const otherNote = other ? ` <span class="small">(${other} case${other === 1 ? '' : 's'} on the other arm are not counted here.)</span>` : '';
+  if (!log.length) v.innerHTML = `<b>No ${pi ? 'pressure injuries' : 'foot ulcers'} recorded yet.</b> Grade images in <b>step B</b> of the Study team tab and a row appears here.${otherNote}`;
+  else if (!files && !runs.length) v.innerHTML = `<b>No image files are loaded, so training cannot run.</b> Labels are safely stored, but a browser cannot keep the files you picked and training reads the pixels, not the labels. Re-select the same images in <b>step A</b>, train in step C, then press <b>\u201cUse this model in Assess\u201d</b> in step D.${otherNote}`;
+  else if (noGrader === log.length) v.innerHTML = `<b>None of these ${log.length} cases has a grader recorded.</b> Use the box above to put a name on them, and have the other grader do the same for theirs.${otherNote}`;
+  else if (!doubled) v.innerHTML = `<b>Nothing is double-graded on this arm.</b> Inter-rater agreement cannot be computed from ${log.length} case${log.length === 1 ? '' : 's'} read by one person each. Have the second grader read a share of the same images.${otherNote}`;
+  else if (noSkin) v.innerHTML = `<b>${noSkin === 1 ? '1 case carries' : noSkin + ' cases carry'} no skin type.</b> Performance by skin tone is the claim this study exists to support, and it cannot be reported for rows where the field is blank.${otherNote}`;
+  else v.innerHTML = `<b>Nothing obvious is missing on this arm.</b> Keep collecting \u2014 the limit now is how many cases there are, not what is recorded about them.${otherNote}`;
 
-  const F = n => n;
-  $('dashWagner').innerHTML  = barRows(tally(dfu, r => r.gt_wagner ? 'Wagner ' + r.gt_wagner : ''), { order: ['Wagner 0','Wagner 1','Wagner 2','Wagner 3','Wagner 4','Wagner 5'], thinUnder: 10, empty: 'No Wagner grades recorded.' });
-  $('dashNpiap').innerHTML   = barRows(tally(log.filter(r => r.disease === 'pressure injury'), r => r.npiap_stage ? 'Stage ' + r.npiap_stage : ''), { thinUnder: 10, empty: 'No pressure injuries recorded.' });
-  $('dashSkin').innerHTML    = barRows(tally(log, r => r.skin_type ? 'Type ' + r.skin_type : ''), { pctOf: log.length, empty: 'No skin types recorded.' });
-  $('dashType').innerHTML    = barRows(tally(log, r => r.disease === 'pressure injury' ? 'Pressure injury' : 'Foot ulcer'), { pctOf: log.length });
-  $('dashSite').innerHTML    = barRows(tally(log, r => r.body_site), { empty: 'No body sites recorded.' });
-  $('dashOutcome').innerHTML = barRows(tally(log, r => r.outcome), { empty: 'No outcomes recorded yet.' });
-  $('dashGraders').innerHTML = barRows(tally(log, r => r.grader), { empty: 'No grader recorded.' });
+  const flab = Object.fromEntries(FEAT_OPTS);
+  const feats = {};
+  (typeof pool !== 'undefined' ? pool : []).filter(it => ((it.wtype || 'dfu') === 'pi') === pi)
+    .forEach(it => (it.feats || []).forEach(f => { const k = flab[f] || f; feats[k] = (feats[k] || 0) + 1; }));
+  const featHtml = barRows(feats, { thinUnder: 10, empty: 'No findings ticked yet. These come from the images loaded in step B this session.' });
 
-  const orgCount = {};
-  cultured.forEach(r => (r.organisms || []).forEach(o => { orgCount[o] = (orgCount[o] || 0) + 1; }));
-  $('dashOrgs').innerHTML = barRows(orgCount, { pctOf: cultured.length || 1, empty: 'No culture results recorded yet.' });
+  if (pi){
+    $('dashNpiap').innerHTML  = barRows(tally(log, r => r.npiap_stage ? 'Stage ' + r.npiap_stage : ''), { thinUnder: 10, empty: 'No NPIAP stages recorded.' });
+    $('dashBlanch').innerHTML = barRows(tally(log, r => r.blanching), { empty: 'No blanching tests recorded \u2014 it cannot be read from a photograph, so it has to be entered.' });
+    $('dashDeep').innerHTML   = barRows(tally(log, r => r.deepest_structure), { empty: 'No deepest structure recorded.' });
+    $('dashSiteP').innerHTML  = barRows(tally(log, r => r.body_site), { empty: 'No body sites recorded.' });
+    $('dashOutP').innerHTML   = barRows(tally(log, r => r.outcome), { empty: 'No outcomes recorded yet \u2014 this is the reference standard for this arm.' });
+    $('dashGradP').innerHTML  = barRows(tally(log, r => r.grader), { empty: 'No grader recorded.' });
+    $('dashSkinP').innerHTML  = barRows(tally(log, r => r.skin_type ? 'Type ' + r.skin_type : ''), { pctOf: log.length, empty: 'No skin types recorded.' });
+    $('dashFeatP').innerHTML  = featHtml;
+  } else {
+    $('dashWagner').innerHTML = barRows(tally(log, r => r.gt_wagner ? 'Wagner ' + r.gt_wagner : ''), { order: ['Wagner 0','Wagner 1','Wagner 2','Wagner 3','Wagner 4','Wagner 5'], thinUnder: 10, empty: 'No Wagner grades recorded.' });
+    $('dashTexasG').innerHTML = barRows(tally(log, r => r.gt_grade ? 'Grade ' + r.gt_grade : ''), { thinUnder: 10, empty: 'No Texas grades recorded.' });
+    $('dashTexasS').innerHTML = barRows(tally(log, r => r.gt_stage ? 'Stage ' + r.gt_stage : ''), { thinUnder: 10, empty: 'No Texas stages recorded.' });
+    $('dashPtb').innerHTML    = barRows(tally(log, r => r.probe_to_bone), { empty: 'No probe-to-bone results recorded.' });
+    $('dashSkinD').innerHTML  = barRows(tally(log, r => r.skin_type ? 'Type ' + r.skin_type : ''), { pctOf: log.length, empty: 'No skin types recorded.' });
+    $('dashSiteD').innerHTML  = barRows(tally(log, r => r.body_site), { empty: 'No ulcer sites recorded.' });
+    $('dashOutD').innerHTML   = barRows(tally(log, r => r.outcome), { empty: 'No outcomes recorded yet.' });
+    $('dashGradD').innerHTML  = barRows(tally(log, r => r.grader), { empty: 'No grader recorded.' });
+    $('dashFeatD').innerHTML  = featHtml;
+    const cultured = log.filter(r => (r.organisms || []).length), orgCount = {};
+    cultured.forEach(r => (r.organisms || []).forEach(o => { orgCount[o] = (orgCount[o] || 0) + 1; }));
+    $('dashOrgs').innerHTML   = barRows(orgCount, { pctOf: cultured.length || 1, empty: 'No culture results recorded yet.' });
+  }
 
-  /* Training history. A run made before the ground truth was complete is still worth recording \u2014
-     it is how you show the model improving as the reference standard fills in. The accuracy is
-     shown next to the class counts it was obtained from, so a good number on thin classes cannot
-     be read as a good result. */
   const rh = $('dashRuns');
   if (rh){
     rh.innerHTML = !runs.length
-      ? '<div class="bars"><div class="empty">No training run has completed yet. Step C in the Study team tab.</div></div>'
+      ? `<div class="bars"><div class="empty">No training run has completed on the ${ARM_LABEL[pi ? 'pi' : 'dfu'].toLowerCase()} arm yet. Step C in the Study team tab.</div></div>`
       : '<table class="keep"><tr><th>when</th><th>label</th><th>trained on</th><th>held out</th><th>accuracy</th><th>macro F1</th></tr>'
         + runs.slice(0, 10).map(r => `<tr><td>${new Date(r.when).toLocaleString()}</td>
             <td>${r.target || '?'}</td>
@@ -3625,11 +3724,6 @@ function renderDashboard(){
             <td>${r.n_val}</td><td>${(r.accuracy * 100).toFixed(0)} %</td><td>${r.macro_f1.toFixed(2)}</td></tr>`).join('')
         + '</table>';
   }
-
-  const feat = {}, flab = Object.fromEntries(FEAT_OPTS);
-  (typeof pool !== 'undefined' ? pool : []).forEach(it =>
-    (it.feats || []).forEach(f => { const k = flab[f] || f; feat[k] = (feat[k] || 0) + 1; }));
-  $('dashFeats').innerHTML = barRows(feat, { thinUnder: 10, empty: 'No findings ticked yet. These come from the images loaded in step B this session.' });
 }
 
 function renderFormulary(){
@@ -3813,7 +3907,16 @@ $('exportCsv').onclick = () => {
   markExported();
 };
 renderLog();
-setDisease('dfu');
+/* With an arm locked, the wound-type toggle is removed rather than merely preset: a control
+   that can only hold one value is an invitation to wonder what the other one does. */
+if (ARM){
+  const tog = $('diseaseToggle');
+  if (tog && tog.parentElement) tog.parentElement.classList.add('hidden');
+  document.querySelectorAll('.arm-name').forEach(el => { el.textContent = ARM_LABEL[ARM]; });
+  document.body.classList.add('arm-' + ARM);
+  if ($('labType')){ $('labType').value = ARM; $('labType').disabled = true; }
+}
+setDisease(ARM || 'dfu');
 
 /* ═══════════════════════════ TRAIN: data intake ═══════════════════════════ */
 const data = { classes: new Map() };          // className -> [{file|blob, name, url}]
@@ -4384,8 +4487,12 @@ function fillTargets(){
               : `${sh.classes} classes, smallest ${sh.smallest} — too few to train`;
     return `<option value="${v}">${name} — ${tail}</option>`;
   };
-  sel.innerHTML = opt('wagner', 'Meggitt–Wagner grade (0–5)')
-    + opt('npiap', 'NPIAP pressure injury stage')
+  /* Offering NPIAP on the foot-ulcer arm is how a Wagner model came to be trained from a
+     pressure-injury screen. The scale that does not apply to this arm is not offered. */
+  const scales = (DISEASE === 'pi')
+    ? [['npiap', 'NPIAP pressure injury stage']]
+    : [['wagner', 'Meggitt–Wagner grade (0–5)']];
+  sel.innerHTML = scales.map(([v, n]) => opt(v, n)).join('')
     + FEAT_OPTS.map(([id, l]) => opt('feat:' + id, `${l}, present or absent`)).join('');
   if (keep) sel.value = keep;
 }

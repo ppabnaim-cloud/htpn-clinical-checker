@@ -1,4 +1,23 @@
-# DFU Vision — Diabetic Foot Ulcer deep learning prototype
+# Wound Vision — wound assessment prototype
+
+## Two links, one application
+
+| Link | Arm | Scale |
+|---|---|---|
+| `/dfu/` | Diabetic foot ulcer | Meggitt–Wagner, University of Texas |
+| `/pi/`  | Pressure injury     | NPIAP |
+
+The arm is fixed by the link you open. There is no wound-type toggle: every screen — the
+assessment, the labelling, the training targets, the case log and the dashboard — filters to the
+arm, and a model trained on one arm is refused on the other. Wagner and Texas grade a diabetic
+foot ulcer; NPIAP stages a pressure injury. They are definitions of different things, so a Wagner
+grade on a sacral sore is a category error rather than an approximation.
+
+`/pi/` is a redirect to `/dfu/?arm=pi`. One codebase and one set of models serve both arms: the
+segmentation model is 12 MB and identical for either wound type, so a second copy of the
+application would mean two copies of the same models to version and deploy, and every fix landing
+twice or not at all.
+
 
 A browser-based demonstrator for the Deep Learning Healthcare Centre of Excellence. A clinician photographs a
 diabetic foot ulcer on a phone, the image is classified **on the device** by a transfer-learned convolutional

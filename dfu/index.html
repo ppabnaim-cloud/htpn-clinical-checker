@@ -13,7 +13,7 @@
 :root{
   --navy:#0B1F3A; --navy-mid:#11294a; --teal:#1CB8A0; --teal-dim:#0F8C7A; --teal-glow:rgba(28,184,160,.14);
   --amber:#F4A623; --rose:#E84C6A; --green:#22C55E; --violet:#8B7FE8;
-  --text:#13263c; --muted:#5A7290; --faint:#8aa0b8; --cloud:#EEF3F8; --line:#dde6f0; --card:#fff;
+  --text:#13263c; --muted:#5A7290; --faint:#657E9B;   /* was #8aa0b8 — 2.7:1, too light to read */ --cloud:#EEF3F8; --line:#dde6f0; --card:#fff;
   --serif:'DM Serif Display',Georgia,serif; --sans:'DM Sans',system-ui,-apple-system,sans-serif; --mono:'DM Mono',ui-monospace,monospace;
   --r:14px; --shadow:0 2px 18px rgba(11,31,58,.07); --shadow-lg:0 12px 48px rgba(11,31,58,.18);
 }
@@ -48,7 +48,10 @@ details.more p{font-size:13.5px;line-height:1.6;color:var(--muted);margin-top:8p
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:11px;padding:13px 20px;font-weight:600;font-size:15px;transition:.15s}
 .btn-primary{background:var(--navy);color:#fff;width:100%}
 .btn:disabled{opacity:.4;cursor:not-allowed}
-.btn-teal{background:var(--teal);color:#fff}
+/* The accent is tuned to read on the dark header, which makes it too light behind white button
+   text: #1CB8A0 gives 2.5:1, below any legibility threshold. The button uses the dim tone, 4.7:1.
+   Found while fixing a worse version of the same mistake on the other arm. */
+.btn-teal{background:var(--teal-dim);color:#fff}
 .btn-ghost{background:transparent;color:var(--navy);border:1.5px solid var(--line)}
 .btn-sm{padding:8px 13px;font-size:13px;border-radius:9px}
 
@@ -558,37 +561,37 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
    uninfected. An arm identity painted in a severity colour would spend a signal that must never
    be misread. Violet belongs to no clinical scale here, which is exactly why it is free to mean
    "this is the pressure injury app". */
-body.arm-pi{
-  --navy:#fff; --navy-mid:#fff;
-  --teal:#D4455E; --teal-dim:#A82741; --teal-glow:rgba(212,69,94,.11);
-  --cloud:#FCF5F6;                      /* a blush page, so the arms differ before you read a word */
-}
-/* A light header is a different object from a dark one: every piece of chrome on it was written
-   for white-on-navy and has to be inverted rather than merely re-tinted.
+/* ── the pressure injury arm ──────────────────────────────────────────────────────────────
+   A deep wine header with a warm rose accent and a blush page. Clearly red, clearly not the foot
+   ulcer arm, and legible.
 
-   On red: amber, rose and green carry clinical severity meaning in this app, which is why the
-   first attempt avoided all three. Red is safe HERE for one checkable reason — the critical
-   rose card comes from ruleInfection, which runs on the diabetic foot ulcer arm only. NPIAP
-   staging produces no critical card at all, so on this arm the alarm colour and the chrome colour
-   never appear on the same screen. If an infection severity panel is ever added to this arm, this
-   decision has to be revisited. */
-body.arm-pi header{background:#fff;color:var(--text);
-  border-bottom:3px solid var(--teal);box-shadow:0 1px 16px rgba(168,39,65,.09)}
-body.arm-pi header h1{color:var(--text)}
-body.arm-pi header h1 span{color:var(--teal-dim)}
-body.arm-pi header small{color:var(--muted);opacity:1}
-body.arm-pi .pill{background:rgba(212,69,94,.07);border-color:rgba(212,69,94,.22);color:var(--teal-dim)}
-body.arm-pi .pill.ok{background:rgba(212,69,94,.13);border-color:var(--teal)}
-body.arm-pi .lockpill{background:rgba(212,69,94,.12);border-color:rgba(212,69,94,.34);color:var(--teal-dim)}
-body.arm-pi .lockpill:hover{background:rgba(212,69,94,.22);color:var(--teal-dim)}
-body.arm-pi .tabs button{color:rgba(19,38,60,.52)}
-body.arm-pi .tabs button.on{color:var(--text);border-bottom-color:var(--teal)}
-body.arm-pi #modeBar{background:var(--teal-dim)}
-/* The accent has two jobs pulling opposite ways: light enough to work as a tint, dark enough to
-   sit behind white button text. The button takes the darker tone — 6.9:1 against white. */
+   The previous attempt set --navy to #fff to get a white header. That variable is not "the header
+   background": it is the app's DARK TEXT colour, used in some thirty rules for headings, button
+   labels, stat figures and table values. Setting it white turned every bold phrase and every
+   button label white-on-white — the gate lost "It is software, not a clinician", "Nothing is
+   uploaded" and "To start", and the camera buttons lost their labels. The header keeps a dark
+   background for the same reason it always had one: white chrome text needs something dark to sit
+   on, and inverting a whole header is a larger change than an arm identity needs.
+
+   Wine is safe as a text colour where white was not: #3B1020 reads 15.8:1 on the page, against
+   #0B1F3A's 15.5:1 — the two arms are equally legible and visibly different.
+
+   On red generally: amber, rose and green carry clinical severity meaning in this app. The
+   critical rose card is produced by ruleInfection, which runs on the diabetic foot ulcer arm
+   only; NPIAP staging produces no critical card at all, so on this arm the alarm colour and the
+   chrome colour never share a screen. If an infection severity panel is ever added here, revisit
+   this. */
+body.arm-pi{
+  --navy:#3B1020; --navy-mid:#5A1A30;
+  --teal:#F2748C; --teal-dim:#B02A47; --teal-glow:rgba(242,116,140,.16);
+  --cloud:#FBF4F6;
+}
+/* The accent has two jobs pulling opposite ways: light enough to read on the dark header, dark
+   enough to sit behind white button text. The button takes the darker tone — 6.0:1 against
+   white, where the accent itself would be 2.5:1. */
 body.arm-pi .btn-teal{background:var(--teal-dim)}
-body.arm-pi .armbar{background:rgba(212,69,94,.09);border-color:rgba(212,69,94,.26);color:var(--teal-dim)}
-body.arm-pi .armbar b{color:var(--teal-dim)}
+body.arm-pi #modeBar{background:var(--teal-dim)}
+body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.2)}
 .model-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:13px}
 .model-row .who{flex:1}
 .model-row .who b{color:var(--navy)}
@@ -1254,7 +1257,7 @@ body.arm-pi .armbar b{color:var(--teal-dim)}
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-10-27 &middot; v5.3</span>
+  <span class="study-hide" id="buildStamp">build 2026-10-27 &middot; v5.4</span>
 </footer>
 <div class="toast" id="toast"></div>
 

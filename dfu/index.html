@@ -1079,6 +1079,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
       <span class="hint"><b class="arm-name">—</b> · <span id="dashWhen"></span></span></div>
     <div class="tiles" id="dashTiles"></div>
     <div class="note" id="dashVerdict" style="margin-top:12px"></div>
+    <p class="small" id="dashSeen" style="margin:9px 0 0"></p>
 
     <!-- Reachable with no images loaded, which is the point: the files you picked do not survive
          a reload, so a control living in the labelling card is unreachable exactly when this
@@ -1200,7 +1201,7 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-10-27 &middot; v5.0</span>
+  <span class="study-hide" id="buildStamp">build 2026-10-27 &middot; v5.1</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -2474,6 +2475,24 @@ const ARM = (() => {
   return null;                       // unlocked: the toggle is shown, as before
 })();
 const ARM_LABEL = { dfu: 'Diabetic foot ulcer', pi: 'Pressure injury' };
+
+const DIS_NAME = d => d === 'pi' ? 'pressure injury' : 'diabetic foot ulcer';
+
+/* Which arm a stored label or a case row belongs to.
+
+   The wound type was stored as a field that defaults to 'dfu', so anything graded before that
+   field was being set reads as a foot ulcer \u2014 which is how a dashboard came to report one
+   pressure injury labelled and ninety-five used in training. Ninety-five pressure injuries cannot
+   come from one label.
+
+   The grade settles it and the field does not: an NPIAP stage is only ever assigned to a pressure
+   injury and a Wagner grade only ever to a diabetic foot ulcer. So the grade is read first and the
+   stored type is only a fallback for an image carrying neither. */
+const labelArm = v => (v && v.n) ? 'pi' : (v && v.w) ? 'dfu' : ((v && v.t) || 'dfu');
+const rowArm   = r => r.npiap_stage ? 'pi'
+                    : (r.gt_wagner || r.gt_grade || r.gt_stage) ? 'dfu'
+                    : (r.disease === 'pressure injury' ? 'pi' : 'dfu');
+const poolArm  = it => it.npiap ? 'pi' : it.wagner ? 'dfu' : (it.wtype || 'dfu');
 let DISEASE = ARM || 'dfu';
 
 
@@ -3456,7 +3475,7 @@ function renderLog(){
   /* This arm's cases only. A log mixing Wagner grades and NPIAP stages in one list cannot be
      read down a column, and the agreement figures above it would be computed across two scales. */
   const isPi = DISEASE === 'pi';
-  const log = loadLog().filter(r => (r.disease === 'pressure injury') === isPi);
+  const log = loadLog().filter(r => (rowArm(r) === 'pi') === isPi);
   $('kCases').textContent = log.length; $('logEmpty').classList.toggle('hidden', log.length > 0);
   const withCult = log.filter(r => r.culture_positive !== null && r.p_infection !== null);
   const agree = withCult.filter(r => (r.p_infection >= 0.5) === r.culture_positive).length;
@@ -3625,7 +3644,7 @@ function renderDashboard(){
   /* Only this arm's cases. Pooling the two was the defect: a card cannot meaningfully average a
      Wagner grade and an NPIAP stage, because they are not two measurements of one thing. */
   const all = loadLog();
-  const log = all.filter(r => (r.disease === 'pressure injury') === pi);
+  const log = all.filter(r => (rowArm(r) === 'pi') === pi);
   const other = all.length - log.length;
 
   document.querySelectorAll('#tab-data [data-arm]').forEach(el =>
@@ -3635,11 +3654,15 @@ function renderDashboard(){
   const seenKeys = new Set(Object.keys(loadSeen()).concat(Object.keys(loadLabels())));
   const seen = seenKeys.size;
   const files = (typeof pool !== 'undefined') ? pool.length : 0;
-  const runs = loadRuns().filter(r => pi ? r.target === 'npiap' : r.target !== 'npiap');
+  /* A run's arm comes from the classes it produced, not from the dropdown value recorded with
+     it: a feature head (slough, necrosis) carries a target of feat:… and belongs to neither arm. */
+  const runs = loadRuns().filter(r => {
+    const d = headDisease(r.classes);
+    return d ? (d === 'pi') === pi : true;      // a feature head is shown on both
+  });
   const last = runs[0] || null;
-  const labelled_n = Object.keys(loadLabels()).filter(k => {
-    const v = loadLabels()[k]; return ((v.t || 'dfu') === 'pi') === pi;
-  }).length;
+  const store = loadLabels();
+  const labelled_n = Object.keys(store).filter(k => (labelArm(store[k]) === 'pi') === pi).length;
   const withTissue = log.filter(r => r.findings_n > 0).length;
   const noGrader   = log.filter(r => !r.grader).length;
   const graders    = new Set(log.map(r => r.grader).filter(Boolean));
@@ -3654,7 +3677,6 @@ function renderDashboard(){
      question; a pressure injury is not cultured, so counting it there would invent a gap that
      ought not to be filled. */
   const tiles = [
-    ['v', seen, 'Images ever uploaded', 'all arms \u00b7 not loaded now'],
     [files ? 'v' : 'w', files, 'Image files loaded now', files ? 'ready to train' : 'none \u2014 re-select in step A'],
     [labelled_n ? 'v' : 'w', labelled_n, 'Labelled on this arm', pi ? 'pressure injuries' : 'foot ulcers'],
     [last ? 'v' : 'w', last ? last.n_train_images : 0, 'Used in last training', last ? `+ ${last.n_val} held out` : 'never trained on this arm'],
@@ -3673,6 +3695,11 @@ function renderDashboard(){
   $('dashTiles').innerHTML = tiles.map(([k, v, lab, sub]) =>
     `<div class="tile${k === 'w' ? ' warn' : ''}"><div class="v">${v}</div><div class="k">${lab}</div><div class="s">${sub}</div></div>`).join('');
   $('dashWhen').textContent = log.length ? 'counted just now' : 'nothing on this arm yet';
+  /* Kept, but out of the tile grid: it is the only number here that spans both arms, and sitting
+     among arm-scoped tiles it read as this arm's total. */
+  if ($('dashSeen')) $('dashSeen').innerHTML =
+    `<b>${seen}</b> images have been through the app in total, across both arms and all sittings. `
+    + `Every other number on this screen counts ${DIS_NAME(pi ? 'pi' : 'dfu')} only.`;
 
   const v = $('dashVerdict');
   const otherNote = other ? ` <span class="small">(${other} case${other === 1 ? '' : 's'} on the other arm are not counted here.)</span>` : '';
@@ -3685,7 +3712,7 @@ function renderDashboard(){
 
   const flab = Object.fromEntries(FEAT_OPTS);
   const feats = {};
-  (typeof pool !== 'undefined' ? pool : []).filter(it => ((it.wtype || 'dfu') === 'pi') === pi)
+  (typeof pool !== 'undefined' ? pool : []).filter(it => (poolArm(it) === 'pi') === pi)
     .forEach(it => (it.feats || []).forEach(f => { const k = flab[f] || f; feats[k] = (feats[k] || 0) + 1; }));
   const featHtml = barRows(feats, { thinUnder: 10, empty: 'No findings ticked yet. These come from the images loaded in step B this session.' });
 
@@ -4334,7 +4361,9 @@ function loadLabels(){ try { return JSON.parse(localStorage.getItem(LABELS_KEY) 
    than adding a second one \u2014 and two graders reading the same image still produce two rows,
    which is what the inter-rater statistic needs. */
 function labelToCase(it, key){
-  const pi = it.wtype === 'pi', r = it.rec || {};
+  /* The grade decides the wound type, not the stored field \u2014 see labelArm(). A row written from
+     an NPIAP stage is a pressure injury even if the wound type was never set. */
+  const pi = poolArm(it) === 'pi', r = it.rec || {};
   return { id: 'B|' + (key || labKey(it)) + '|' + (r.grader || ''), src: 'graded in step B',
     when: new Date().toISOString(), image: it.name, thumb: '',
     model: 'not run \u2014 graded from the image list', ai_label: '',
@@ -4377,6 +4406,8 @@ function syncLabelsToLog(){
                  npiap: v.n || null, skin: v.s || '', rec: r, feats: v.f || [] };
     const row = labelToCase(it, k), i = log.findIndex(x => String(x.id) === row.id);
     written++;
+    /* Rows written before the arm was inferred from the grade carry disease: 'diabetic foot ulcer'
+       even where an NPIAP stage was recorded. Rebuilding the row corrects that in place. */
     if (i < 0){ log.unshift(row); changed = true; return; }
     row.when = log[i].when;                              // keep the first time it was recorded
     row.revisions = log[i].revisions;
@@ -5148,7 +5179,6 @@ function headDisease(classes){
   if (all.indexOf('wagner') >= 0 || all.indexOf('texas') >= 0) return 'dfu';
   return null;                                   // a feature head belongs to neither and to both
 }
-const DIS_NAME = d => d === 'pi' ? 'pressure injury' : 'diabetic foot ulcer';
 
 /* True when the active model must not be asked about the wound type on screen. */
 function headMismatch(entry, disease){

@@ -340,17 +340,26 @@ details.correct[open]>summary{margin-bottom:4px}
 .hitlbar .vs{align-self:center;font-size:17px;font-weight:700;color:var(--muted)}
 .hitl p{margin:10px 0 0;font-size:12.5px;line-height:1.6;color:var(--text)}
 .hitl p b{color:var(--navy)}
-.askrow{display:flex;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--rule)}
-.askrow:first-child{border-top:0}
-.askrow .q{flex:1;min-width:0}
-.askrow .q b{display:block;font-size:13.5px;color:var(--navy);font-weight:600;line-height:1.35}
-.askrow .q em{display:block;font-style:normal;font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:2px}
-.askrow select{flex:0 0 210px;padding:8px 9px;border-radius:8px;border:1px solid var(--line);
-  font-size:13px;background:#fff;color:var(--text)}
-.askrow.done select{border-color:var(--teal);background:rgba(28,184,160,.07);font-weight:600}
+/* A question, its reason and a dropdown, in a column the image shares. Side by side, the text
+   and a 210px select each got about half of an already narrow panel, so the question wrapped to
+   four lines beside a select that had no room for its longest option — "Two or more of:
+   temperature over 38 or under 36..." next to "Plantar forefoot". The row now stacks: question,
+   reason, then the control at full width. Nothing is hidden and nothing is abbreviated; it simply
+   stops two things competing for one line. */
+.askrow{display:block;padding:11px 0;border-top:1px solid var(--rule)}
+.askrow:first-child{border-top:0;padding-top:2px}
+.askrow .q{min-width:0}
+.askrow .q b{display:block;font-size:13.5px;color:var(--navy);font-weight:600;line-height:1.4}
+.askrow .q em{display:block;font-style:normal;font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:3px}
+.askrow select{margin-top:7px}
+/* Answered questions recede, so what is left to do is what stands out. */
+.askrow.done .q b{color:var(--muted);font-weight:500}
+.askrow.done .q em{display:none}
+.askrow select{display:block;width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line);
+  font-size:13.5px;background:#fff;color:var(--text)}
+.askrow.done select{border-color:var(--teal);background:var(--teal-glow);font-weight:600}
 @media (max-width:620px){
-  .askrow{flex-direction:column;align-items:stretch;gap:6px}
-  .askrow select{flex:none;width:100%}
+  .askrow{padding:10px 0}
 }
 .tagsel{width:100%;max-width:340px;padding:9px 10px;border-radius:9px;border:1px solid var(--line);
   font-size:13.5px;background:#fff;color:var(--text)}
@@ -955,8 +964,8 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
         </details>
 
         <details class="labmore" id="labRecBox">
-          <summary>Clinical record <span class="cnt" id="labRecCnt"></span></summary>
-          <p class="small" style="margin:6px 0 8px">This <b>is</b> the case log entry — there is no second form to fill in. A row is written as soon as this image has a grader and a grade, and editing here corrects that row rather than adding another. Most of these fields belong to the visit rather than to the photograph, so <b>Copy from previous image</b> fills them from the image before this one — use it for a second view of the same wound.</p>
+          <summary>Microbiology &mdash; the laboratory result <span class="cnt" id="labRecCnt"></span></summary>
+          <p class="small" style="margin:6px 0 8px">The laboratory result, and nothing else — everything a clinician observes is in <b>What only your examination supplies</b> above, asked once. A case log row is written as soon as this image has a grader and a grade; editing here corrects that row rather than adding another. A culture takes three to five days, so these fields are normally filled in on a later pass.</p>
           <div id="labRec"></div>
           <div class="labnav" style="margin-top:8px">
             <button class="btn btn-ghost btn-sm" id="labCopyPrev">Copy from previous image</button>
@@ -1257,7 +1266,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-10-27 &middot; v5.4</span>
+  <span class="study-hide" id="buildStamp">build 2026-10-28 &middot; v6.0</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -2010,6 +2019,16 @@ $('camTarget').onchange = async () => { camManual = true; await drawGradCam(); s
    Tissue percentages come from a colour rule with no validation data behind it, so they are
    offered as a prompt to look, never as a finding, and are labelled that way.                */
 
+/* Sites and outcomes are declared above ASK because the examination questions are built from
+   them. Declared below, they would be in the temporal dead zone when ASK is evaluated and the
+   whole script would fail at load — the same fault that silently emptied the case log once
+   already. */
+const SITE_DFU = ['Plantar forefoot','Plantar midfoot','Heel','Hallux','Lesser toe','Dorsum of foot',
+                  'Medial malleolus','Lateral malleolus','Amputation stump','Other'];
+const SITE_PI  = ['Sacrum','Coccyx','Ischial tuberosity','Heel','Lateral malleolus','Greater trochanter',
+                  'Occiput','Ear','Elbow','Device-related','Other'];
+const OUTCOMES = ['Healed','Improving','Static','Deteriorated','Not yet known'];
+
 const ASK = {
   dfu: [
     { id:'ulcer', q:'Is there a break in the skin?', why:'Wagner 0 and Texas grade 0 are intact or fully epithelialised skin.',
@@ -2029,7 +2048,14 @@ const ASK = {
     { id:'erythema', q:'How far does the surrounding erythema or cellulitis extend?', why:'Up to 2 cm around the ulcer is a mild infection; beyond 2 cm makes it moderate. Measure from the ulcer edge.',
       opts:[['none','None'],['le2','Up to 2 cm'],['gt2','More than 2 cm']] },
     { id:'systemic', q:'Systemic signs of sepsis?', why:'Fever above 38°C or below 36°C, pulse over 90, respiratory rate over 20, white cell count outside 4–12, vomiting or rapidly worsening glycaemic control. Two or more make the infection severe.',
-      opts:[['yes','Two or more present'],['no','None or one']] }
+      opts:[['yes','Two or more present'],['no','None or one']] },
+    /* Site and outcome moved here from the clinical record. Both are observations a clinician
+       makes rather than laboratory results, and holding them beside the culture invited them to
+       be entered twice. */
+    { id:'site', q:'Ulcer site?', why:'Plantar forefoot, heel and hallux carry different risk and different healing times. It is also how the dataset is checked for over-representation of one site.',
+      opts:SITE_DFU.map(x => [x, x]) },
+    { id:'outcome', q:'Outcome at follow-up?', why:'Recorded when it becomes known, not at the first visit. With the culture result it is what turns a grading into a measured outcome.',
+      opts:OUTCOMES.map(x => [x, x]) }
   ],
   pi: [
     { id:'intact', q:'Is the skin intact?', why:'Intact skin restricts the answer to stage 1 or a deep tissue injury.',
@@ -2043,7 +2069,14 @@ const ASK = {
     { id:'deepest', q:'Deepest structure seen or palpated?', why:'Dermis only is stage 2; adipose or fascia is stage 3; muscle, tendon, cartilage or bone is stage 4.',
       opts:[['dermis','Dermis only'],['adipose','Adipose or fascia'],['deep','Muscle, tendon, cartilage or bone']] },
     { id:'systemic', q:'Signs of systemic infection?', why:'A pressure injury is colonised by definition, so a swab proves nothing. The guideline keys antibiotics to systemic infection, not to the appearance of the wound.',
-      opts:[['yes','Yes \u2014 fever, tachycardia, raised white cell count or hypotension'],['no','No']] }
+      opts:[['yes','Yes \u2014 fever, tachycardia, raised white cell count or hypotension'],['no','No']] },
+    /* Site and outcome moved here from the clinical record. Both are observations a clinician
+       makes, not laboratory results, and holding them beside the culture invited them to be
+       entered twice. */
+    { id:'site', q:'Body site?', why:'Sacrum, heel and trochanter behave differently under pressure and heal differently. It is also how the dataset is checked for over-representation of one site.',
+      opts:SITE_PI.map(x => [x, x]) },
+    { id:'outcome', q:'Outcome at follow-up?', why:'The reference standard for this arm, with the adjudicated stage. Leave it until the outcome is actually known.',
+      opts:OUTCOMES.map(x => [x, x]) }
   ]
 };
 let answers = { dfu:{}, pi:{} };
@@ -4347,15 +4380,23 @@ const NPIAP_OPTS  = [['1','1 · non-blanchable erythema'],['2','2 · exposed der
    standard, and free text produces "NBM", "N.B.M." and "naim" in the same column. Add a name
    here when a new grader joins; Other keeps the form usable in the meantime. */
 const GRADERS = ['Dr Naim Bin Abdul Malek', 'Dr Farah Hana Binti Hasan', 'Dr Azfar'];
-const SITE_DFU = ['Plantar forefoot','Plantar midfoot','Heel','Hallux','Lesser toe','Dorsum of foot',
-                  'Medial malleolus','Lateral malleolus','Amputation stump','Other'];
-const SITE_PI  = ['Sacrum','Coccyx','Ischial tuberosity','Heel','Lateral malleolus','Greater trochanter',
-                  'Occiput','Ear','Elbow','Device-related','Other'];
-const OUTCOMES = ['Healed','Improving','Static','Deteriorated','Not yet known'];
 const SKIN_OPTS   = [['I','I'],['II','II'],['III','III'],['IV','IV'],['V','V'],['VI','VI']];
-const FEAT_OPTS   = [['granulation','Granulation'],['slough','Slough'],['necrosis','Necrosis'],
-                     ['epithelialising','Epithelialising'],['periwound_erythema','Peri-wound erythema'],
-                     ['dry_gangrene','Dry gangrene'],['bleeding','Bleeding'],['abscess','Abscess'],['pus','Pus']];
+/* Grouped, because pus, an abscess and wet gangrene are the same kind of observation \u2014 signs of
+   active infection \u2014 and listing them between "epithelialising" and "bleeding" asked the grader to
+   re-sort them mentally on every image. Peri-wound erythema joins them: it is one of the IWGDF
+   infection criteria, not a description of the wound bed. Dry gangrene stays out of that group on
+   purpose; it is ischaemic necrosis, not infection, and the two call for different urgency.
+
+   Wet gangrene is new. It was missing entirely, which left no way to record the finding that most
+   changes management. */
+const FEAT_GROUPS = [
+  ['Wound bed', [['granulation','Granulation'], ['slough','Slough'],
+                 ['necrosis','Necrosis (eschar)'], ['epithelialising','Epithelialising']]],
+  ['Signs of infection', [['pus','Pus'], ['abscess','Abscess'], ['wet_gangrene','Wet gangrene'],
+                          ['periwound_erythema','Peri-wound erythema']]],
+  ['Other', [['dry_gangrene','Dry gangrene'], ['bleeding','Bleeding']]]
+];
+const FEAT_OPTS = FEAT_GROUPS.flatMap(([, list]) => list);
 let pool = [], cur = 0;
 
 const labelled = it => it.wagner || it.npiap || it.feats.size > 0;
@@ -4423,7 +4464,7 @@ function loadLabels(){ try { return JSON.parse(localStorage.getItem(LABELS_KEY) 
 function labelToCase(it, key){
   /* The grade decides the wound type, not the stored field \u2014 see labelArm(). A row written from
      an NPIAP stage is a pressure injury even if the wound type was never set. */
-  const pi = poolArm(it) === 'pi', r = it.rec || {};
+  const pi = poolArm(it) === 'pi', r = it.rec || {}, ex = it.ex || {};
   return { id: 'B|' + (key || labKey(it)) + '|' + (r.grader || ''), src: 'graded in step B',
     when: new Date().toISOString(), image: it.name, thumb: '',
     model: 'not run \u2014 graded from the image list', ai_label: '',
@@ -4431,18 +4472,25 @@ function labelToCase(it, key){
     roi_source: '', roi_source_px: null, tissue: null,
     disease: pi ? 'pressure injury' : 'diabetic foot ulcer',
     case_id: (r.case_id || '').trim().toUpperCase() || caseIdOf(it.name),
-    skin_type: it.skin || '', device: r.device || '', protocol: r.proto || '',
-    grader: r.grader || '', rater2: r.reviewer || '', rater2_wagner: '', rater2_npiap: '',
+    skin_type: it.skin || '', device: '', protocol: '',
+    grader: r.grader || '', rater2: '', rater2_wagner: '', rater2_npiap: '',
+    /* Texas grade and stage are computed from the examination by the published definition and
+       written back by "Use as the label for this image" \u2014 they are not typed. */
     gt_grade: r.grade || '', gt_stage: r.stage || '', gt_wagner: it.wagner || '',
-    probe_to_bone: r.ptb || '', specimen_date: r.spec_date || '',
-    organisms: r.organisms || [], sensitivity_notes: r.sens || '',
-    culture_positive: culturePositive(r.organisms || []), outcome: r.outcome || '', pi_date: '',
-    npiap_stage: it.npiap || '', blanching: r.blanch || '', deepest_structure: r.deepest || '',
-    body_site: r.site || '', pi_notes: r.notes || '',
+    /* Site, probe-to-bone, blanching, the deepest structure and the outcome all come from the
+       examination now, so they are read from there rather than from a second copy. */
+    probe_to_bone: ex.ptb || '', body_site: ex.site || '', outcome: ex.outcome || '',
+    blanching: ex.blanch || '', deepest_structure: ex.deepest || '',
+    cs_sent: r.cs_sent || '', specimen_date: r.spec_date || '',
+    organisms: r.organisms || [],
+    sensitive_to: (r.sens_to || []).map(x => ABX_LABEL[x] || x).join('; '),
+    resistant_to: (r.res_to || []).map(x => ABX_LABEL[x] || x).join('; '),
+    culture_positive: culturePositive(r.organisms || []), pi_date: '',
+    npiap_stage: it.npiap || '', pi_notes: '',
     /* The tissue findings are graded in step B and often filled in on a later pass, after the
        grade itself. Carrying them on the row means a grader can come back to them without the
        row having to be created again. */
-    findings: (it.feats || []).join('; '),
+    findings: [...(it.feats || [])].map(f => (FEAT_OPTS.find(o => o[0] === f) || [f, f])[1]).join('; '),
     findings_n: (it.feats || []).length };
 }
 
@@ -4463,7 +4511,7 @@ function syncLabelsToLog(){
        the attribution is recorded as missing rather than used to throw the case away. */
     if (!(v.w || v.n)) return;                           // no grade yet, so there is no case
     const it = { name: k.split('|')[0], wtype: v.t || 'dfu', wagner: v.w || null,
-                 npiap: v.n || null, skin: v.s || '', rec: r, feats: v.f || [] };
+                 npiap: v.n || null, skin: v.s || '', rec: r, feats: v.f || [], ex: v.e || {} };
     const row = labelToCase(it, k), i = log.findIndex(x => String(x.id) === row.id);
     written++;
     /* Rows written before the arm was inferred from the grade carry disease: 'diabetic foot ulcer'
@@ -4674,7 +4722,7 @@ function renderLabeller(){
        v => { if (pi) it.npiap = v; else it.wagner = v; }, 'Not graded');
   drop('labSkin', SKIN_OPTS, it.skin, v => { it.skin = v; }, 'Not recorded');
   renderLabExam(it); renderLabRec(it);
-  tagPicker('labFeats', FEAT_OPTS, [...it.feats],
+  tagPicker('labFeats', FEAT_GROUPS, [...it.feats],
             vals => { it.feats = new Set(vals); labChanged(); }, 'Add a finding\u2026');
 
   $('labHint').textContent = labelled(it)
@@ -4792,55 +4840,87 @@ function recField(it, key, label, opts, hint){
     <select data-k="${key}">${[''].concat(opts).map(o =>
       `<option value="${o}"${v === o ? ' selected' : ''}>${o || '—'}</option>`).join('')}</select></div>`;
 }
+/* The agents a tissue culture is routinely tested against here. A list rather than free text so
+   two graders typing "co-amoxiclav" and "amoxicillin/clavulanate" produce one value, and so the
+   sensitivity pattern can be counted across cases instead of read one row at a time. */
+const ABX_PANEL = [
+  ['Penicillins', [['amoxiclav','Amoxicillin/clavulanate'], ['ampsulb','Ampicillin/sulbactam'],
+                   ['cloxacillin','Cloxacillin'], ['pentaz','Piperacillin/tazobactam'],
+                   ['benzylpen','Benzylpenicillin']]],
+  ['Cephalosporins', [['cephalexin','Cephalexin'], ['cefazolin','Cefazolin'],
+                      ['cefuroxime','Cefuroxime'], ['ceftriaxone','Ceftriaxone'],
+                      ['ceftazidime','Ceftazidime'], ['cefepime','Cefepime']]],
+  ['Others', [['vancomycin','Vancomycin'], ['clindamycin','Clindamycin'],
+              ['metronidazole','Metronidazole'], ['ciprofloxacin','Ciprofloxacin'],
+              ['cotrimoxazole','Trimethoprim/sulfamethoxazole'], ['doxycycline','Doxycycline'],
+              ['gentamicin','Gentamicin'], ['amikacin','Amikacin'], ['meropenem','Meropenem'],
+              ['ertapenem','Ertapenem'], ['linezolid','Linezolid']]]
+];
+const ABX_LABEL = Object.fromEntries(ABX_PANEL.flatMap(([, l]) => l));
+
+/* The clinical record is now the microbiology record and nothing else.
+
+   It previously also held the study ID, an independent reviewer, the capture device, the
+   lighting protocol, the Texas grade and stage, the ulcer site, probe-to-bone and the outcome.
+   Every one of those was either asked somewhere else already or not worth asking:
+
+     study ID        derived from the filename by the same rule the trainer splits on, so typing
+                     it changed nothing and risked disagreeing with the split
+     reviewer        a culture result is reported by the laboratory; there is no second opinion
+                     to record against it
+     device, protocol  standardised equipment, so a field with one possible answer
+     grade, stage    computed from the examination by the published definition, and written back
+                     by "Use as the label for this image"
+     site, probe-to-bone, outcome  moved into the examination, where the clinician is already
+                     answering, instead of being asked twice
+
+   What is left is what only the laboratory can supply. */
 function renderLabRec(it){
-  const pi = it.wtype === 'pi';
   const host = $('labRec');
+  const r = it.rec;
   const txt = (key, label, ph) => `<div class="field"><label>${label}</label>
-    <input data-k="${key}" value="${String(it.rec[key] || '').replace(/"/g, '&quot;')}" placeholder="${ph || ''}"></div>`;
+    <input data-k="${key}" value="${String(r[key] || '').replace(/"/g, '&quot;')}" placeholder="${ph || ''}"></div>`;
+
   host.innerHTML = `<div class="row2">
-      <div class="field"><label>Study ID <em>blank takes it from the filename</em></label>
-        <input data-k="case_id" value="${String(it.rec.case_id || '').replace(/"/g, '&quot;')}" placeholder="${caseIdOf(it.name)}"></div>
-      ${recField(it, 'reviewer', 'Independent reviewer', GRADERS.concat(['Other']), 'second opinion')}
+      ${recField(it, 'cs_sent', 'Tissue culture &amp; sensitivity', ['Sent','Not sent','Result pending'])}
+      <div class="field"><label>Date of specimen</label>
+        <input type="date" data-k="spec_date" value="${r.spec_date || ''}"></div>
     </div>
-    ${(it.rec.grader === 'Other' || it.rec.reviewer === 'Other') ? txt('grader_other', 'Name of the other grader or reviewer', 'Dr …') : ''}
-    <div class="row2">
-      ${recField(it, 'device', 'Capture device', ['Mobile phone','Digital camera','Tablet','Dermatoscope','Other'])}
-      ${recField(it, 'proto', 'Lighting / distance protocol followed', ['Yes','Partly','No'])}
-    </div>
-    ${pi
-      ? `<div class="row3">
-          ${recField(it, 'site', 'Body site', SITE_PI)}
-          ${recField(it, 'blanch', 'Blanching test', ['Blanchable','Non-blanchable','Not tested'])}
-          ${recField(it, 'deepest', 'Deepest structure', ['Dermis','Adipose','Fascia','Muscle','Tendon','Bone','Obscured by slough or eschar'])}
-        </div>`
-      : `<div class="row3">
-          ${recField(it, 'grade', 'Clinician Texas grade', ['0','1','2','3'])}
-          ${recField(it, 'stage', 'Texas stage', ['A','B','C','D'])}
-          ${recField(it, 'site', 'Ulcer site', SITE_DFU)}
-        </div>
-        <div class="row2">
-          ${recField(it, 'ptb', 'Probe-to-bone', ['Negative','Positive','Not done'])}
-          <div class="field"><label>Specimen date</label><input type="date" data-k="spec_date" value="${it.rec.spec_date || ''}"></div>
-        </div>
-        <span class="lab" style="margin-top:10px">Tissue culture &amp; sensitivity <em>leave blank if not back yet</em></span>
-        <div data-role="labOrgs"></div>
-        <div class="field"><label>Sensitivity pattern / notes</label><input data-k="sens" value="${String(it.rec.sens || '').replace(/"/g, '&quot;')}" placeholder="sensitive to co-amoxiclav; ESBL negative"></div>`}
-    <div class="field" style="max-width:320px">${recField(it, 'outcome', 'Outcome at follow-up', OUTCOMES).replace(/^<div class="field">|<\/div>$/g, '')}</div>
-    <div class="field"><label>Notes</label><input data-k="notes" value="${String(it.rec.notes || '').replace(/"/g, '&quot;')}" placeholder="e.g. offloading in place; Braden 12"></div>`;
+    ${poolArm(it) === 'pi' ? `<div class="note" style="margin:8px 0 2px">On a pressure injury a culture
+      supports management; it does not establish infection and is not this arm\u2019s reference standard.
+      Every chronic wound is colonised, so record a <b>deep tissue specimen</b> taken because the
+      patient is systemically unwell \u2014 not a surface swab taken because the wound looks dirty.</div>` : ''}
+    <span class="lab" style="margin-top:10px">Organism(s) isolated <em>leave blank until the result is back</em></span>
+    <div data-role="labOrgs"></div>
+    <span class="lab" style="margin-top:12px">Sensitive to</span>
+    <div data-role="abxS"></div>
+    <span class="lab" style="margin-top:12px">Resistant to</span>
+    <div data-role="abxR"></div>`;
 
   host.querySelectorAll('[data-k]').forEach(el => {
     const ev = el.tagName === 'SELECT' ? 'onchange' : 'oninput';
-    el[ev] = () => { const v = el.value; if (v) it.rec[el.dataset.k] = v; else delete it.rec[el.dataset.k];
-                     if (el.dataset.k === 'grader' || el.dataset.k === 'reviewer') renderLabRec(it);
+    el[ev] = () => { const v = el.value; if (v) r[el.dataset.k] = v; else delete r[el.dataset.k];
                      saveLabels(); recCount(it); };
   });
+
   const orgHost = host.querySelector('[data-role="labOrgs"]');
-  if (orgHost){
-    orgPicker(orgHost, it.rec.organisms || [], list => {
-      if (list.length) it.rec.organisms = list; else delete it.rec.organisms;
+  if (orgHost) orgPicker(orgHost, r.organisms || [], list => {
+    if (list.length) r.organisms = list; else delete r.organisms;
+    saveLabels(); recCount(it);
+  });
+
+  /* Sensitive and resistant are two lists, not one note. A regimen is chosen by what an organism
+     is sensitive TO; it is narrowed by what it is resistant to. Collapsing both into one free-text
+     field made that distinction a matter of reading the sentence carefully. */
+  [['abxS', 'sens_to'], ['abxR', 'res_to']].forEach(([role, key]) => {
+    const h = host.querySelector(`[data-role="${role}"]`);
+    if (!h) return;
+    tagPicker(h, ABX_PANEL, r[key] || [], list => {
+      if (list.length) r[key] = list; else delete r[key];
       saveLabels(); recCount(it);
-    });
-  }
+    }, 'Add an antibiotic\u2026');
+  });
+
   recCount(it);
 }
 function recCount(it){

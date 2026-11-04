@@ -37,6 +37,28 @@ code{font-family:var(--mono);font-size:.9em}
 details.more{margin-bottom:14px}
 details.more>summary{cursor:pointer;font-size:13px;color:var(--teal-dim);font-weight:600;list-style:revert}
 details.more p{font-size:13.5px;line-height:1.6;color:var(--muted);margin-top:8px}
+
+/* The aim, as a chain rather than a paragraph. Each step is the reason the next one is possible,
+   so the connecting rule is doing real work: it is the "which is why" the prose had to spell out.
+   The rule is drawn with a pseudo-element on every item but the last, so adding or removing a
+   step cannot leave a line pointing at nothing. */
+.chain{list-style:none;margin:10px 0 0;padding:0}
+.chain li{position:relative;display:flex;gap:11px;padding:0 0 15px 0}
+.chain li:last-child{padding-bottom:2px}
+.chain li::before{content:"";position:absolute;left:13px;top:28px;bottom:3px;width:2px;
+  background:linear-gradient(var(--teal),rgba(0,0,0,0));border-radius:2px}
+.chain li:last-child::before{display:none}
+.chain svg{flex:0 0 28px;width:28px;height:28px;padding:5px;box-sizing:border-box;
+  border-radius:50%;background:var(--teal-glow);color:var(--teal-dim);
+  fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.chain b{display:block;font-size:13.5px;color:var(--navy);font-weight:700;line-height:1.3}
+.chain span{display:block;font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:2px}
+.chainnote{font-size:12.5px;line-height:1.55;color:var(--muted);margin-top:10px;
+  border-left:2px solid var(--line);padding-left:10px}
+.chainnote b{color:var(--navy)}
+/* Each arm reads its own wording. Hidden rather than rewritten in script, so the gate needs no
+   JavaScript to say the right thing and cannot briefly show the wrong one. */
+body.arm-dfu .only-pi,body.arm-pi .only-dfu{display:none}
 .protocol{background:var(--cloud);border-radius:12px;padding:14px 16px;margin:14px 0}
 .protocol h4{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--teal-dim);margin-bottom:8px}
 .protocol ul{list-style:none}
@@ -627,7 +649,39 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
 
     <details class="more">
       <summary>More about this project</summary>
-      <p>The aim is earlier recognition of a severe ulcer or a deteriorating pressure injury, so that debridement, offloading, vascular assessment and referral happen sooner. Further along that chain sit the outcomes that matter most to the patient: fewer major amputations, less permanent disability, and more people well enough to return to work — with the disability-adjusted and quality-adjusted life years those represent. Each of those is an endpoint this study is designed to pursue, not a result it has produced: no outcome data exist yet.</p>
+      <!-- The study's causal chain, which was four lines of prose. It is a sequence of steps where
+           each one is the reason the next is possible, and a reader has to reconstruct that from a
+           paragraph. Drawn as a chain, the structure is the content. -->
+      <ol class="chain">
+        <li>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M15.5 15.5 21 21"/></svg>
+          <div><b>Recognise it sooner</b>
+            <span class="only-dfu">An ulcer that is deeper or more infected than it looks.</span>
+            <span class="only-pi">A pressure injury that is deteriorating, before the damage is full-thickness.</span></div>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3.5 2"/></svg>
+          <div><b>Act sooner</b>
+            <span class="only-dfu">Debridement, offloading, vascular assessment, referral.</span>
+            <span class="only-pi">Pressure redistribution, debridement, nutrition, referral.</span></div>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16"/><path d="M7 19V9a5 5 0 0 1 10 0v10"/><path d="M9.5 13h5"/></svg>
+          <!-- Amputation is the foot ulcer endpoint. A pressure injury is not amputated; what is
+               avoided there is progression to full-thickness damage and the osteomyelitis and
+               surgery that follow it. Naming the wrong endpoint would make the chain read as
+               borrowed from the other arm. -->
+          <div><b class="only-dfu">Keep the limb</b><b class="only-pi">Stop it deepening</b>
+            <span class="only-dfu">Fewer major amputations, less permanent disability.</span>
+            <span class="only-pi">Fewer stage 3 and 4 injuries, and the surgery they bring.</span></div>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.2"/><path d="M5.5 20v-1.5a6.5 6.5 0 0 1 13 0V20"/></svg>
+          <div><b>Back to work</b><span>Measured as disability- and quality-adjusted life years.</span></div>
+        </li>
+      </ol>
+      <p class="chainnote"><b>These are endpoints, not findings.</b> Each one is what the study is
+      designed to pursue. No outcome data exist yet.</p>
       <p>Built for the Deep Learning Healthcare Centre of Excellence, Hospital Tengku Permaisuri Norashikin.</p>
     </details>
 
@@ -1265,7 +1319,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-04 &middot; v6.1</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-04 &middot; v6.2</span>
 </footer>
 <div class="toast" id="toast"></div>
 

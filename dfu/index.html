@@ -484,6 +484,15 @@ table.keep td.n2{color:#9a3412;font-weight:700;white-space:nowrap}
 .bar .bn{flex:0 0 52px;font-family:var(--mono);font-size:11px;color:var(--muted)}
 .bars .empty{font-size:12px;color:var(--faint);padding:6px 0}
 @media (max-width:560px){.bar .bl{flex:0 0 84px;font-size:11px}}
+/* The detail level, set by which of the two assessment tabs is open. Hidden rather than
+   removed, with an automated check that the public view contains none of the technical strings —
+   the mechanism is not what makes this safe, the test is. */
+body:not(.detail-full) .tech{display:none !important}
+.sizebox{background:var(--cloud);border-radius:11px;padding:12px 14px;margin-top:10px}
+.sizebox .lab{margin:0 0 3px}
+.sizeval{font-family:var(--mono);font-size:19px;font-weight:700;color:var(--navy);line-height:1.25}
+.sizeval.unset{font-family:var(--sans);font-size:14px;font-weight:600;color:var(--muted)}
+.sizebox .small{margin-top:4px}
 .regnote{margin-top:9px;font-size:12px;line-height:1.5;color:var(--muted);border-left:2px solid var(--rule);padding-left:9px}
 .regsrc{margin-top:9px;padding-top:8px;border-top:1px solid var(--rule);font-size:11px;color:var(--muted);font-family:var(--mono)}
 @media (max-width:560px){.regrow{flex-direction:column;gap:2px}.regrow b{flex:none}}
@@ -705,7 +714,8 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
     <button class="pill lockpill hidden" id="lockBtn" title="Return to the tester's view">Study team · lock</button>
   </div>
   <nav class="tabs">
-    <button class="on" data-tab="assess" id="tabAssess">Assess a wound</button>
+    <button class="on" data-tab="assess" id="tabAssess">Assess</button>
+    <button data-tab="assessfull" id="tabAssessFull">Assess (full) <span class="lock" id="tabLock0">●</span></button>
     <button data-tab="train" id="tabTrain">Study team <span class="lock" id="tabLock">●</span></button>
     <button data-tab="data" id="tabData">Dashboard <span class="lock" id="tabLock2">●</span></button>
   </nav>
@@ -768,11 +778,11 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
     <div class="samples">
       <p id="sampleNote"></p>
       <div class="sample-row" id="sampleRow">
-        <button class="sample" data-dis="dfu" data-src="samples/small_leg_ulcer.jpg" data-name="Sample A"><img src="samples/small_leg_ulcer.jpg" alt="A small ulcer on the lower leg"><span>A · small leg ulcer <i>Dice 0.77</i></span></button>
-        <button class="sample" data-dis="dfu" data-src="samples/sloughy_heel_ulcer.jpg" data-name="Sample B"><img src="samples/sloughy_heel_ulcer.jpg" alt="A heel cavity ringed with yellow slough"><span>B · sloughy heel cavity <i>Dice 0.70</i></span></button>
-        <button class="sample" data-dis="dfu" data-src="samples/large_ankle_ulcer.jpg" data-name="Sample C"><img src="samples/large_ankle_ulcer.jpg" alt="A large ulcer over the ankle"><span>C · large ankle ulcer <i>Dice 0.94</i></span></button>
-        <button class="sample" data-dis="dfu" data-src="samples/necrotic_forefoot_ulcer.jpg" data-name="Sample D"><img src="samples/necrotic_forefoot_ulcer.jpg" alt="A forefoot ulcer with dark necrotic tissue"><span>D · necrotic forefoot <i>Dice 0.90</i></span></button>
-        <button class="sample" data-dis="dfu" data-src="samples/plantar_eschar_ulcer.jpg" data-name="Sample E"><img src="samples/plantar_eschar_ulcer.jpg" alt="A plantar ulcer with black eschar"><span>E · plantar eschar <i>Dice 0.96</i></span></button>
+        <button class="sample" data-dis="dfu" data-src="samples/small_leg_ulcer.jpg" data-name="Sample A"><img src="samples/small_leg_ulcer.jpg" alt="A small ulcer on the lower leg"><span>A · small leg ulcer</span></button>
+        <button class="sample" data-dis="dfu" data-src="samples/sloughy_heel_ulcer.jpg" data-name="Sample B"><img src="samples/sloughy_heel_ulcer.jpg" alt="A heel cavity ringed with yellow slough"><span>B · sloughy heel cavity</span></button>
+        <button class="sample" data-dis="dfu" data-src="samples/large_ankle_ulcer.jpg" data-name="Sample C"><img src="samples/large_ankle_ulcer.jpg" alt="A large ulcer over the ankle"><span>C · large ankle ulcer</span></button>
+        <button class="sample" data-dis="dfu" data-src="samples/necrotic_forefoot_ulcer.jpg" data-name="Sample D"><img src="samples/necrotic_forefoot_ulcer.jpg" alt="A forefoot ulcer with dark necrotic tissue"><span>D · necrotic forefoot</span></button>
+        <button class="sample" data-dis="dfu" data-src="samples/plantar_eschar_ulcer.jpg" data-name="Sample E"><img src="samples/plantar_eschar_ulcer.jpg" alt="A plantar ulcer with black eschar"><span>E · plantar eschar</span></button>
         <button class="sample" data-dis="dfu" data-src="samples/landscape_offcentre.jpg" data-name="Sample F (landscape)"><img src="samples/landscape_offcentre.jpg" alt="Sample C off-centre in a 4:3 landscape frame"><span>F · landscape, off-centre</span></button>
         <button class="sample" data-dis="dfu" data-src="samples/portrait_phone.jpg" data-name="Sample G (portrait)"><img src="samples/portrait_phone.jpg" alt="Sample B in a 9:16 portrait phone frame"><span>G · portrait, phone shape</span></button>
         <button class="sample" data-dis="pi" data-src="samples/pi_sloughy.jpg" data-name="PI 1 (slough and eschar)"><img src="samples/pi_sloughy.jpg" alt="A pressure injury whose depth is obscured by slough and eschar"><span>1 · depth obscured <i>HTPN wound unit</i></span></button>
@@ -792,12 +802,12 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   <canvas id="scaleCanvas" width="448" height="448"></canvas>
     </div>
     <div class="cam-controls">
-      <div class="seg" id="camToggle"><button data-v="0">Photo</button><button data-v="1" class="on">Wound outline</button><button data-v="3">Tissue</button><button data-v="2" class="study-hide">Grad-CAM</button></div>
+      <div class="seg" id="camToggle"><button data-v="0">Photo</button><button data-v="1" class="on">Wound outline</button><button data-v="3">Tissue</button><button data-v="2" class="tech">Grad-CAM</button></div>
       <select id="camTarget" class="hidden"></select>
       <!-- An unlabelled opacity slider asked a clinician to form an opinion about a number that
            decides nothing. What they want is to see what is underneath, which is one tap. The
            slider stays for the study team, who use it to make figures. -->
-      <input type="range" id="camAlpha" class="study-hide" min="0" max="100" value="55" title="overlay opacity">
+      <input type="range" id="camAlpha" class="tech" min="0" max="100" value="55" title="overlay opacity">
     </div>
     <!-- Hiding a feature without saying so reads as a feature that does not exist. Say it is
          there, say who it is for, and say in one clause why it is not shown by default. -->
@@ -808,8 +818,8 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
     colour of each pixel, not from a trained model. No dataset here labels tissue type, so they are
     unvalidated and shift with lighting and white balance \u2014 read them as a structured description
     to agree or disagree with, and never as evidence of infection.</p>
-    <p class="locked-note" id="camLocked">Heatmap view is a study-team tool &mdash; <b>enter the admin passcode under Study team to unlock it</b>. It is kept back because at this wound size it points inside the ulcer in only 13&nbsp;% of held-out images, so it is useful for checking the model and misleading as reassurance.</p>
-    <div class="readout study-hide" id="overlayRead">
+    <p class="locked-note tech-note" id="camLocked">A fuller view of this same screen, with the model’s own workings, is under <b>Assess (full)</b>.</p>
+    <div class="readout tech" id="overlayRead">
       <p><b>How to read this:</b> <span id="howOverlay"></span></p>
       <p><b>What this shows:</b> <span id="whatOverlay"></span></p>
       <div class="camlegend hidden" id="camLegend">
@@ -821,25 +831,41 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
 
     <!-- wound measurement, from the segmentation model -->
     <div id="woundPanel" class="hidden">
-      <div class="measure">
-        <div class="mrow"><span>Wound detected</span><b id="wArea">—</b></div>
+      <!-- Wound size, in units a clinician can act on. Area in centimetres is among the best
+           single predictors of healing and is how an ulcer is shown to be responding between
+           visits; "1.3 % of frame" is a property of where the photographer stood, and pixels are
+           worse. So the measurement is kept and the units are fixed: centimetres once a scale is
+           set, and an invitation to set one before that. Percent-of-frame, pixels and the model's
+           own confidence are real numbers that belong to the study team, and are marked .tech. -->
+      <div class="sizebox" id="sizeBox">
+        <span class="lab">Wound size</span>
+        <div class="sizeval" id="sizeVal">—</div>
+        <p class="small" id="sizeHint"></p>
+      </div>
+      <p class="note hidden" id="segUnsure" style="margin:8px 0 0">The app is unsure of this
+      outline. Check it closely against the wound, and draw it yourself if it is wrong — the size
+      and the tissue percentages are both measured inside it.</p>
+      <div class="measure tech">
+        <div class="mrow"><span>Share of the frame</span><b id="wArea">—</b></div>
         <div class="mrow"><span>Longest dimension</span><b id="wDiam">—</b></div>
         <div class="mrow"><span>Segmentation confidence</span><b id="wConf">—</b></div>
       </div>
-      <div class="cropview" id="cropView">
+      <div class="cropview tech" id="cropView">
         <canvas id="cropCanvas" width="224" height="224"></canvas>
         <div>
           <b>What the classifier actually saw</b>
           <p class="small" id="cropNote"></p>
-          <button class="btn btn-ghost btn-sm" id="boxBtn">Draw the wound area myself</button>
         </div>
       </div>
       <div class="scalebar">
+        <!-- The one control that changes the result, so it stays in the public view: the app
+             tells the clinician to check the outline, and without this that instruction is empty. -->
+        <button class="btn btn-ghost btn-sm" id="boxBtn">Outline wrong? Draw it yourself</button>
         <button class="btn btn-ghost btn-sm" id="scaleBtn">Set scale with the ruler</button>
         <input id="scaleCm" type="number" step="0.1" min="0.1" value="1" title="real length in cm">
-        <span class="small">cm — then tap the two ends of that length on the photo</span>
+        <span class="small">cm</span>
       </div>
-      <div class="readout" id="measureRead">
+      <div class="readout tech" id="measureRead">
         <p><b>How to read this:</b> <span id="howMeasure"></span></p>
         <p><b>What this shows:</b> <span id="whatMeasure"></span></p>
       </div>
@@ -890,7 +916,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
         <div class="big" id="classBig">—</div>
         <div class="desc" id="classDesc"></div>
       </div>
-      <div class="readout study-hide" id="classRead">
+      <div class="readout tech" id="classRead">
         <p><b>How to read this:</b> <span id="howClass"></span></p>
         <p><b>What this shows:</b> <span id="whatClass"></span></p>
       </div>
@@ -908,7 +934,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
         <div id="cmpOut"></div>
       </div>
 
-      <div class="occ study-hide" id="occBox">
+      <div class="occ tech" id="occBox">
         <div class="occhead">
           <b>Does the wound actually drive this prediction?</b>
           <button class="btn btn-ghost btn-sm" id="occBtn">Run occlusion test</button>
@@ -1331,7 +1357,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-04 &middot; v6.4</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-04 &middot; v7.0</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1400,14 +1426,17 @@ try { studyMode = localStorage.getItem(STUDY_KEY) === '1'; } catch(e){}
 function setStudyMode(on){
   studyMode = on;
   try { localStorage.setItem(STUDY_KEY, on ? '1' : '0'); } catch(e){}
-  [$('tabLock'), $('tabLock2')].forEach(el => { if (!el) return;
+  [$('tabLock'), $('tabLock2'), $('tabLock0')].forEach(el => { if (!el) return;
     el.textContent = on ? '○' : '●'; el.title = on ? 'unlocked' : 'locked'; });
   /* Study mode persists, which is right for a grader working across days but meant there was no
      way back: once unlocked, the owner could never see what a tester sees, and would reasonably
      conclude the admin-only panels were leaking. This is that way back. */
   $('lockBtn').classList.toggle('hidden', !on);
   $('modeBar').classList.toggle('hidden', !on);
-  $('camLocked').classList.toggle('hidden', on);
+  /* The note about the fuller view is shown on the public tab only, and only to someone who
+     could actually open it \u2014 a tester who cannot unlock does not need to hear about a tab they
+     have no passcode for. */
+  $('camLocked').classList.toggle('hidden', !on);
   /* The model card and the recording form used to sit in the assessment tab and be hidden by
      class. That was the wrong mechanism: the class keys off whether the passcode has been
      entered, so once a grader unlocked, both reappeared in the tester's tab. They now live in
@@ -1422,7 +1451,9 @@ function setStudyMode(on){
 
 function openTab(name){
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === name));
-  TABS.forEach(t => $('tab-' + t).classList.toggle('hidden', t !== name));
+  const pane = PANE[name] || name;
+  TABS.forEach(t => $('tab-' + t).classList.toggle('hidden', t !== pane));
+  setDetail(name);
   if (name === 'data' && typeof renderDashboard === 'function'){ renderDashboard(); renderAttrBox(); }
   const assess = name === 'assess';
   $('tab-assess').classList.toggle('hidden', !assess);
@@ -1450,20 +1481,31 @@ const leaveStudyMode = () => {
 $('lockBtn') && ($('lockBtn').onclick = leaveStudyMode);
 $('modeBarLock') && ($('modeBarLock').onclick = leaveStudyMode);
 
+/* Two assessment tabs, ONE assessment pane. Two panes would be two copies of the same markup
+   to fix twice and drift apart; the tab chooses how much of the one pane is shown. */
 const TABS = ['assess', 'train', 'data'];
+const PANE = { assess: 'assess', assessfull: 'assess', train: 'train', data: 'data' };
+function setDetail(tab){
+  const full = tab === 'assessfull';
+  document.body.classList.toggle('detail-full', full);
+  /* Pointing at the fuller view only makes sense from the simpler one. */
+  if ($('camLocked')) $('camLocked').classList.toggle('hidden', full || !studyMode);
+}
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
-  /* Both study-team panes sit behind the same switch. */
+  /* Every pane but the public assessment sits behind the same switch. */
   if (b.dataset.tab !== 'assess' && !studyMode){
     $('passGate').classList.remove('hidden');
     setTimeout(() => $('passInput').focus(), 50);
     return;
   }
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
-  const assess = b.dataset.tab === 'assess';
+  const assess = PANE[b.dataset.tab] === 'assess';
   /* Three panes now, so the panes are driven from the list rather than from a boolean that
      only ever had room for two. */
-  TABS.forEach(t => $('tab-' + t).classList.toggle('hidden', t !== b.dataset.tab));
-  if (assess) renderAssessJourney();
+  const pane = PANE[b.dataset.tab] || b.dataset.tab;
+  TABS.forEach(t => $('tab-' + t).classList.toggle('hidden', t !== pane));
+  setDetail(b.dataset.tab);
+  if (pane === 'assess') renderAssessJourney();
   if (b.dataset.tab === 'data'){ renderDashboard(); renderAttrBox(); }
   window.scrollTo({top:0});
 });
@@ -1780,6 +1822,21 @@ function showWound(seg){
   $('wArea').textContent = areaCm2 !== null ? `${areaCm2.toFixed(2)} cm² (${(inFrame*100).toFixed(1)} % of frame)` : `${(inFrame*100).toFixed(1)} % of frame`;
   $('wDiam').textContent = diamCm !== null ? `${diamCm.toFixed(1)} cm` : `${seg.diamPx} px — set a scale for cm`;
   $('wConf').textContent = `${(seg.conf*100).toFixed(0)} %`;
+  /* Centimetres or an invitation to make them. Never pixels, never a share of the frame: both
+     describe the photograph rather than the wound, and change if the photographer steps back. */
+  if (areaCm2 !== null){
+    $('sizeVal').className = 'sizeval';
+    $('sizeVal').textContent = `${areaCm2.toFixed(1)} cm\u00b2 \u00b7 ${diamCm.toFixed(1)} cm across`;
+    $('sizeHint').textContent = 'Measured from the ruler scale you set on this photograph. Record it, and compare it with the next visit.';
+  } else {
+    $('sizeVal').className = 'sizeval unset';
+    $('sizeVal').textContent = 'Set a scale to measure this wound in centimetres';
+    $('sizeHint').textContent = 'Tap \u201cSet scale with the ruler\u201d, enter a known length, then tap its two ends on the photograph.';
+  }
+  /* A confident outline can still be the wrong outline, so the number is not shown to a
+     clinician \u2014 but when the model is unsure, saying so is worth more than silence. */
+  const unsure = seg.conf < 0.6;
+  if ($('segUnsure')) $('segUnsure').classList.toggle('hidden', !unsure);
   $('howMeasure').textContent = pxPerCm
     ? 'Area and longest dimension are in centimetres using the ruler scale you set on this photograph, and confidence is the segmentation model’s mean probability across the outlined pixels.'
     : 'Area is a percentage of the photograph until you set a ruler scale, so it is comparable only between images shot at the same distance; confidence is the model’s mean probability across the outlined pixels.';
@@ -1976,7 +2033,11 @@ function renderClass(){
     $('classBig').textContent = '—';
     const which = it.gradeOut && it.infOut ? 'Neither head is' : it.gradeOut ? 'The depth head is not' : 'The infection head is not';
     $('classDesc').textContent = `${which} confident enough to name a class from the photograph alone, so none is guessed here. Step 2b below still reaches a Wagner grade and a Texas class from your examination findings — the definitions do not need this model to agree.` + whyAbstain();
-    $('caution').textContent = `The tool declines below ${(ABSTAIN_AT*100).toFixed(0)} % confidence rather than report a number it cannot support. On the held-out set, declining the least confident third of images raised accuracy on the remainder from 83 % to 89 %.`;
+    /* The held-out figures that used to follow this sentence are in the model card. What a
+       clinician needs is that the app has declined, and why. */
+    $('caution').textContent = 'The app is not confident enough to offer a class here, so it is not offering one.'
+      + ` It declines below ${(ABSTAIN_AT*100).toFixed(0)} % rather than report a number it cannot support.`
+      + ' Your own examination below is unaffected and still produces the class.';
     return;
   }
   const showTexas = scheme === 'texas' && it.texas, showWagner = scheme === 'wagner' && it.wagner;
@@ -3861,7 +3922,14 @@ function renderDashboard(){
   /* The tiles differ by arm, not only in their numbers. "Awaiting culture" is a foot-ulcer
      question; a pressure injury is not cultured, so counting it there would invent a gap that
      ought not to be filled. */
+  const use = loadUse();
+  const devices = new Set(log.map(r => r.device).filter(Boolean));
+
   const tiles = [
+    /* Real counts, from rows that exist. Not "how many people opened the app" \u2014 nothing here
+       can know that without sending something, and nothing is sent. */
+    [devices.size ? 'v' : 'w', devices.size, 'Devices contributing', 'distinct, from the case log'],
+    ['v', use.sittings || 0, 'Sittings on this device', use.first ? 'since ' + use.first.slice(0,10) : 'first one now'],
     [files ? 'v' : 'w', files, 'Image files loaded now', files ? 'ready to train' : 'none \u2014 re-select in step A'],
     [labelled_n ? 'v' : 'w', labelled_n, 'Labelled on this arm', pi ? 'pressure injuries' : 'foot ulcers'],
     [last ? 'v' : 'w', last ? last.n_train_images : 0, 'Used in last training', last ? `+ ${last.n_val} held out` : 'never trained on this arm'],
@@ -4527,6 +4595,30 @@ const poolCases = () => new Set(pool.map(it => caseIdOf(it.name)));
 /* Two things the app could count only for the current session, and so could not report at all:
    how many images have ever been put through it, and what the model was actually trained on. The
    image list empties on every reload, so both have to be written down rather than counted. */
+/* How much use the app has had. Counted from what is already collected rather than by pinging
+   a server: the opening screen promises that nothing is uploaded, and a usage ping would make
+   that sentence false even though it carries no photograph. A browser-local count of "users"
+   would read 1 on every device forever, which is worse than no number \u2014 so what is counted is
+   sittings on this device, and, from the case log, the distinct devices and graders that have
+   actually produced data. Those are real, and they are already covered by what testers agreed to. */
+const USE_KEY   = 'wv_usage_v1';
+const DEVICE_KEY = 'wv_device_v1';
+function deviceId(){
+  try { let d = localStorage.getItem(DEVICE_KEY);
+        if (!d){ d = 'D' + Math.random().toString(36).slice(2, 8).toUpperCase();
+                 localStorage.setItem(DEVICE_KEY, d); }
+        return d; } catch(e){ return 'D?'; }
+}
+function noteUse(){
+  try { const u = JSON.parse(localStorage.getItem(USE_KEY) || '{}');
+        u.sittings = (u.sittings || 0) + 1;
+        u.first = u.first || new Date().toISOString();
+        u.last = new Date().toISOString();
+        localStorage.setItem(USE_KEY, JSON.stringify(u));
+        return u; } catch(e){ return { sittings: 0 }; }
+}
+const loadUse = () => { try { return JSON.parse(localStorage.getItem(USE_KEY) || '{}'); } catch(e){ return {}; } };
+
 const SEEN_KEY  = 'wv_seen_images_v1';
 const RUNS_KEY  = 'wv_train_runs_v1';
 const loadSeen  = () => { try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '{}'); } catch(e){ return {}; } };
@@ -4564,7 +4656,7 @@ function labelToCase(it, key){
     roi_source: '', roi_source_px: null, tissue: null,
     disease: pi ? 'pressure injury' : 'diabetic foot ulcer',
     case_id: (r.case_id || '').trim().toUpperCase() || caseIdOf(it.name),
-    skin_type: it.skin || '', device: '', protocol: '',
+    skin_type: it.skin || '', device: deviceId(), protocol: '',
     grader: r.grader || '', rater2: '', rater2_wagner: '', rater2_npiap: '',
     /* Texas grade and stage are computed from the examination by the published definition and
        written back by "Use as the label for this image" \u2014 they are not typed. */
@@ -5215,6 +5307,7 @@ renderFormulary();
 /* Labels already in storage become case rows at start-up, so a grader who labelled before this
    existed does not have to touch 441 images again to see them in the log. It is keyed and
    idempotent, so running it on every load cannot duplicate anything. */
+noteUse();
 try {
   const n = syncLabelsToLog();
   if (n) console.info(`case log synced from ${n} graded labels`);

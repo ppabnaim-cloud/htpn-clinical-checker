@@ -794,10 +794,20 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
     <div class="cam-controls">
       <div class="seg" id="camToggle"><button data-v="0">Photo</button><button data-v="1" class="on">Wound outline</button><button data-v="3">Tissue</button><button data-v="2" class="study-hide">Grad-CAM</button></div>
       <select id="camTarget" class="hidden"></select>
-      <input type="range" id="camAlpha" min="0" max="100" value="55" title="overlay opacity">
+      <!-- An unlabelled opacity slider asked a clinician to form an opinion about a number that
+           decides nothing. What they want is to see what is underneath, which is one tap. The
+           slider stays for the study team, who use it to make figures. -->
+      <input type="range" id="camAlpha" class="study-hide" min="0" max="100" value="55" title="overlay opacity">
     </div>
     <!-- Hiding a feature without saying so reads as a feature that does not exist. Say it is
          there, say who it is for, and say in one clause why it is not shown by default. -->
+    <p class="small" id="tapHint" style="margin:7px 0 0;color:var(--muted)">Hold the picture to see the photograph underneath.</p>
+    <!-- Shown to everyone, not only the study team. A percentage is the output most easily taken
+         for a measurement, and this one is a colour rule that moves with the white balance. -->
+    <p class="note hidden" id="tissueCaveat" style="margin:8px 0 0">These percentages come from the
+    colour of each pixel, not from a trained model. No dataset here labels tissue type, so they are
+    unvalidated and shift with lighting and white balance \u2014 read them as a structured description
+    to agree or disagree with, and never as evidence of infection.</p>
     <p class="locked-note" id="camLocked">Heatmap view is a study-team tool &mdash; <b>enter the admin passcode under Study team to unlock it</b>. It is kept back because at this wound size it points inside the ulcer in only 13&nbsp;% of held-out images, so it is useful for checking the model and misleading as reassurance.</p>
     <div class="readout study-hide" id="overlayRead">
       <p><b>How to read this:</b> <span id="howOverlay"></span></p>
@@ -1123,6 +1133,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
     <dl class="modelcard" id="modelCard">
       <dt>Approach</dt><dd>Two models run in sequence, both transfer‑learned from ImageNet and both executed in the browser, so no image leaves the device. <b>Segmentation</b>: a MobileNetV2‑UNet trained on the FUSeg expert wound masks outlines the ulcer and measures it. <b>Classification</b>: a MobileNetV2 with two softmax heads, trained on wound crops taken from those masks, then fine‑tuned over its top 30 layers.</dd>
       <dt>Why segmentation comes first</dt><dd>On the FUSeg validation split the ulcer occupies a median 1.3 % of the photograph. Grad‑CAM reads a 7×7 grid, so no cell resolves finer than about 2 % of the image, and the heatmap's peak fell inside the true ulcer in only 13 % of 190 held‑out images. Cropping to the segmented wound raised severity accuracy from 84 % to 92.5 %. Segmentation answers "where"; classification answers "what".</dd>
+      <dt>Segmentation, held out</dt><dd>On 190 held-out images the predicted centre fell inside the expert-drawn ulcer in 89 % of cases at a mean Dice of 0.85: most outlines are close, and sloughy borders tend to be under-traced. Moved here from the assessment screen, where a coefficient from 190 other images was being offered to a clinician whose actual question was whether to trust the outline in front of them.</dd>
       <dt>Explainability</dt><dd>The wound outline and its measured area are the primary explanation. Grad‑CAM on the final convolutional map (<code>out_relu</code>) is retained as a sanity check on whether the model reads the wound or the room, and is drawn only inside the crop it actually explains.</dd>
       <dt>Training data</dt><dd id="mcData">Loading…</dd>
       <dt>Labels — important caveat</dt><dd>Demonstrator labels are <b>weak labels</b> derived from expert wound masks (wound area for depth/severity) and wound‑bed colour features (slough, eschar for infection). They are not clinician‑adjudicated or culture‑confirmed. Step 3 and the Train tab exist precisely to replace them.</dd>
@@ -1320,7 +1331,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-04 &middot; v6.3</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-04 &middot; v6.4</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1548,8 +1559,11 @@ function setActive(entry){
   $('modelUsed').textContent = '· ' + entry.name;
   // Grad-CAM target list
   const sel = $('camTarget'); sel.innerHTML = '';
-  if (entry.kind === 'demo') [['grade:1','explain: severe'],['grade:0','explain: mild'],['infection:1','explain: infection']].forEach(([v,t]) => sel.add(new Option(t, v)));
-  else entry.classes.forEach((c, i) => sel.add(new Option('explain: ' + c, 'cls:' + i)));
+  if (entry.kind === 'demo') /* A map for "severe" and a map for "infection" are different maps, so the choice is real \u2014 but
+     "explain: severe" read as an instruction rather than a label. "Mild" is dropped: it is the
+     same map as "severe" inverted, and offering it implied two independent explanations. */
+    [['grade:1','Heatmap explains: severity'],['infection:1','Heatmap explains: infection']].forEach(([v,t]) => sel.add(new Option(t, v)));
+  else entry.classes.forEach((c, i) => sel.add(new Option('Heatmap explains: ' + c, 'cls:' + i)));
   renderModelList();
   if (entry.scheme === 'wagner') setScheme('wagner'); else if (entry.scheme === 'texas') setScheme('texas');
   if (currentImg && backbone) runInference();
@@ -1769,10 +1783,13 @@ function showWound(seg){
   $('howMeasure').textContent = pxPerCm
     ? 'Area and longest dimension are in centimetres using the ruler scale you set on this photograph, and confidence is the segmentation model’s mean probability across the outlined pixels.'
     : 'Area is a percentage of the photograph until you set a ruler scale, so it is comparable only between images shot at the same distance; confidence is the model’s mean probability across the outlined pixels.';
-  $('whatMeasure').textContent = `The model outlined this ulcer at ${(seg.conf*100).toFixed(0)} % mean confidence, and on 190 held-out images outlines like it reached a mean Dice of 0.85 against expert masks — good enough to crop and measure from, not good enough to accept without looking.`
-    + (seg.parts > 1 ? ` The outline is made of ${seg.parts} regions joined together, which is normal for a mottled wound where eschar, slough and granulation are predicted separately.` : '')
-    + (seg.droppedFar ? ` A further ${seg.droppedFarCount === 1 ? 'region' : `${seg.droppedFarCount} regions`} of comparable size were found elsewhere in the photograph and excluded as too distant to belong to this wound. If they are part of it, draw the area yourself — otherwise the classifier is judging only the outlined part.` : '')
-    + (lastBox && lastBox.marginTruncated ? ' This wound fills so much of the photograph that the classifier could not be given its usual margin of surrounding skin, so read the classification below with more caution than the figures above and re-shoot from further back if you can.' : '');
+  /* The held-out segmentation statistics moved to the model card, which is where the study team
+     already looks for them and where the rest of the research content lives. A clinician at the
+     bedside needs to know whether to trust THIS outline, and the answer to that is to look at
+     it — not a Dice coefficient from 190 other images. */
+  $('whatMeasure').textContent = `The app is ${(seg.conf*100).toFixed(0)} % confident of this outline.`
+    + (seg.parts > 1 ? ` It is made of ${seg.parts} regions joined together, which is normal for a mottled wound bed.` : '')
+    + ' Compare it with the wound before using the size.';
 }
 
 /* ═══════════════════════════ inference ═══════════════════════════ */
@@ -2026,17 +2043,21 @@ async function drawGradCam(){
 function jet(v){ const r = Math.max(0, Math.min(1, 1.5 - Math.abs(4*v - 3))), g = Math.max(0, Math.min(1, 1.5 - Math.abs(4*v - 2))), b = Math.max(0, Math.min(1, 1.5 - Math.abs(4*v - 1))); return [r*255, g*255, b*255]; }
 /* Each overlay gets one sentence on how to interpret it and one on what this dataset actually showed. */
 const OVERLAY_TEXT = {
-  0: { how: 'The photograph exactly as both models receive it, centre-cropped to a square, with nothing drawn on top.',
-       what: 'Nothing is inferred in this view. It is the photograph exactly as the app received it.' },
-  1: { how: 'The teal line is the wound border the segmentation model proposes and the dashed square is the crop handed to the classifier, so every measurement above describes the outlined region only.',
-       what: 'On 190 held-out images the predicted centre fell inside the expert-drawn ulcer in 89 % of cases at a mean Dice of 0.85, which means most outlines are close and sloughy borders tend to be under-traced.' },
-  2: { how: 'Colour is the model’s attention, not a clinical sign: it shows how strongly each area pushed the score towards the class named in the dropdown, so red means "counted most", never infection, bleeding or erythema.',
-       what: 'On the same 190 images the hottest point of the whole-photo model fell inside the true ulcer in only 13 % of cases, so this view is worth reading as a check that the model is looking at the foot rather than the room.' }
+  0: { how: 'The photograph as the models receive it. Nothing is drawn on top and nothing is inferred.',
+       what: '' },
+  1: { how: 'The teal line is where the app thinks the wound is. Check it against the wound before trusting any measurement \u2014 drag a box over the wound yourself if it is wrong.',
+       what: '' },
+  2: { how: 'Where the model’s activations concentrated — not why. Red means "counted most towards the selected output", never infection, bleeding or erythema. It cannot tell you which feature the model used.',
+       what: 'Read it only as a check that the model is looking at the foot rather than the room. On 190 held-out images the hottest point fell inside the true ulcer in 13 % of cases: the map reads a 7×7 grid, so no cell is finer than about 2 % of the image, against a median ulcer of 1.3 % — the wound is smaller than the smallest thing the heatmap can point at. For whether the wound actually drove the prediction, use the occlusion test, which is causal rather than correlational.' }
 };
+/* Held down (or tapped) the overlay lifts, so the photograph underneath can be checked without
+   anyone deciding what 55 % opacity means. peeking is separate from the view so releasing restores
+   whatever view was chosen. */
+let peeking = false;
 function setCam(v){
   $('camToggle').querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.v === v));
-  const a = $('camAlpha').value / 100;
-  $('segCanvas').style.opacity = v === 1 ? 1 : 0;
+  const a = peeking ? 0 : $('camAlpha').value / 100;
+  $('segCanvas').style.opacity = (v === 1 && !peeking) ? 1 : 0;
   $('camCanvas').style.opacity = v === 2 ? a : 0;
   $('tissueCanvas').style.opacity = v === 3 ? a : 0;
   $('camTarget').classList.toggle('hidden', v !== 2);
@@ -2045,7 +2066,24 @@ function setCam(v){
   const t = v === 3 ? tissueText(lastTissue) : (OVERLAY_TEXT[v] || OVERLAY_TEXT[0]);
   $('howOverlay').textContent = t.how;
   $('whatOverlay').textContent = t.what;
+  /* An empty paragraph still draws its margins, so the row is removed rather than emptied. */
+  const wp = $('whatOverlay').parentElement; if (wp) wp.classList.toggle('hidden', !t.what);
+  if ($('tapHint')) $('tapHint').classList.toggle('hidden', v === 0);
+  /* The tissue percentages are the one output a tester reads as a measurement, so the caveat
+     that they are a colour rule is shown to everyone, not only the study team. */
+  if ($('tissueCaveat')) $('tissueCaveat').classList.toggle('hidden', v !== 3);
 }
+
+(function enablePeek(){
+  const vw = $('viewer'); if (!vw) return;
+  const cur = () => +($('camToggle').querySelector('.on') || {dataset:{v:0}}).dataset.v;
+  const set = on => { if (peeking === on) return; peeking = on; setCam(cur()); };
+  /* Not while the clinician is drawing a box or setting the ruler: those already own the tap. */
+  const busy = () => vw.classList.contains('boxing') || vw.classList.contains('picking');
+  vw.addEventListener('pointerdown', e => { if (!busy() && cur() !== 0) set(true); });
+  ['pointerup','pointercancel','pointerleave'].forEach(ev =>
+    vw.addEventListener(ev, () => set(false)));
+})();
 $('camToggle').querySelectorAll('button').forEach(b => b.onclick = () => setCam(+b.dataset.v));
 $('camAlpha').oninput = () => { const v = +$('camToggle').querySelector('.on').dataset.v, a = $('camAlpha').value/100;
   if (v === 2) $('camCanvas').style.opacity = a; if (v === 3) $('tissueCanvas').style.opacity = a; };

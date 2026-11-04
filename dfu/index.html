@@ -53,9 +53,11 @@ details.more p{font-size:13.5px;line-height:1.6;color:var(--muted);margin-top:8p
   fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .chain b{display:block;font-size:13.5px;color:var(--navy);font-weight:700;line-height:1.3}
 .chain span{display:block;font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:2px}
-.chainnote{font-size:12.5px;line-height:1.55;color:var(--muted);margin-top:10px;
-  border-left:2px solid var(--line);padding-left:10px}
-.chainnote b{color:var(--navy)}
+/* Three words where two lines of caveat stood. The chain is four confident steps with icons and
+   nothing above it, so without a frame it reads as a list of things the app has achieved. "Aims
+   to change" is the whole correction, and it costs a line rather than a paragraph. */
+.chainlead{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--teal-dim);margin:10px 0 2px;font-weight:600}
 /* Each arm reads its own wording. Hidden rather than rewritten in script, so the gate needs no
    JavaScript to say the right thing and cannot briefly show the wrong one. */
 body.arm-dfu .only-pi,body.arm-pi .only-dfu{display:none}
@@ -652,6 +654,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
       <!-- The study's causal chain, which was four lines of prose. It is a sequence of steps where
            each one is the reason the next is possible, and a reader has to reconstruct that from a
            paragraph. Drawn as a chain, the structure is the content. -->
+      <p class="chainlead">What the study aims to change</p>
       <ol class="chain">
         <li>
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M15.5 15.5 21 21"/></svg>
@@ -680,8 +683,6 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
           <div><b>Back to work</b><span>Measured as disability- and quality-adjusted life years.</span></div>
         </li>
       </ol>
-      <p class="chainnote"><b>These are endpoints, not findings.</b> Each one is what the study is
-      designed to pursue. No outcome data exist yet.</p>
       <p>Built for the Deep Learning Healthcare Centre of Excellence, Hospital Tengku Permaisuri Norashikin.</p>
     </details>
 
@@ -1319,7 +1320,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-04 &middot; v6.2</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-04 &middot; v6.3</span>
 </footer>
 <div class="toast" id="toast"></div>
 

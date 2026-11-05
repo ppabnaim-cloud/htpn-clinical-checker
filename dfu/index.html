@@ -817,9 +817,11 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
          for a measurement, and this one is a colour rule that moves with the white balance. -->
     <p class="note hidden" id="tissueCaveat" style="margin:8px 0 0">These percentages come from the
     colour of each pixel, not from a trained model. No dataset here labels tissue type, so they are
-    unvalidated and shift with lighting and white balance \u2014 read them as a structured description
+    unvalidated and shift with lighting and white balance — read them as a structured description
     to agree or disagree with, and never as evidence of infection.</p>
-    <p class="locked-note tech-note" id="camLocked">A fuller view of this same screen, with the model’s own workings, is under <b>Assess (full)</b>.</p>
+    <!-- A note pointing the public at the study-team tab was an advertisement for a door they
+         have no key to, and it named the machinery behind it while doing so. Someone who can open
+         Assess (full) can see the tab. -->
     <div class="readout tech" id="overlayRead">
       <p><b>How to read this:</b> <span id="howOverlay"></span></p>
       <p><b>What this shows:</b> <span id="whatOverlay"></span></p>
@@ -838,7 +840,13 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
            worse. So the measurement is kept and the units are fixed: centimetres once a scale is
            set, and an invitation to set one before that. Percent-of-frame, pixels and the model's
            own confidence are real numbers that belong to the study team, and are marked .tech. -->
-      <div class="sizebox" id="sizeBox">
+      <!-- Size in centimetres needs a ruler in the frame and two taps on its ends. That is a
+           study procedure: a clinician photographing a wound in clinic has neither, so the box
+           sat there reading "set a scale" permanently \u2014 a standing instruction nobody completes,
+           which is the clutter this screen is being cleared of. Both the readout and the control
+           move to the fuller view. Drawing the outline stays public: the app asks the clinician
+           to check the outline, and that is the only way to act on finding it wrong. -->
+      <div class="sizebox tech" id="sizeBox">
         <span class="lab">Wound size</span>
         <div class="sizeval" id="sizeVal">—</div>
         <p class="small" id="sizeHint"></p>
@@ -859,12 +867,12 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
         </div>
       </div>
       <div class="scalebar">
-        <!-- The one control that changes the result, so it stays in the public view: the app
-             tells the clinician to check the outline, and without this that instruction is empty. -->
         <button class="btn btn-ghost btn-sm" id="boxBtn">Outline wrong? Draw it yourself</button>
+      </div>
+      <div class="scalebar tech">
         <button class="btn btn-ghost btn-sm" id="scaleBtn">Set scale with the ruler</button>
         <input id="scaleCm" type="number" step="0.1" min="0.1" value="1" title="real length in cm">
-        <span class="small">cm</span>
+        <span class="small">cm — then tap the two ends of that length on the photograph</span>
       </div>
       <div class="readout tech" id="measureRead">
         <p><b>How to read this:</b> <span id="howMeasure"></span></p>
@@ -1366,7 +1374,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-05 &middot; v7.1</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-05 &middot; v7.2</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1445,7 +1453,7 @@ function setStudyMode(on){
   /* The note about the fuller view is shown on the public tab only, and only to someone who
      could actually open it \u2014 a tester who cannot unlock does not need to hear about a tab they
      have no passcode for. */
-  $('camLocked').classList.toggle('hidden', !on);
+
   /* The model card and the recording form used to sit in the assessment tab and be hidden by
      class. That was the wrong mechanism: the class keys off whether the passcode has been
      entered, so once a grader unlocked, both reappeared in the tester's tab. They now live in
@@ -1497,8 +1505,7 @@ const PANE = { assess: 'assess', assessfull: 'assess', train: 'train', data: 'da
 function setDetail(tab){
   const full = tab === 'assessfull';
   document.body.classList.toggle('detail-full', full);
-  /* Pointing at the fuller view only makes sense from the simpler one. */
-  if ($('camLocked')) $('camLocked').classList.toggle('hidden', full || !studyMode);
+
 }
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   /* Every pane but the public assessment sits behind the same switch. */
@@ -3235,10 +3242,16 @@ function renderAssessJourney(){
     { k: '2b', s: 'Your findings',
       done: settled.length === rules.length && answered > 0,
       d: !currentImg ? 'Waiting for a photograph.'
-         : `${answered} of ${spec.length} questions answered. `
+         /* Was: "These are definitions, not predictions — Wagner and Texas cannot be determined
+            until the findings they are defined by are answered." True, and discouraging, and now
+            said better by the live result line, which names the next single answer. A progress
+            note should say what the next step buys, not what is impossible without it. */
+         : `${answered} of ${spec.length} answered. `
            + (settled.length === rules.length
               ? `Every definition is satisfied: ${settled.map(([, r]) => r.label).join(' · ')}.`
-              : `These are definitions, not predictions — ${rules.filter(([, r]) => !r.label).map(([nm]) => nm).join(' and ')} cannot be determined until the findings they are defined by are answered.`) },
+              : (DISEASE === 'pi'
+                 ? 'The first two answers decide whether a stage can be assigned at all.'
+                 : 'The first two answers settle the Texas grade and narrow Wagner to two values.')) },
     /* Recording a case is the study team's step; a visitor testing a photograph finishes at
        their own findings, and a fourth step they cannot complete reads as a failure. */
     { k: '3', s: 'Record the case', studyOnly: true, where: ' It is in the <b>Study team</b> tab.',

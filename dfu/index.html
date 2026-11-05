@@ -1379,7 +1379,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-05 &middot; v7.3</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-05 &middot; v7.4</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3307,12 +3307,38 @@ function renderAssessJourney(){
    work is for.                                                                              */
 const localHeads = () => Object.values(registry).filter(e => e.kind === 'head');
 
+/* Reducing a model's output to one comparable quantity: the probability that this wound is
+   severe. The shipped model answers that directly, having two classes. A locally trained head
+   answers a different question — Wagner 1–4, or NPIAP stages — so it is reduced by summing the
+   classes that mean severe.
+
+   Wagner 3 and above: 3 is abscess or confirmed osteomyelitis, 4 is localised gangrene, 5 is
+   gangrene of the whole foot. NPIAP 3 and above on the same reasoning, with Unstageable included
+   because a base nobody can see cannot be called shallow.
+
+   A head trained on tissue findings has no severe class at all and returns null, which is the
+   honest answer: no common question, so nothing to compare. */
+const SEVERE_CLASS = /^(wagner_[345]|npiap_([34]|U)|.*_severe)$/i;
+function pSevere(classes, probs){
+  if (!classes || !probs) return null;
+  const idx = classes.map((c, i) => SEVERE_CLASS.test(c) ? i : -1).filter(i => i >= 0);
+  if (!idx.length) return null;
+  return idx.reduce((t, i) => t + probs[i], 0);
+}
+
+/* Compares like with like, and only where a shared question exists. The previous version
+   subtracted the local head's TOP-CLASS probability from the generic model's p(severe): 0.98
+   against 0.55 for wagner_3, reported as sharp disagreement. Those are different quantities and
+   the gap between them means nothing — a model can be 98 % sure a wound is severe while another
+   is 55 % sure it is Wagner 3, and the two agree completely. */
 function cmpVerdict(a, b){
-  if (!b) return null;
+  if (b === null || b === undefined) return null;
   const d = Math.abs(a - b);
-  return d < 0.10 ? 'Both models land in much the same place on this image.'
-       : d < 0.25 ? 'The two models differ noticeably here. One image proves nothing; a pattern across many is what the study measures.'
-       : 'The two models disagree sharply on this image. Worth keeping as an example either way — flag it in the case notes.';
+  return (d < 0.10 ? 'Both models put this wound in much the same place.'
+       : d < 0.25 ? 'The two models differ noticeably here.'
+       : 'The two models disagree sharply here. Worth keeping as an example — flag it in the case notes.')
+       + ' One image settles nothing either way: whether local training helps is a question of'
+       + ' accuracy across many cases, which the training history on the dashboard records.';
 }
 
 async function runComparison(){
@@ -3339,7 +3365,10 @@ async function runComparison(){
   const cal = v => (CALIB.severity && CALIB.severity.apply) ? platt(v, CALIB.severity) : v;
   const gSev = cal(g[0])[1];
   const gTxt = `${gSev >= 0.5 ? 'Severe' : 'Mild'} appearance`;
-  const gSub = `p(severe) ${gSev.toFixed(2)}` + (g[1] ? ` · p(infected) ${g[1][1].toFixed(2)}` : '');
+  /* Named as what it predicts. It has two classes and has never seen a Wagner grade, so it
+     cannot produce one, and the box should not look as though it tried and differed. */
+  const gSub = `<b>p(severe) ${gSev.toFixed(2)}</b>` + (g[1] ? ` · p(infected) ${g[1][1].toFixed(2)}` : '')
+    + '<br>Predicts severe or not severe, learned from a public dataset labelled by wound area — not Wagner, which it has never seen.';
 
   let right;
   if (!mine.length){
@@ -3387,11 +3416,23 @@ async function runComparison(){
     const m = mine.find(x => !headMismatch(x, DISEASE)) || mine[0];
     const v = (await readOut(m))[0];
     const i = v.indexOf(Math.max(...v));
+    /* Its own answer, named as what it is, and separately the one quantity that can be set beside
+       the generic model. Showing only the class invited the two boxes to be read as a head-to-head
+       when they answer different questions. */
+    const lSev = pSevere(m.classes, v);
+    /* A four-class head guessing at random sits at 0.25. A winning class barely above that is not
+       a prediction, and the display gave 0.55 the same weight as 0.98. */
+    const chance = 1 / m.classes.length;
+    const weak = v[i] < Math.max(0.5, chance * 1.8);
     right = `<div class="cmpcard"><h5>Trained on our patients</h5>
       <div class="who">${m.name}</div>
       <div class="big">${m.classes[i]}</div>
-      <div class="sub">p ${v[i].toFixed(2)}${m.metrics && m.metrics.n_cases ? ` · learned from ${m.metrics.n_cases} case${m.metrics.n_cases === 1 ? '' : 's'}` : ''}</div></div>`;
-    var localTop = v[i];
+      <div class="sub">p ${v[i].toFixed(2)} across ${m.classes.length} classes${m.metrics && m.metrics.n_cases ? ` · learned from ${m.metrics.n_cases} case${m.metrics.n_cases === 1 ? '' : 's'}` : ''}</div>
+      ${weak ? `<div class="sub" style="color:#b4530a">Barely above the ${chance.toFixed(2)} that guessing across ${m.classes.length} classes would give. Treat it as undecided.</div>` : ''}
+      ${lSev !== null
+        ? `<div class="sub"><b>p(severe) ${lSev.toFixed(2)}</b> — ${m.classes.filter(c => SEVERE_CLASS.test(c)).join(' + ')}, which is what makes it comparable with the box on the left.</div>`
+        : `<div class="sub">This head predicts tissue findings, which the generic model does not. There is no shared question, so the two are not compared.</div>`}</div>`;
+    var localTop = lSev;
   }
 
   out.innerHTML = `<div class="cmpgrid">

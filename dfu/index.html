@@ -952,6 +952,13 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
         <div id="occOut"></div>
       </div>
     </div>
+
+      <!-- The wound description belongs with the image it describes. It was sitting under the
+           heading "Your examination decides this", which is a contradiction: these are the
+           things the photograph supplies and the clinician does not. Step 2b is now the
+           clinician’s own: the result, and the questions that settle it. -->
+    <span class="lab">What the photograph shows</span>
+    <div class="findlist" id="autoFind"></div>
   </section>
 
   <!-- STEP 2b: FINDINGS -> CLASSIFICATION BY RULE -->
@@ -979,8 +986,6 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
          probe-to-bone, perfusion and systemic signs are not in the image, and a camera that
          reports Wagner 2 when one probe would have made it Wagner 3 with osteomyelitis is worse
          than one that says it does not know. -->
-    <span class="lab">What the photograph shows</span>
-    <div class="findlist" id="autoFind"></div>
 
     <span class="lab" style="margin-top:14px">Result <em id="resultState"></em></span>
     <div class="ruleout" id="ruleOut"></div>
@@ -1374,7 +1379,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-05 &middot; v7.2</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-05 &middot; v7.3</span>
 </footer>
 <div class="toast" id="toast"></div>
 

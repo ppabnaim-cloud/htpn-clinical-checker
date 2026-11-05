@@ -56,6 +56,7 @@ details.more p{font-size:13.5px;line-height:1.6;color:var(--muted);margin-top:8p
 /* Three words where two lines of caveat stood. The chain is four confident steps with icons and
    nothing above it, so without a frame it reads as a list of things the app has achieved. "Aims
    to change" is the whole correction, and it costs a line rather than a paragraph. */
+.recsep{margin:14px 0 2px;color:var(--faint);border-top:1px dashed var(--rule);padding-top:9px}
 .chainlead{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
   color:var(--teal-dim);margin:10px 0 2px;font-weight:600}
 /* Each arm reads its own wording. Hidden rather than rewritten in script, so the gate needs no
@@ -962,15 +963,23 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
       <p id="hitlMsg"></p>
     </div>
 
-    <span class="lab">What the photograph supplies</span>
+    <!-- Order matters here, and it changed. The findings and the result now come before the
+         questions, because a user who has just uploaded a photograph wants to see something, and
+         because the result showing what it is STILL MISSING is what makes the questions worth
+         answering. Told "eleven questions" nobody starts; shown "Wagner 1 or 2, one answer away"
+         they finish. The grade itself is never guessed from the photograph \u2014 depth on probing,
+         probe-to-bone, perfusion and systemic signs are not in the image, and a camera that
+         reports Wagner 2 when one probe would have made it Wagner 3 with osteomyelitis is worse
+         than one that says it does not know. -->
+    <span class="lab">What the photograph shows</span>
     <div class="findlist" id="autoFind"></div>
 
-    <span class="lab" style="margin-top:14px">What only your examination supplies <em>the app cannot answer these, and will not guess</em></span>
-    <div class="findlist" id="askFind"></div>
-
-    <span class="lab" style="margin-top:14px">Classification</span>
+    <span class="lab" style="margin-top:14px">Result <em id="resultState"></em></span>
     <div class="ruleout" id="ruleOut"></div>
     <div id="abxBox"></div>
+
+    <span class="lab" style="margin-top:16px">Your examination <em id="askLead">the app cannot answer these, and will not guess</em></span>
+    <div class="findlist" id="askFind"></div>
   </section>
 
 </div>
@@ -1357,7 +1366,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-04 &middot; v7.0</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-05 &middot; v7.1</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -2643,11 +2652,28 @@ function renderDecide(){
   $('autoFind').innerHTML = autoFindings().map(r =>
     `<div class="find"><div class="k">${r.k}<em>${r.why}</em></div><div class="v ${r.cls||''}">${r.v}</div><div class="src">${r.src}</div></div>`).join('');
 
-  const spec = ASK[DISEASE], a = answers[DISEASE];
+  const a = answers[DISEASE];
+  /* Ordered by how much each answer resolves, not by clinical narrative. "Break in the skin" and
+     "depth on probing" settle the Texas grade between them and cut Wagner to two values, so two
+     answers already produce a classification; the rest narrow it. Site and outcome drive no rule
+     at all \u2014 they are record fields \u2014 so they go last and say so, instead of sitting in the
+     path of someone who wants a grade. */
+  /* Per arm, because the chains are different. On the pressure injury arm the staging questions
+     come first and systemic infection after them \u2014 a shared list put "signs of systemic
+     infection" at the top of a screen whose job is to produce an NPIAP stage. */
+  const RESOLVE_ORDER = DISEASE === 'pi'
+    ? ['intact','blanch','persist','obscured','deepest','systemic']
+    : ['ulcer','depth','ptb','abscess','gangrene','infection','ischaemia','erythema','systemic'];
+  const RECORD_ONLY   = ['site','outcome'];
+  const rank = id => { const i = RESOLVE_ORDER.indexOf(id); return i < 0 ? 50 : i; };
+  const spec = ASK[DISEASE].slice().sort((x, y) =>
+    (RECORD_ONLY.includes(x.id) - RECORD_ONLY.includes(y.id)) || (rank(x.id) - rank(y.id)));
   /* Each of these is one answer out of two or three, so a dropdown says it in one row where
      chips took a card. Nine cards of chips was most of a phone screen before any answer. */
-  $('askFind').innerHTML = spec.map(f =>
-    `<div class="askrow${a[f.id] ? ' done' : ''}">
+  $('askFind').innerHTML = spec.map((f, i) =>
+    `${RECORD_ONLY.includes(f.id) && !RECORD_ONLY.includes((spec[i-1]||{}).id)
+        ? '<p class="small recsep">Below here is for the record only \u2014 neither answer changes the classification or the antibiotic.</p>' : ''}
+     <div class="askrow${a[f.id] ? ' done' : ''}">
        <div class="q"><b>${f.q}</b><em>${f.why}</em></div>
        <select data-f="${f.id}">
          <option value="">— not answered</option>
@@ -2670,6 +2696,28 @@ function renderDecide(){
                                  : [['Meggitt–Wagner', ruleWagner(a)], ['University of Texas', ruleTexas(a)]];
   renderHitl(spec, a, rules);
   renderAbx();
+
+  /* The line that decides whether anyone answers anything. "Eleven questions" is a wall; "one
+     answer away" is a prompt. It counts what is genuinely outstanding across the live rules and
+     names the single next answer, so the ask is always the smallest true one. */
+  const st = $('resultState'), lead = $('askLead');
+  if (st){
+    const settled = rules.filter(([, r]) => r.label).length;
+    const outstanding = [...new Set(rules.flatMap(([, r]) => r.need).filter(Boolean))];
+    const abxNeed = DISEASE === 'pi' ? [] : [...new Set((ruleInfection(a).need || []).filter(Boolean))];
+    const allNeed = [...new Set(outstanding.concat(abxNeed))];
+    if (!currentImg) st.textContent = '';
+    else if (!allNeed.length) st.textContent = 'complete';
+    else if (allNeed.length === 1) st.textContent = 'one answer away \u2014 ' + allNeed[0];
+    else st.textContent = `${settled} of ${rules.length} settled \u00b7 ${allNeed.length} answers outstanding`;
+    if (lead) lead.textContent = !allNeed.length
+      ? 'all answered \u2014 the classification above is yours, not the model\u2019s'
+      : (allNeed.length === 1
+          ? 'one answer completes the result above'
+          : (DISEASE === 'pi'
+              ? 'the first two answers decide whether a stage can be assigned at all'
+              : 'the first two answers settle the Texas grade and narrow Wagner to two values'));
+  }
   $('ruleOut').innerHTML = rules.map(([name, r]) => {
     const unresolved = [...new Set(r.need)].filter(Boolean);
     return `<div class="rule${r.label ? '' : ' part'}">

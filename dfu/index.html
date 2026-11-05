@@ -812,10 +812,17 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
     </div>
     <!-- Hiding a feature without saying so reads as a feature that does not exist. Say it is
          there, say who it is for, and say in one clause why it is not shown by default. -->
-    <p class="small" id="tapHint" style="margin:7px 0 0;color:var(--muted)">Hold the picture to see the photograph underneath.</p>
-    <!-- Shown to everyone, not only the study team. A percentage is the output most easily taken
-         for a measurement, and this one is a colour rule that moves with the white balance. -->
-    <p class="note hidden" id="tissueCaveat" style="margin:8px 0 0">These percentages come from the
+    <!-- The gesture stays; the instruction does not. The tab strip above already has a Photo
+         tab that shows the unobstructed photograph, so this was a second way of saying something
+         already on screen. Whoever presses the picture still gets the peek. -->
+    <p class="small tech" id="tapHint" style="margin:7px 0 0;color:var(--muted)">Hold the picture to see the photograph underneath.</p>
+    <!-- Study view only. I argued for showing this to everyone, on the grounds that a percentage
+         is the output most easily mistaken for a measurement. That still holds \u2014 but the caveat
+         already travels WITH the number in the findings list, which reads "A prompt to look, not
+         a finding \u2026 these thresholds are unvalidated" and is tagged COLOUR RULE \u00b7 NOT VALIDATED
+         beside the percentages themselves. This box was the same warning a second time, in a
+         place the number is not. A caveat attached to the figure beats a paragraph under it. -->
+    <p class="note hidden tech" id="tissueCaveat" style="margin:8px 0 0">These percentages come from the
     colour of each pixel, not from a trained model. No dataset here labels tissue type, so they are
     unvalidated and shift with lighting and white balance — read them as a structured description
     to agree or disagree with, and never as evidence of infection.</p>
@@ -830,6 +837,12 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
       </div>
       <div class="tissuelegend hidden" id="tissueLegend"></div>
     </div>
+    <!-- The first thing after the picture, because it is the first thing a clinician wants:
+         what the app can see. Everything below it — the size, the crop, the comparison — is
+         either study material or a refinement, and the grade itself waits on the examination. -->
+    <span class="lab">What the photograph shows</span>
+    <div class="findlist" id="autoFind"></div>
+
     <div class="status" id="status"><span class="spinner"></span><span id="statusText">Loading models…</span></div>
 
     <!-- wound measurement, from the segmentation model -->
@@ -851,9 +864,11 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
         <div class="sizeval" id="sizeVal">—</div>
         <p class="small" id="sizeHint"></p>
       </div>
-      <p class="note hidden" id="segUnsure" style="margin:8px 0 0">The app is unsure of this
-      outline. Check it closely against the wound, and draw it yourself if it is wrong — the size
-      and the tissue percentages are both measured inside it.</p>
+      <!-- Offering "draw it yourself" to someone who no longer has that button would be worse
+           than saying nothing. The advice is now what a clinician can actually act on. -->
+      <p class="note hidden" id="segUnsure" style="margin:8px 0 0">The app is unsure where this
+      wound begins and ends. The tissue percentages are measured inside that outline, so treat
+      them as unreliable here and go by what you see on the wound itself.</p>
       <div class="measure tech">
         <div class="mrow"><span>Share of the frame</span><b id="wArea">—</b></div>
         <div class="mrow"><span>Longest dimension</span><b id="wDiam">—</b></div>
@@ -866,7 +881,13 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
           <p class="small" id="cropNote"></p>
         </div>
       </div>
-      <div class="scalebar">
+      <!-- I argued twice for keeping this public, because the app told the clinician to check the
+           outline and this was the only way to act on finding it wrong. That argument expired when
+           the text telling them to check it became study-only: the control was left an orphan, and
+           a casual box drawn over the wrong area makes the tissue percentages worse rather than
+           better. The public recourse is now the warning below, which says not to trust the
+           figures \u2014 adequate, because the clinician's own examination decides the grade anyway. -->
+      <div class="scalebar tech">
         <button class="btn btn-ghost btn-sm" id="boxBtn">Outline wrong? Draw it yourself</button>
       </div>
       <div class="scalebar tech">
@@ -953,12 +974,6 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
       </div>
     </div>
 
-      <!-- The wound description belongs with the image it describes. It was sitting under the
-           heading "Your examination decides this", which is a contradiction: these are the
-           things the photograph supplies and the clinician does not. Step 2b is now the
-           clinician’s own: the result, and the questions that settle it. -->
-    <span class="lab">What the photograph shows</span>
-    <div class="findlist" id="autoFind"></div>
   </section>
 
   <!-- STEP 2b: FINDINGS -> CLASSIFICATION BY RULE -->
@@ -1379,7 +1394,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-05 &middot; v7.4</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-05 &middot; v7.6</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1509,8 +1524,13 @@ const TABS = ['assess', 'train', 'data'];
 const PANE = { assess: 'assess', assessfull: 'assess', train: 'train', data: 'data' };
 function setDetail(tab){
   const full = tab === 'assessfull';
+  const was = document.body.classList.contains('detail-full');
   document.body.classList.toggle('detail-full', full);
-
+  /* The findings are written once, at whatever detail level was in force then, so switching
+     tabs has to redraw them — otherwise the fuller view kept the public wording and the two
+     tabs looked identical. */
+  if (was !== full && typeof renderDecide === 'function' && typeof currentImg !== 'undefined' && currentImg)
+    renderDecide();
 }
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   /* Every pane but the public assessment sits behind the same switch. */
@@ -2052,8 +2072,13 @@ function renderClass(){
     $('texasPanel').classList.add('hidden'); $('wagnerPanel').classList.add('hidden');
     $('ischField').classList.add('hidden');
     $('classBig').textContent = '—';
-    const which = it.gradeOut && it.infOut ? 'Neither head is' : it.gradeOut ? 'The depth head is not' : 'The infection head is not';
-    $('classDesc').textContent = `${which} confident enough to name a class from the photograph alone, so none is guessed here. Step 2b below still reaches a Wagner grade and a Texas class from your examination findings — the definitions do not need this model to agree.` + whyAbstain();
+    /* Named the internal heads and their confidence at a clinician: "the infection head is not
+       confident enough". Which head abstained is a study detail; what matters at the bedside is
+       that the app is not offering a class and the examination still reaches one. */
+    const which = it.gradeOut && it.infOut ? 'Neither reading is' : it.gradeOut ? 'The depth reading is not' : 'The infection reading is not';
+    $('classDesc').textContent = detailFull()
+      ? `${which} confident enough to name a class from the photograph alone, so none is guessed here.`
+      : 'The app is not offering a class from the photograph alone. Step 2b below still reaches a Wagner grade and a Texas class from your examination.';
     /* The held-out figures that used to follow this sentence are in the model card. What a
        clinician needs is that the app has declined, and why. */
     $('caution').textContent = 'The app is not confident enough to offer a class here, so it is not offering one.'
@@ -2617,19 +2642,26 @@ function ruleNpiap(a){
 
 /* The rows the photograph can fill in. Measured, model and colour-rule findings are separated,
    because they do not carry the same weight and should not look as though they do. */
+const detailFull = () => document.body.classList.contains('detail-full');
 function autoFindings(){
   const rows = [];
   const add = (k, v, cls, src, why) => rows.push({ k, v, cls, src, why });
   if (lastSeg && lastSeg.found){
     const inFrame = lastSeg.areaFrac / ((fit && fit.frac) || 1);
+    /* Share of the frame and the model's mean confidence are study numbers: one describes where
+       the photographer stood, the other is something a clinician cannot act on. Kept for the
+       fuller view, replaced here by what the row is actually telling them. */
     add('Break in the skin, outlined', 'yes', 'yes', 'measured · segmentation',
-        `${(inFrame*100).toFixed(1)} % of the frame, mean outline confidence ${(lastSeg.conf*100).toFixed(0)} %`);
+        detailFull() ? `${(inFrame*100).toFixed(1)} % of the frame, mean outline confidence ${(lastSeg.conf*100).toFixed(0)} %`
+                     : 'The app has traced a wound in this photograph. Check the outline on the picture above.');
     const k = VIEW / SEG;
     if (pxPerCm){
       add('Wound size', `${(lastSeg.sizePx*k*k/(pxPerCm*pxPerCm)).toFixed(2)} cm²`, '', 'measured · your ruler scale',
           `longest dimension ${(lastSeg.diamPx*k/pxPerCm).toFixed(1)} cm`);
     } else {
-      add('Wound size', 'set a scale', 'unk', 'measured · needs the ruler', 'Tap the two ends of a known length to get centimetres.');
+      /* The ruler is a study tool now, so inviting a public user to set a scale offers a control
+         they do not have. The row simply does not appear for them. */
+      { if (detailFull()) add('Wound size', 'set a scale', 'unk', 'measured · needs the ruler', 'Tap the two ends of a known length to get centimetres.'); }
     }
   } else {
     add('Break in the skin, outlined', 'none found', 'unk', 'measured · segmentation',
@@ -2649,11 +2681,15 @@ function autoFindings(){
   if (DISEASE === 'dfu' && lastPred && !lastPred.piOnly && active.kind === 'demo'){
     const inf = lastPred.infection, gr = lastPred.grade;
     add('Infection appearance', abstains(inf) ? 'not confident' : (inf[1] >= 0.5 ? 'suspected' : 'none'),
-        abstains(inf) ? 'unk' : (inf[1] >= 0.5 ? 'yes' : 'no'), 'model · weak labels, AUC 0.86',
-        `P = ${(inf[1]*100).toFixed(0)} %. Appearance only — clinical infection is a bedside diagnosis, which is why it is asked below.`);
+        abstains(inf) ? 'unk' : (inf[1] >= 0.5 ? 'yes' : 'no'),
+        detailFull() ? 'model · weak labels, AUC 0.86' : 'model · appearance only',
+        (detailFull() ? `P = ${(inf[1]*100).toFixed(0)} %. ` : '')
+          + 'Appearance only — clinical infection is a bedside diagnosis, which is why it is asked below.');
     add('Depth appearance', abstains(gr) ? 'not confident' : (gr[1] >= 0.5 ? 'deep or extensive' : 'superficial'),
-        abstains(gr) ? 'unk' : (gr[1] >= 0.5 ? 'yes' : 'no'), 'model · weak labels, AUC 0.96',
-        `P = ${(gr[1]*100).toFixed(0)} %. A proxy for depth from the surface, not a substitute for probing.`);
+        abstains(gr) ? 'unk' : (gr[1] >= 0.5 ? 'yes' : 'no'),
+        detailFull() ? 'model · weak labels, AUC 0.96' : 'model · appearance only',
+        (detailFull() ? `P = ${(gr[1]*100).toFixed(0)} %. ` : '')
+          + 'How the surface looks, which is not a substitute for probing the wound.');
   }
   return rows;
 }
@@ -2821,7 +2857,7 @@ function renderPiOut(){
   }
   $('classBig').textContent = seg ? 'Traced' : '—';
   $('classDesc').textContent = bits.length
-    ? bits.join('; ') + '. Staging is in step 2b, from these findings plus your examination.'
+    ? bits.filter(x => detailFull() || !/% of the frame|a\*/.test(x)).join('; ') + '. Staging is in step 2b, from these findings plus your examination.'
     : 'No wound was outlined here — check the photograph, or draw the area yourself above.';
   $('howClass').textContent = 'Everything above is wound-type agnostic: the outline, the size and the tissue breakdown mean the same on a sacrum as on a heel, which is why they are reported for a pressure injury exactly as for a foot ulcer.';
   $('whatClass').textContent = 'Serial comparison is what these numbers are for. The same wound photographed under the same protocol next week gives an area and a tissue split you can put beside today’s, which is more than "looks a bit better" and is available now, with no pressure injury model needed.';

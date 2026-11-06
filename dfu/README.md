@@ -70,6 +70,36 @@ above `renderPublic()`:
    "no infection", so an abstention reads *Not determined* rather than *No signs of infection*.
    Of the errors available here that is the one that costs a limb rather than a clinic visit.
 
+### Which question earns its place
+
+Every question is tagged in `ASK` with the outputs that actually read it, audited against the
+rule functions rather than the clinical narrative. Assess renders only questions some rule on
+that screen reads, grouped by what they settle; the Study team tab renders all of them,
+because that is what writes the case log.
+
+| Question | Wagner | Texas | Antibiotic | Shown on Assess |
+|---|:--:|:--:|:--:|---|
+| Break in the skin | ✓ | ✓ | | yes |
+| Depth on probing | ✓ | ✓ | ✓ | yes |
+| Probe-to-bone | ✓ | | ✓ | yes |
+| Abscess / osteomyelitis | ✓ | | ✓ | yes |
+| Gangrene | ✓ | | ✓ | yes |
+| Clinically infected | | ✓ | ✓ | yes |
+| Ischaemic limb | | ✓ | ✓ | yes |
+| Erythema extent | | | ✓ | yes, under *Antibiotic severity* |
+| Systemic sepsis | | | ✓ | yes, under *Antibiotic severity* |
+| Ulcer site | | | | **no — Study team only** |
+| Outcome at follow-up | | | | **no — Study team only** |
+
+Site and outcome are read by nothing: no rule, no grade, no antibiotic. Asking for them at the
+bedside costs two answers and buys the screen nothing, so they are asked once, in step B of the
+Study team tab. On the pressure injury arm the same audit leaves five staging questions for
+NPIAP and one for the antibiotic.
+
+Erythema extent and systemic signs settle neither Wagner nor Texas — they are what separates a
+mild infection from a moderate or a severe one. They are grouped and labelled as that rather
+than sitting in a grading list looking like grading.
+
 The antibiotic panel appears with the verdict rather than waiting on the nine examination
 questions below it. Severity cannot be read off a photograph — erythema extent, abscess and
 systemic signs all need the patient — so when the verdict says infection the mild row is shown

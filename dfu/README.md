@@ -34,55 +34,54 @@ Live path once deployed with the rest of this repository on Vercel: `https://<yo
 > **Where it stands.** Under evaluation. Trained so far on a small public dataset with weak (rule-derived) labels,
 > with outcomes still to be studied. The app opens by stating this, and will not proceed until it is acknowledged.
 
-## Four tabs, two audiences
+## Four tabs
 
-| Tab | Who | What it shows |
-|---|---|---|
-| **Assess** | anyone | Photograph, outline, and a triage result in plain language |
-| **Assess (full)** | study team | Everything above plus the model's numbers, Wagner/Texas/NPIAP and the NAG regimen |
-| **Study team** | study team | Labelling, training, the case log |
-| **Dashboard** | study team | Data readiness, class balance, training history |
+| Tab | What it shows |
+|---|---|
+| **Assess** | The clinical read: signs of infection, tissue composition, infection verdict, antibiotic, grading |
+| **Assess (full)** | The same plus the research apparatus — Grad-CAM, probability bars, % of frame, segmentation confidence, the occlusion test, the model comparison |
+| **Study team** | Labelling, training, the case log |
+| **Dashboard** | Data readiness, class balance, training history |
 
 The last three are behind a passcode. That passcode is a mode switch, not a security control,
 and the app says so on screen.
 
-### What the public arm does, and what it deliberately does not
+### The Assess pipeline
 
-The public tab answers one question — *how soon does this need a doctor?* — and four rules
-shape it. They are in the source above `renderTriage()` as well, because each one is easy to
-undo by accident.
+The audience is clinicians, so the split against Assess (full) is instrumentation, not
+vocabulary: Wagner, Texas, IWGDF grades and the NAG regimen all belong on Assess, because the
+reader is a prescriber. The research apparatus does not — it is noise at the bedside.
 
-1. **There is no reassuring outcome.** The gentlest state is still *Get this looked at*. A
-   photograph cannot exclude infection: deep infection, osteomyelitis and infection in an
-   ischaemic or neuropathic foot can all look unremarkable on the surface. The errors are not
-   symmetric — a false alarm costs a clinic visit, a missed infection costs a limb. The app
-   never decides *whether* to seek care, only *how fast*, which is also what makes it safe to
-   put in front of the public: it can accelerate care, it cannot withhold it.
-2. **The optional questions can only raise urgency.** Five questions a layperson can actually
-   answer — fever, discharge or smell, spreading redness, numbness, already seen. Wagner and
-   Texas are absent on purpose: both need depth on probing and Texas needs ischaemia staging,
-   so asking a family member for them produces rubbish input that would then move a displayed
-   result. The public answers live in `pubAns`, kept apart from the graders' `answers`, so
-   nothing a visitor taps can reach the research record or move a grade.
-3. **No antibiotic is named.** These are prescription items a family member cannot lawfully
-   obtain, so naming one is unactionable at best and an invitation to self-medicate with
-   leftovers at worst. What prevents amputation is the patient arriving, not the patient
-   knowing the drug. The full NAG regimen stays in Assess (full), behind the penicillin
-   allergy gate.
-4. **Slough and necrosis are not infection.** Nearly every chronic ulcer carries slough, so if
-   dead tissue fed the headline almost every photograph would come back red and the app would
-   become an antibiotic dispenser. Only pus or smell, spreading redness, systemic symptoms, or
-   a model that flags infection turn it red.
+    signs of infection → tissue composition → infection verdict → antibiotic → grading
 
-Two honest limits of the public arm. It states no wound size, because centimetres need a ruler
-in the frame and two taps on its ends — a study procedure — and inventing a size would be
-worse than omitting one. And on the pressure injury arm there is no trained classifier yet, so
-the headline there runs on the answers alone until one exists.
+Three points about it are easy to undo by accident, so they are also commented in the source
+above `renderPublic()`:
 
-`test/public-view-leaktest.py` enforces all of this: it walks every rendered element on the
-public tab while unlocked, fails on any of 52 technical fragments or drug names, fails if the
-triage headline, a destination or the rule-out caveat is missing, and fails on any reassuring
-phrase.
+1. **Three of the six signs have no detector.** Slough, necrosis and peri-wound erythema come
+   from the colour rules. Pus, abscess and wet gangrene are not labelled in any dataset the
+   models have seen, so they are one-tap confirmations, not claims. Rendering them as findings
+   the app had made would be inventing output.
+2. **The verdict is the models', not a tally of the six signs.** Slough is present in nearly
+   every chronic ulcer and is not itself a sign of infection, so letting the findings list
+   drive the verdict would return "infected" for almost every photograph and put an antibiotic
+   under it. The three confirmed signs do escalate, because pus, abscess and wet gangrene are
+   cardinal.
+3. **There are three verdict states, not two.** A model that declined to classify has not said
+   "no infection", so an abstention reads *Not determined* rather than *No signs of infection*.
+   Of the errors available here that is the one that costs a limb rather than a clinic visit.
+
+The antibiotic panel appears with the verdict rather than waiting on the nine examination
+questions below it. Severity cannot be read off a photograph — erythema extent, abscess and
+systemic signs all need the patient — so when the verdict says infection the mild row is shown
+provisionally and labelled as such. Escalating to moderate or severe only ever adds cover, so
+provisional mild is the safe direction to be wrong in, and the questions correct it.
+
+On the pressure injury arm no classifier has been trained, so the verdict there runs on the
+confirmed signs alone and reads *Not determined* until one is.
+
+`test/public-view-leaktest.py` keeps the split honest: it walks every rendered element on the
+Assess tab while unlocked, fails on any of 28 instrumentation fragments, and fails if any
+stage of the pipeline above has fallen out.
 
 ## What the demo shows (30 seconds)
 

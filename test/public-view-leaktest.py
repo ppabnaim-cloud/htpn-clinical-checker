@@ -1,38 +1,27 @@
 import asyncio, sys
 from playwright.async_api import async_playwright
 
-# ── 1. Strings that must never reach a member of the public on the Assess tab ──────────────
+# The Assess tab is for clinicians. The split against Assess (full) is instrumentation, not
+# vocabulary: Wagner, Texas, IWGDF grades and the NAG regimen all belong on Assess, because the
+# reader is a prescriber. What does not belong is the research apparatus — it is noise at the
+# bedside and it is what the study team, not the clinician, is looking at.
+#
 # Gaps found the hard way: the app says "% of the frame", not "% of frame", so the first
 # version of this list matched nothing while the string sat on screen. Match on fragments.
 BANNED = ['Dice', 'of frame', 'of the frame', 'Share of the frame', 'onfidence', 'Grad-CAM',
           'What the classifier actually saw', 'resized to 224', 'out_relu', 'MobileNet',
           'occlusion', 'held-out', 'Heatmap explains', 'How to read this', 'What this shows',
-          'AUC', 'weak labels', 'P = ', 'set a scale', 'px', 'a*',
-          # Added when the public arm became a triage screen. Everything below used to sit
-          # above the advice in the public view: the scheme toggle, the two probability bars,
-          # the Texas grid, the Wagner ladder, the clinician-only ischaemia input, the model
-          # comparison, the structured findings list and the full NAG regimen.
-          'Wagner', 'Texas', 'IWGDF', 'NPIAP', 'P(infection)', 'P(severe)',
-          'Classification scheme', 'clinician input', 'Generic model', 'trained on our patients',
-          'colour rule', 'not validated', 'segmentation', 'gran ', 'slough ·', 'ms on',
-          'Empirical regimen', 'Penicillin allergy', 'eGFR', 'MRSA', 'Pseudomonas',
-          # No antibiotic may be named to a member of the public. These are prescription items
-          # a family member cannot lawfully obtain, and naming one invites self-medication.
-          'amoxicillin', 'clavulanate', 'cloxacillin', 'cefuroxime', 'ceftriaxone',
-          'metronidazole', 'clindamycin', 'piperacillin', 'tazobactam', 'vancomycin']
+          'AUC', 'weak labels', 'P = ', 'set a scale', 'px', 'a*', 'ms on',
+          'Classification scheme', 'colour rule', 'not validated', 'Compare',
+          'Longest dimension', 'Segmentation confidence']
 
-# ── 2. Things the public arm MUST say ──────────────────────────────────────────────────────
-# A leak test only catches what crept in. These catch what fell out.
-MUST = [('a triage headline', ['See a doctor today', 'Get this looked at']),
-        ('somewhere to go',   ['klinik kesihatan']),
-        ('the rule-out caveat', ['does not rule out infection'])]
-
-# ── 3. Reassurance, which must never appear at all ─────────────────────────────────────────
-# A photograph cannot exclude infection, and the errors are not symmetric: a false alarm costs
-# a clinic visit, a missed infection costs a limb. There is no green state by design, so any
-# of these phrases on screen means the design has been broken.
-REASSURING = ['not infected', 'no infection', 'no signs of infection', 'appears normal',
-              'nothing to worry', 'no need to see', 'does not need', 'looks fine']
+# What the Assess tab must carry, in pipeline order. A leak test only catches what creeps in;
+# these catch what falls out.
+MUST = [('the signs-of-infection list', ['Peri-wound erythema']),
+        ('the tissue composition',      ['Granulation']),
+        ('an infection verdict',        ['LIKELY INFECTION', 'NO SIGNS OF INFECTION', 'NOT DETERMINED']),
+        ('the antibiotic panel',        ['Antibiotics']),
+        ('the grading',                 ['Meggitt', 'NPIAP'])]
 
 
 async def main():
@@ -47,14 +36,17 @@ async def main():
             await pg.wait_for_timeout(2000)
             await pg.evaluate("() => document.getElementById('gate').classList.add('hidden')")
             await pg.wait_for_function("() => typeof active!=='undefined' && active && backbone", timeout=60000)
-            # UNLOCKED, on the public tab — the case that leaked three times before
+            # UNLOCKED, on the Assess tab — the case that leaked three times before
             await pg.evaluate("() => setStudyMode(true)")
-            await pg.evaluate("() => { const s=document.querySelector('.sample'); if (s) s.click(); }")
+            # the second sample, not the first: sample A is a tiny wound whose tissue map comes
+            # back sparse, so it exercises the abstain path rather than the whole pipeline
+            await pg.evaluate("() => { const s=document.querySelectorAll('.sample');"
+                              " (s[1] || s[0]).click(); }")
             await pg.wait_for_function("() => typeof lastPred!=='undefined' && lastPred", timeout=90000)
             await pg.click('#tabAssess')
             await pg.wait_for_timeout(900)
 
-            print(f'--- {arm}: PUBLIC tab while UNLOCKED ---')
+            print(f'--- {arm}: ASSESS tab while UNLOCKED ---')
 
             # Per element, not innerText on the container: innerText falls back to textContent
             # for anything not being rendered, so a container-level read reported hidden strings
@@ -75,23 +67,18 @@ async def main():
                 print('   leaked: nothing')
             bad += len(hits)
 
-            # what the public arm must say, read from what is actually rendered
             shown = await pg.evaluate("() => document.getElementById('tab-assess').innerText")
             low = shown.lower()
             for what, options in MUST:
                 if not any(o.lower() in low for o in options):
                     bad += 1
                     print(f'   MISSING: {what} — none of {options}')
-            for phrase in REASSURING:
-                if phrase in low:
-                    bad += 1
-                    print(f'   REASSURING TEXT: "{phrase}" — the public arm has no green state')
-            head = await pg.evaluate(
-                "() => { const t = document.querySelector('#triage .tri .big');"
-                " return t ? t.innerText.trim() : '(no triage block)'; }")
-            print('   headline:', head)
+            verdict = await pg.evaluate(
+                "() => { const v = document.querySelector('#pubResult .verdict b');"
+                " return v ? v.innerText.trim() : '(no verdict block)'; }")
+            print('   verdict:', verdict)
 
-            # and the full tab must still have the technical content
+            # and the full tab must still have the research apparatus
             await pg.click('#tabAssessFull')
             await pg.wait_for_timeout(900)
             txt2 = await pg.inner_text('#tab-assess')

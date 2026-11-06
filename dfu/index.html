@@ -650,12 +650,25 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
     <h2>Wound Vision</h2>
     <p style="font-family:var(--mono);font-size:12px;color:var(--faint);margin-bottom:14px">A prototype by Dr Naim Bin Abdul Malek</p>
 
-    <!-- Three lines, not three paragraphs. Everything material stays on screen; the detail is
-         one tap away for anyone who wants it. A disclaimer nobody reads protects nobody, and a
-         wall of text at the door is the surest way to lose the uptake this phase needs. -->
+    <!-- One line each, not paragraphs. Everything material stays on screen; the detail is one
+         tap away for anyone who wants it. A disclaimer nobody reads protects nobody, and a wall
+         of text at the door is the surest way to lose the uptake this phase needs.
+         The storage line says what the code actually does. No image is ever uploaded and no
+         image is written to storage (the case row carries thumb:''), but the file NAME and the
+         grader's own entries are kept in this browser, so the promise is scoped to images and
+         identifiers and the file-naming instruction is part of it. Promising "nothing is
+         stored" would be false the moment a case is recorded. -->
     <ul class="keypoints">
-      <li><b>It is software, not a clinician.</b> It looks at a wound photograph and suggests what it sees. It does not replace your examination, and must not decide treatment.</li>
-      <li><b>Nothing is uploaded.</b> The photograph stays on your device.</li>
+      <li><b>It is a clinical support tool, for picking up trouble earlier.</b> It reads a wound photograph and says what it sees, so a wound that is deeper or more infected than it looks is caught sooner.</li>
+      <!-- Why the examination clause is arm-split: probe-to-bone and perfusion are foot-ulcer
+           findings. A pressure injury is settled by blanching and by how deep the tissue loss
+           goes. Naming the wrong one here would read as borrowed from the other arm. -->
+      <li><b>It does not replace clinical examination, and it does not replace a doctor.</b>
+        <span class="only-dfu">A photograph cannot feel depth, probe to bone or assess perfusion.</span>
+        <span class="only-pi">A photograph cannot tell you whether the skin blanches, or how deep the tissue loss goes.</span>
+        Only you can.</li>
+      <li><b>A clinician still decides treatment.</b> Every grade, severity and antibiotic suggestion here needs your input first &mdash; none of it is a prescription.</li>
+      <li><b>No images and no patient identifiers are stored.</b> The photograph is read on your device, never uploaded, never saved. Only the file name and what you type are kept in this browser, so name files without patient details.</li>
       <li><b>To start,</b> tap one of the demo images.</li>
     </ul>
 
@@ -1394,7 +1407,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-05 &middot; v7.6</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-06 &middot; v7.7</span>
 </footer>
 <div class="toast" id="toast"></div>
 

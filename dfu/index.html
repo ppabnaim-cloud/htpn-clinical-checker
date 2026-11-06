@@ -959,14 +959,11 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
       <!-- custom model: class probabilities -->
       <div class="probs hidden tech" id="customProbs"></div>
 
-      <div class="field tech" style="margin-top:12px" id="ischField">
-        <label>Ischaemia (clinician input — not assessable from a photograph): pedal pulses / ABPI / toe pressure</label>
-        <div class="chips" id="ischChips">
-          <button class="chip on" data-v="0">No ischaemia</button>
-          <button class="chip" data-v="1">Ischaemia present</button>
-          <button class="chip" data-v="?">Not yet assessed</button>
-        </div>
-      </div>
+      <!-- Ischaemia used to be asked twice: chips here and "Ischaemic limb?" in 2b. One fact
+           with two controls that could disagree, and these chips defaulted to "No ischaemia",
+           asserting a perfused limb before anyone had felt a pulse. It is asked once, in 2b,
+           where the rest of the examination lives; the Texas stage on this card reads that
+           answer and marks itself provisional until it is given. -->
       <div class="texas study-hide tech" id="texasPanel">
         <h4>University of Texas Diabetic Wound Classification</h4>
         <div class="tgrid" id="tgrid"></div>
@@ -1434,7 +1431,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-06 &middot; v7.8</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-06 &middot; v7.9</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1472,7 +1469,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 let base = null;                 // demo LayersModel (also supplies the shared MobileNetV2 backbone)
 let backbone = null;             // tf.model input -> out_relu  (shared by demo + in-browser heads)
 let active = null;               // { kind:'demo'|'head'|'full', name, classes, conv, tail, gradLayer, inputRange, scheme }
-let currentImg = null, currentName = '', lastPred = null, lastActs = null, isch = '0', scheme = 'texas', camManual = false;
+let currentImg = null, currentName = '', lastPred = null, lastActs = null, scheme = 'texas', camManual = false;
 /* The public arm's own answers, kept deliberately apart from `answers` so that a layperson's
    "fever: yes" can never arrive in the research record as if a grader had entered it, and so
    that nothing a family member taps can move a Wagner or Texas grade. Both reset per image.
@@ -2073,8 +2070,9 @@ function interpret(){
     if (abstains(p.grade) || abstains(p.infection))
       return { abstain: true, gradeOut: abstains(p.grade), infOut: abstains(p.infection) };
     const severe = p.grade[1] >= 0.5, infected = p.infection[1] >= 0.5;
-    let stage = infected ? 'B' : 'A'; if (isch === '1') stage = infected ? 'D' : 'C';
-    texas = { grade: severe ? '3' : '1', stage, unknownIsch: isch === '?' };
+    const ia = ischState();
+    let stage = infected ? 'B' : 'A'; if (ia === '1') stage = infected ? 'D' : 'C';
+    texas = { grade: severe ? '3' : '1', stage, unknownIsch: ia === '?' };
     wagner = severe ? { grade: infected ? '3' : '2', range: ['2','3'], note: 'deep or extensive appearance; 3 if abscess or osteomyelitis is confirmed' }
                     : { grade: '1', range: ['1','1'], note: 'superficial appearance' };
   } else {
@@ -2083,7 +2081,7 @@ function interpret(){
     const top = active.classes[p.probs.indexOf(Math.max(...p.probs))];
     const w = wagnerOf(top), t = texasOf(top);
     if (w !== null) wagner = { grade: w, range: [w, w], note: 'predicted directly by your model' };
-    if (t) { let stage = t[1]; if (isch === '1' && (stage === 'A' || stage === 'B')) stage = stage === 'A' ? 'C' : 'D'; texas = { grade: t[0], stage, unknownIsch: false }; }
+    if (t) { const ia = ischState(); let stage = t[1]; if (ia === '1' && (stage === 'A' || stage === 'B')) stage = stage === 'A' ? 'C' : 'D'; texas = { grade: t[0], stage, unknownIsch: ia === '?' }; }
     if (!w && !t) return { label: top, desc: `Predicted class "${top}" (${(Math.max(...p.probs)*100).toFixed(0)} %). Class names are not Texas or Wagner codes, so no grid is shown.` };
   }
   return { texas, wagner };
@@ -2117,7 +2115,6 @@ function renderClass(){
   const it = interpret(); if (!it) return;
   if (it.abstain){
     $('texasPanel').classList.add('hidden'); $('wagnerPanel').classList.add('hidden');
-    $('ischField').classList.add('hidden');
     $('classBig').textContent = '—';
     /* Named the internal heads and their confidence at a clinician: "the infection head is not
        confident enough". Which head abstained is a study detail; what matters at the bedside is
@@ -2135,7 +2132,6 @@ function renderClass(){
   }
   const showTexas = scheme === 'texas' && it.texas, showWagner = scheme === 'wagner' && it.wagner;
   $('texasPanel').classList.toggle('hidden', !showTexas); $('wagnerPanel').classList.toggle('hidden', !showWagner);
-  $('ischField').classList.toggle('hidden', !(it.texas && scheme === 'texas'));
   if (it.label){ $('classBig').textContent = it.label; $('classDesc').textContent = it.desc; $('caution').textContent = 'This output is decision support only.'; return; }
   if (scheme === 'texas' && !it.texas){ $('classBig').textContent = '—'; $('classDesc').textContent = 'This model predicts Wagner grades. Switch to the Wagner scheme.'; $('caution').textContent = ''; return; }
   if (scheme === 'wagner' && !it.wagner){ $('classBig').textContent = '—'; $('classDesc').textContent = 'This model predicts Texas classes. Switch to the Texas scheme.'; $('caution').textContent = ''; return; }
@@ -2163,9 +2159,6 @@ function renderClass(){
     $('caution').textContent = 'Wagner grading is appearance‑based, which suits an image‑only model and a primary‑care triage use (refer at Wagner ≥ 2). It does not separate infection from ischaemia; record both in Step 3.';
   }
 }
-$('ischChips').querySelectorAll('.chip').forEach(b => b.onclick = () => {
-  $('ischChips').querySelectorAll('.chip').forEach(x => x.classList.remove('on')); b.classList.add('on'); isch = b.dataset.v; renderClass();
-});
 
 /* ═══════════════════════════ Grad-CAM ═══════════════════════════ */
 async function drawGradCam(){
@@ -2326,6 +2319,10 @@ const ASK = {
   ]
 };
 let answers = { dfu:{}, pi:{} };
+/* The Texas ischaemia axis, from the one place it is asked. Unanswered is '?' (provisional),
+   never '0': absence of an answer is not absence of ischaemia. */
+const ischState = () => answers.dfu.ischaemia === 'yes' ? '1'
+                      : answers.dfu.ischaemia === 'no'  ? '0' : '?';
 
 /* ── infection severity, and what it implies for antibiotics ───────────────────────────────
    IWGDF/IDSA grades a diabetic foot infection by how far it has spread and whether the patient
@@ -2977,7 +2974,9 @@ function renderDecide(){
   $('askFind').querySelectorAll('select').forEach(el => el.onchange = () => {
     const f = el.dataset.f;
     if (el.value) a[f] = el.value; else delete a[f];
-    renderDecide(); renderAssessJourney();
+    /* The Texas stage on the analysis card reads answers.dfu.ischaemia, so it has to be
+       redrawn when that answer changes — otherwise the two cards disagree again. */
+    renderDecide(); renderAssessJourney(); if (lastPred) renderClass();
   });
 
   if (DISEASE === 'pi'){
@@ -3120,7 +3119,6 @@ function setDisease(d){
   $('diseaseToggle').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === d));
   const pi = d === 'pi';
   $('schemeRow').classList.toggle('hidden', pi);
-  $('ischField').classList.toggle('hidden', pi);
   /* Each tile declares the wound type it belongs to; a foot ulcer must not be offered to someone
      assessing a sacral sore, and vice versa. */
   document.querySelectorAll('.sample').forEach(b => b.classList.toggle('hidden', b.dataset.dis !== (pi ? 'pi' : 'dfu')));

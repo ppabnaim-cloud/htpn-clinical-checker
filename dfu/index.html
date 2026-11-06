@@ -282,6 +282,27 @@ main{max-width:600px;margin:0 auto;padding:16px 16px 60px}
 .camlegend i{flex:1;height:9px;border-radius:999px;min-width:60px;
   background:linear-gradient(90deg,#0000ff,#0080ff,#00ffff,#80ff80,#ffff00,#ff8000,#ff0000)}
 .note{font-size:12.5px;color:var(--muted);background:var(--cloud);border-left:3px solid var(--amber);padding:8px 12px;border-radius:0 8px 8px 0;margin-top:10px}
+/* ── the public arm's triage block ───────────────────────────────────────────────────────
+   Mirror image of .tech: .tech is study-only, .pub-only is everything the public arm shows
+   and the study arm does not. A clinician opening Assess (full) wants the IWGDF grade and the
+   drug, not a lay translation of it, so the two never appear together. */
+body.detail-full .pub-only{display:none !important}
+.tri{border-radius:var(--r);overflow:hidden;border:1px solid var(--line);margin-bottom:14px}
+.tri .thead{padding:17px 18px;color:#fff}
+.tri.now  .thead{background:#B3182F}
+.tri.soon .thead{background:#B4530A}
+.tri .thead .big{font-family:var(--serif);font-size:27px;line-height:1.12;margin:0 0 5px}
+.tri .thead .sub{font-size:14px;line-height:1.5;opacity:.96}
+.tri .tbody{padding:15px 18px;background:var(--card)}
+.tri .desc{font-size:15px;line-height:1.62;margin:0 0 9px;color:var(--text)}
+.tri .tiss{font-size:13px;line-height:1.55;color:var(--muted);margin:0 0 14px}
+.tri .cav{font-size:13px;line-height:1.55;color:var(--text);background:var(--cloud);border-left:3px solid var(--amber);padding:9px 12px;border-radius:0 8px 8px 0;margin:0 0 14px}
+.tri h5{margin:0 0 8px;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tri ul{margin:0 0 14px;padding-left:19px}
+.tri li{font-size:14px;line-height:1.55;margin-bottom:5px;color:var(--text)}
+.tri .abxline{font-size:13.5px;line-height:1.55;background:var(--cloud);border-radius:9px;padding:11px 13px;margin:0 0 4px;color:var(--text)}
+.tri .pubask{border-top:1px solid var(--line);margin-top:14px;padding-top:13px}
+.tri .pubask>p{font-size:13px;color:var(--muted);margin:0 0 11px;line-height:1.55}
 .note.teal{border-color:var(--teal)}
 .note.rose{border-color:var(--rose)}
 .log-list{list-style:none;margin-top:8px}
@@ -806,7 +827,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
 
   <!-- STEP 2: ANALYSE -->
   <section class="card hidden" id="analyse">
-    <div class="step"><span class="n">2</span><h3>Analysis</h3><span class="hint" id="timing"></span></div>
+    <div class="step"><span class="n">2</span><h3>Analysis</h3><span class="hint tech" id="timing"></span></div>
     <div class="viewer" id="viewer">
       <span class="badge" id="imgName">image</span>
       <canvas id="imgCanvas" width="448" height="448"></canvas>
@@ -853,8 +874,8 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
     <!-- The first thing after the picture, because it is the first thing a clinician wants:
          what the app can see. Everything below it — the size, the crop, the comparison — is
          either study material or a refinement, and the grade itself waits on the examination. -->
-    <span class="lab">What the photograph shows</span>
-    <div class="findlist" id="autoFind"></div>
+    <span class="lab tech">What the photograph shows</span>
+    <div class="findlist tech" id="autoFind"></div>
 
     <div class="status" id="status"><span class="spinner"></span><span id="statusText">Loading models…</span></div>
 
@@ -915,13 +936,13 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
     </div>
 
     <div id="results" class="hidden">
-      <div class="cam-controls" style="margin:0 0 10px" id="schemeRow">
+      <div class="cam-controls tech" style="margin:0 0 10px" id="schemeRow">
         <span class="small">Classification scheme</span>
         <div class="seg" id="schemeToggle"><button data-v="texas" class="on">Texas</button><button data-v="wagner">Wagner</button></div>
         <span class="small" id="modelUsed"></span>
       </div>
       <!-- demo model: two heads -->
-      <div class="result-grid" id="demoHeads">
+      <div class="result-grid tech" id="demoHeads">
         <div class="metric">
           <h4>Infection (Texas stage)</h4>
           <div class="val" id="infVal">—</div>
@@ -936,9 +957,9 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
         </div>
       </div>
       <!-- custom model: class probabilities -->
-      <div class="probs hidden" id="customProbs"></div>
+      <div class="probs hidden tech" id="customProbs"></div>
 
-      <div class="field" style="margin-top:12px" id="ischField">
+      <div class="field tech" style="margin-top:12px" id="ischField">
         <label>Ischaemia (clinician input — not assessable from a photograph): pedal pulses / ABPI / toe pressure</label>
         <div class="chips" id="ischChips">
           <button class="chip on" data-v="0">No ischaemia</button>
@@ -946,16 +967,16 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
           <button class="chip" data-v="?">Not yet assessed</button>
         </div>
       </div>
-      <div class="texas study-hide" id="texasPanel">
+      <div class="texas study-hide tech" id="texasPanel">
         <h4>University of Texas Diabetic Wound Classification</h4>
         <div class="tgrid" id="tgrid"></div>
       </div>
-      <div class="wagner hidden study-hide" id="wagnerPanel">
+      <div class="wagner hidden study-hide tech" id="wagnerPanel">
         <h4>Meggitt–Wagner classification</h4>
         <div class="ladder" id="ladder"></div>
       </div>
 
-      <div class="class-out">
+      <div class="class-out tech">
         <div class="big" id="classBig">—</div>
         <div class="desc" id="classDesc"></div>
       </div>
@@ -963,12 +984,12 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
         <p><b>How to read this:</b> <span id="howClass"></span></p>
         <p><b>What this shows:</b> <span id="whatClass"></span></p>
       </div>
-      <div class="note" id="caution"></div>
+      <div class="note tech" id="caution"></div>
 
       <!-- occlusion / perturbation test -->
       <!-- The study's own argument, on the screen: a model trained elsewhere against one
            trained here. -->
-      <div class="cmp" id="cmpBox">
+      <div class="cmp tech" id="cmpBox">
         <div class="cmphead">
           <b>Generic model vs model trained on our patients</b>
           <button class="btn btn-ghost btn-sm" id="cmpBtn">Compare</button>
@@ -991,13 +1012,19 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
 
   <!-- STEP 2b: FINDINGS -> CLASSIFICATION BY RULE -->
   <section class="card hidden" id="decide">
-    <div class="step"><span class="n">2b</span><h3>Your examination decides this</h3><span class="hint">human in the loop</span></div>
+    <div class="step"><span class="n">2b</span>
+      <h3><span class="tech">Your examination decides this</span><span class="pub-only">What this means, and what to do</span></h3>
+      <span class="hint"><span class="tech">human in the loop</span><span class="pub-only">read this part</span></span></div>
+
+    <!-- The public arm's entire output. Everything below it is marked .tech and belongs to
+         Assess (full). See renderTriage() for why this block says what it says. -->
+    <div id="triage" class="pub-only"></div>
 
     <!-- The design argument of the whole app, stated where it happens rather than left for the
          reader to infer. Wagner, Texas and NPIAP are definitions, not predictions, and most of
          what defines them cannot be photographed: probing, pulses, systemic signs. So the model
          stops at what a camera can see and the clinician finishes the job. -->
-    <div class="hitl" id="hitl">
+    <div class="hitl tech" id="hitl">
       <div class="hitlbar">
         <div class="side cam"><b id="hitlCamN">—</b><span>from the photograph</span></div>
         <div class="vs">+</div>
@@ -1015,12 +1042,12 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
          reports Wagner 2 when one probe would have made it Wagner 3 with osteomyelitis is worse
          than one that says it does not know. -->
 
-    <span class="lab" style="margin-top:14px">Result <em id="resultState"></em></span>
-    <div class="ruleout" id="ruleOut"></div>
-    <div id="abxBox"></div>
+    <span class="lab tech" style="margin-top:14px">Result <em id="resultState"></em></span>
+    <div class="ruleout tech" id="ruleOut"></div>
+    <div class="tech" id="abxBox"></div>
 
-    <span class="lab" style="margin-top:16px">Your examination <em id="askLead">the app cannot answer these, and will not guess</em></span>
-    <div class="findlist" id="askFind"></div>
+    <span class="lab tech" style="margin-top:16px">Your examination <em id="askLead">the app cannot answer these, and will not guess</em></span>
+    <div class="findlist tech" id="askFind"></div>
   </section>
 
 </div>
@@ -1407,7 +1434,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-06 &middot; v7.7</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-06 &middot; v7.8</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1446,6 +1473,12 @@ let base = null;                 // demo LayersModel (also supplies the shared M
 let backbone = null;             // tf.model input -> out_relu  (shared by demo + in-browser heads)
 let active = null;               // { kind:'demo'|'head'|'full', name, classes, conv, tail, gradLayer, inputRange, scheme }
 let currentImg = null, currentName = '', lastPred = null, lastActs = null, isch = '0', scheme = 'texas', camManual = false;
+/* The public arm's own answers, kept deliberately apart from `answers` so that a layperson's
+   "fever: yes" can never arrive in the research record as if a grader had entered it, and so
+   that nothing a family member taps can move a Wagner or Texas grade. Both reset per image.
+   cmpSev is set by the study-only comparison, giving cautiousInfection() a second number to
+   take the worse of; a public user never runs it, so it is normally null. */
+let pubAns = {}, cmpSev = null;
 let segModel = null, segMetrics = null, lastSeg = null, lastBox = null;   // lastBox = the crop actually classified
 let savedThisImage = false;      // has the photograph on screen been written to the case log yet
 let lastTissue = null;                                                     // wound-bed colour composition
@@ -1679,6 +1712,7 @@ loadModel().catch(e => {
 /* ═══════════════════════════ image intake ═══════════════════════════ */
 function useImage(img, name){
   currentImg = img; currentName = name; lastPred = null; camManual = false; savedThisImage = false;
+  pubAns = {}; cmpSev = null;
   $('imgName').textContent = name;
   const c = $('imgCanvas'), ctx = c.getContext('2d');
   /* Letterbox, never centre-crop. A centre crop of a 4:3 camera frame discards a quarter of its
@@ -2091,7 +2125,7 @@ function renderClass(){
     const which = it.gradeOut && it.infOut ? 'Neither reading is' : it.gradeOut ? 'The depth reading is not' : 'The infection reading is not';
     $('classDesc').textContent = detailFull()
       ? `${which} confident enough to name a class from the photograph alone, so none is guessed here.`
-      : 'The app is not offering a class from the photograph alone. Step 2b below still reaches a Wagner grade and a Texas class from your examination.';
+      : 'The app is not offering a class from the photograph alone. The advice below does not depend on it.';
     /* The held-out figures that used to follow this sentence are in the model card. What a
        clinician needs is that the app has declined, and why. */
     $('caution').textContent = 'The app is not confident enough to offer a class here, so it is not offering one.'
@@ -2707,11 +2741,210 @@ function autoFindings(){
   return rows;
 }
 
+/* ══════════════════════ THE PUBLIC ARM: description, triage, what to do ══════════════════
+   A member of the public gets three things and nothing else: what the photograph shows in
+   plain words, how soon to be seen, and what to do in the meantime. Wagner, Texas, the IWGDF
+   grade, the drug name, probabilities and the model comparison all stay in Assess (full).
+
+   Four rules hold this block together, and each one is load-bearing:
+
+   1. THERE IS NO REASSURING OUTCOME. The gentlest state is still "get this looked at". A
+      photograph cannot exclude infection — deep infection, osteomyelitis and infection in an
+      ischaemic or neuropathic foot can all look unremarkable on the surface — and the errors
+      are not symmetric: a false alarm costs a clinic visit, a missed infection costs a limb.
+      So the app never decides WHETHER to seek care, only HOW FAST. That is also what makes the
+      whole screen ethically safe: it can accelerate care, it can never withhold it.
+
+   2. THE OPTIONAL QUESTIONS CAN ONLY RAISE URGENCY. Handing a layperson a control that
+      downgrades their own result is the failure mode to design out. Every question is either
+      an escalator or advice-only; none of them can move the level down.
+
+   3. NO ANTIBIOTIC IS NAMED. These are prescription items a family member cannot lawfully
+      obtain, so naming one is unactionable at best and an invitation to self-medicate with
+      leftovers at worst. What prevents amputation is the patient arriving, not the patient
+      knowing the drug. The clinician view keeps the full NAG regimen.
+
+   4. SLOUGH AND NECROSIS ARE NOT INFECTION. Nearly every chronic ulcer carries slough. If dead
+      tissue fed the infection headline, almost every photograph would come back red and the
+      app would become an antibiotic dispenser. Only pus or smell, spreading redness, systemic
+      symptoms, or a model that flags infection can turn this red.                            */
+
+/* The questions a layperson can actually answer. Wagner and Texas are deliberately absent:
+   both need depth on probing and Texas needs ischaemia staging, so asking a family member for
+   them produces rubbish input — and rubbish input that would then move a displayed result. */
+const PUB_ASK = {
+  dfu: [
+    { id:'unwell', q:'Fever, chills, or feeling generally unwell?', esc:'yes',
+      flag:'Fever or feeling unwell alongside a foot wound is the most serious combination there is.',
+      opts:[['yes','Yes'],['no','No'],['unsure','Not sure']] },
+    { id:'pus', q:'Any thick yellow or green discharge, or a bad smell?', esc:'yes',
+      flag:'Thick discharge or a bad smell points to infection in the wound.',
+      opts:[['yes','Yes'],['no','No'],['unsure','Not sure']] },
+    { id:'spreading', q:'Is the redness around the wound spreading compared with yesterday?', esc:'yes',
+      flag:'Redness that is spreading is how infection in a foot advances.',
+      opts:[['yes','Yes'],['no','No'],['unsure','Not sure']] },
+    { id:'numb', q:'Is there numbness in the foot?',
+      opts:[['yes','Yes'],['no','No'],['unsure','Not sure']] },
+    { id:'seen', q:'Has a doctor already seen this wound?',
+      opts:[['yes','Yes'],['no','No']] }
+  ],
+  pi: [
+    { id:'unwell', q:'Fever, chills, or feeling generally unwell?', esc:'yes',
+      flag:'Fever alongside a pressure injury is the sign that it has stopped being a local problem.',
+      opts:[['yes','Yes'],['no','No'],['unsure','Not sure']] },
+    { id:'pus', q:'Any thick yellow or green discharge, or a bad smell?', esc:'yes',
+      flag:'Thick discharge or a bad smell points to infection in the wound.',
+      opts:[['yes','Yes'],['no','No'],['unsure','Not sure']] },
+    { id:'spreading', q:'Is the area getting bigger, or turning darker?', esc:'yes',
+      flag:'An area that is growing or darkening is damage that is still progressing.',
+      opts:[['yes','Yes'],['no','No'],['unsure','Not sure']] },
+    { id:'moving', q:'Can the person change position by themselves?',
+      opts:[['yes','Yes'],['no','No']] },
+    { id:'seen', q:'Has a doctor or nurse already seen this?',
+      opts:[['yes','Yes'],['no','No']] }
+  ]
+};
+/* pubAns and cmpSev are declared with the rest of the per-image state, well above this. */
+
+/* The most pessimistic infection-ish estimate currently in hand. The shipped model gives
+   p(infection) directly; a locally trained head gives p(severe), which is a different question
+   — but for a screen whose only decision is "today or soon", both answers justify today, so the
+   maximum is taken rather than trying to reconcile them. Returns null when nothing is in hand,
+   which is the normal case on the pressure injury arm: no pressure injury classifier has been
+   trained, so there the headline runs on the answers alone. */
+function cautiousInfection(){
+  const est = [];
+  if (lastPred && !lastPred.piOnly){
+    if (lastPred.infection){ if (!abstains(lastPred.infection)) est.push(lastPred.infection[1]); }
+    else if (lastPred.probs){
+      const v = pSevere(active && active.classes, lastPred.probs);
+      if (v !== null) est.push(v);
+    }
+  }
+  if (cmpSev){
+    if (typeof cmpSev.generic === 'number') est.push(cmpSev.generic);
+    if (typeof cmpSev.local   === 'number') est.push(cmpSev.local);
+  }
+  return est.length ? Math.max(...est) : null;
+}
+
+/* What the photograph shows, in words a family member can use. No percentage of frame, no
+   confidence, no centimetres — centimetres need a ruler in the shot and two taps on its ends,
+   which is a study procedure, so claiming a size here would be inventing one. */
+function publicDescription(){
+  if (!lastSeg || !lastSeg.found)
+    return { lead:'The app could not find a clear wound in this photograph. Take another picture in good light, with the wound filling most of the frame.', tiss:'' };
+  const bits = ['The app has found and outlined a wound in this photograph.'];
+  let tiss = '';
+  if (lastTissue && !lastTissue.sparse){
+    const f = lastTissue.frac, pc = x => Math.round(x * 100);
+    const named = [[pc(f.gran), 'healthy red tissue'], [pc(f.slough), 'yellow dead tissue'], [pc(f.necro), 'black dead tissue']]
+      .filter(r => r[0] >= 5).sort((a, b) => b[0] - a[0]);
+    if (named.length){
+      bits.push(named[0][0] >= 60 ? `The surface is mostly ${named[0][1]}.`
+                                  : `The surface is mixed, and ${named[0][1]} covers the largest part of it.`);
+      if (pc(f.slough) + pc(f.necro) >= 50)
+        bits.push('More than half of it is dead tissue, which usually has to be cleaned away by a nurse or doctor before the wound can heal.');
+      tiss = 'Roughly ' + named.map(r => `${r[0]}% ${r[1]}`).join(', ')
+           + '. These come from colour alone, so read them as a rough guide, not a measurement.';
+    }
+  }
+  if (lastTissue && lastTissue.dA !== null && lastTissue.dA >= 3)
+    bits.push('The skin around the wound is redder than the person’s own skin further away from it.');
+  return { lead: bits.join(' '), tiss };
+}
+
+function renderTriage(){
+  const el = $('triage'); if (!el) return;
+  const pi = DISEASE === 'pi', spec = PUB_ASK[DISEASE] || PUB_ASK.dfu;
+  const d = publicDescription();
+
+  /* Escalators, in the order a reader would weigh them. */
+  const why = [];
+  spec.forEach(f => { if (f.esc && pubAns[f.id] === f.esc) why.push(f.flag); });
+  const mp = cautiousInfection();
+  if (mp !== null && mp >= 0.5)
+    why.push(pi ? 'The app thinks this injury looks infected.' : 'The app thinks this ulcer looks infected.');
+  const now = why.length > 0;
+
+  const caveat = pi
+    ? '<b>This does not rule out infection.</b> A photograph cannot show how deep the damage goes, or whether it has reached muscle or bone. That is why every result here still ends in seeing a doctor or nurse.'
+    : '<b>This does not rule out infection.</b> A photograph cannot show how deep a wound goes, whether it has reached bone, or whether the blood supply to the foot is poor — and infection in a numb or poorly supplied foot can look unremarkable. That is why every result here still ends in seeing a doctor.';
+
+  const ACT = {
+    dfu: { now: ['Go today to the nearest klinik kesihatan — or to a hospital emergency department if the person is feverish or unwell.',
+                 'Keep all weight off that foot until it has been seen. Walking on an infected foot ulcer drives it deeper.',
+                 'Cover it with a clean, dry dressing and nothing else.',
+                 'Do not put ash, herbs, toothpaste, oil or any traditional remedy on the wound.',
+                 'Bring the person’s medicine list and diabetes record with you.'],
+          soon:['Make an appointment at the nearest klinik kesihatan. A foot ulcer in someone with diabetes should always be seen, even when it looks small.',
+                'Keep weight off that foot as much as you can until it has been seen.',
+                'Cover it with a clean, dry dressing and look at it every day.',
+                'Go sooner if fever appears, if there is discharge or a smell, or if the redness spreads.',
+                'Do not put ash, herbs, toothpaste, oil or any traditional remedy on the wound.'] },
+    pi:  { now: ['Have this seen today — contact the ward, the klinik kesihatan or the home nursing team.',
+                 'Take the pressure off that area now and keep it off. Reposition at least every two hours.',
+                 'Keep the area clean and dry. Do not massage it.',
+                 'Do not put ash, herbs, toothpaste, oil or any traditional remedy on it.',
+                 'Bring the person’s medicine list with you.'],
+          soon:['Arrange for a nurse or doctor to look at this \u2014 the ward, the home nursing team, or the nearest klinik kesihatan. A pressure injury that is not relieved gets deeper.',
+                'Take the pressure off that area and reposition at least every two hours.',
+                'Keep the area clean and dry. Do not massage it.',
+                'Look at it every day, and go sooner if there is fever, discharge or a smell, or if it grows or darkens.',
+                'Do not put ash, herbs, toothpaste, oil or any traditional remedy on it.'] }
+  };
+  const acts = ACT[pi ? 'pi' : 'dfu'][now ? 'now' : 'soon'].slice();
+  if (!pi && pubAns.numb === 'yes')
+    acts.push('There is numbness, so the person may not feel this getting worse. Check the foot every day — pain is not a reliable warning here.');
+  if (pi && pubAns.moving === 'no')
+    acts.push('The person cannot reposition themselves, so someone else must do it on a schedule. This single thing affects healing more than anything else on this list.');
+  if (pubAns.seen === 'yes')
+    acts.push('Someone has already seen this. Keep the follow-up appointment, and go back sooner if it looks worse than it did then.');
+
+  const answered = spec.filter(f => pubAns[f.id]).length;
+
+  el.innerHTML = `<div class="tri ${now ? 'now' : 'soon'}">
+    <div class="thead">
+      <div class="big">${now ? 'See a doctor today' : 'Get this looked at'}</div>
+      <div class="sub">${now ? why.join(' ')
+        : 'Nothing in this photograph points to infection right now. A photograph cannot settle that, and this wound still needs a doctor.'}</div>
+    </div>
+    <div class="tbody">
+      <h5>What we can see</h5>
+      <p class="desc">${d.lead}</p>
+      ${d.tiss ? `<p class="tiss">${d.tiss}</p>` : ''}
+      <p class="cav">${caveat}</p>
+      <h5>What to do now</h5>
+      <ul>${acts.map(x => `<li>${x}</li>`).join('')}</ul>
+      <p class="abxline"><b>About antibiotics.</b> A doctor may need to start one, and only a
+      doctor can decide that — it depends on the examination, on allergies and on kidney
+      function. Do not buy antibiotics over the counter and do not reuse leftover ones: it makes
+      the infection harder to treat later.</p>
+      <div class="pubask">
+        <h5>Five quick questions &middot; optional &middot; ${answered} of ${spec.length} answered</h5>
+        <p>You do not have to answer these, and the advice above already stands without them.
+        If you do answer, it gets sharper. Answering can only make this more urgent, never less.</p>
+        ${spec.map(f => `<div class="askrow${pubAns[f.id] ? ' done' : ''}">
+          <div class="q"><b>${f.q}</b></div>
+          <select data-p="${f.id}">
+            <option value="">— not answered</option>
+            ${f.opts.map(o => `<option value="${o[0]}"${pubAns[f.id] === o[0] ? ' selected' : ''}>${o[1]}</option>`).join('')}
+          </select></div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+  el.querySelectorAll('select[data-p]').forEach(sel => sel.onchange = () => {
+    if (sel.value) pubAns[sel.dataset.p] = sel.value; else delete pubAns[sel.dataset.p];
+    renderTriage();
+  });
+}
+
 function renderDecide(){
   if (!currentImg){ $('decide').classList.add('hidden'); return; }
   $('decide').classList.remove('hidden');
   $('autoFind').innerHTML = autoFindings().map(r =>
     `<div class="find"><div class="k">${r.k}<em>${r.why}</em></div><div class="v ${r.cls||''}">${r.v}</div><div class="src">${r.src}</div></div>`).join('');
+  renderTriage();
 
   const a = answers[DISEASE];
   /* Ordered by how much each answer resolves, not by clinical narrative. "Break in the skin" and
@@ -3290,10 +3523,20 @@ function renderAssessJourney(){
       done: !!lastPred,
       d: !currentImg ? 'Waiting for a photograph.'
          : !lastPred ? 'Runs automatically once the image loads.'
+         : !detailFull() ? 'The app has outlined the wound and read the tissue in the photograph. All of it ran on this device.'
          : (lastPred.piOnly
             ? 'Outline and measurement only. No pressure injury classifier has been trained, so the app does not guess a stage — you supply it in 2b.'
             : `Outline, tissue composition and classification done${lastSeg && lastSeg.found ? '' : ' — but no wound was outlined, so the whole photograph was classified'}. Check the outline before trusting the numbers, and drag a box over the wound if it is wrong.`) },
-    { k: '2b', s: 'Your findings',
+    /* The public arm's step 2b is not "your findings" — a family member supplies no findings,
+       and a step they cannot complete reads as a failure. Theirs is the advice itself, which is
+       complete the moment the photograph has been read; the five questions only sharpen it, so
+       the step is done without them. */
+    !detailFull()
+    ? { k: '2b', s: 'What to do',
+        done: !!lastPred,
+        d: !currentImg ? 'Waiting for a photograph.'
+           : `${PUB_ASK[DISEASE].filter(f => pubAns[f.id]).length} of ${PUB_ASK[DISEASE].length} optional questions answered. The advice below stands either way — answering only makes it sharper.` }
+    : { k: '2b', s: 'Your findings',
       done: settled.length === rules.length && answered > 0,
       d: !currentImg ? 'Waiting for a photograph.'
          /* Was: "These are definitions, not predictions — Wagner and Texas cannot be determined
@@ -3484,6 +3727,7 @@ async function runComparison(){
     var localTop = lSev;
   }
 
+  cmpSev = { generic: gSev, local: (typeof localTop === 'number' ? localTop : null) };
   out.innerHTML = `<div class="cmpgrid">
       <div class="cmpcard"><h5>Generic model</h5>
         <div class="who">${generic.name} · public US dataset</div>

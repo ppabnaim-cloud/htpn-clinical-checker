@@ -34,6 +34,56 @@ Live path once deployed with the rest of this repository on Vercel: `https://<yo
 > **Where it stands.** Under evaluation. Trained so far on a small public dataset with weak (rule-derived) labels,
 > with outcomes still to be studied. The app opens by stating this, and will not proceed until it is acknowledged.
 
+## Four tabs, two audiences
+
+| Tab | Who | What it shows |
+|---|---|---|
+| **Assess** | anyone | Photograph, outline, and a triage result in plain language |
+| **Assess (full)** | study team | Everything above plus the model's numbers, Wagner/Texas/NPIAP and the NAG regimen |
+| **Study team** | study team | Labelling, training, the case log |
+| **Dashboard** | study team | Data readiness, class balance, training history |
+
+The last three are behind a passcode. That passcode is a mode switch, not a security control,
+and the app says so on screen.
+
+### What the public arm does, and what it deliberately does not
+
+The public tab answers one question — *how soon does this need a doctor?* — and four rules
+shape it. They are in the source above `renderTriage()` as well, because each one is easy to
+undo by accident.
+
+1. **There is no reassuring outcome.** The gentlest state is still *Get this looked at*. A
+   photograph cannot exclude infection: deep infection, osteomyelitis and infection in an
+   ischaemic or neuropathic foot can all look unremarkable on the surface. The errors are not
+   symmetric — a false alarm costs a clinic visit, a missed infection costs a limb. The app
+   never decides *whether* to seek care, only *how fast*, which is also what makes it safe to
+   put in front of the public: it can accelerate care, it cannot withhold it.
+2. **The optional questions can only raise urgency.** Five questions a layperson can actually
+   answer — fever, discharge or smell, spreading redness, numbness, already seen. Wagner and
+   Texas are absent on purpose: both need depth on probing and Texas needs ischaemia staging,
+   so asking a family member for them produces rubbish input that would then move a displayed
+   result. The public answers live in `pubAns`, kept apart from the graders' `answers`, so
+   nothing a visitor taps can reach the research record or move a grade.
+3. **No antibiotic is named.** These are prescription items a family member cannot lawfully
+   obtain, so naming one is unactionable at best and an invitation to self-medicate with
+   leftovers at worst. What prevents amputation is the patient arriving, not the patient
+   knowing the drug. The full NAG regimen stays in Assess (full), behind the penicillin
+   allergy gate.
+4. **Slough and necrosis are not infection.** Nearly every chronic ulcer carries slough, so if
+   dead tissue fed the headline almost every photograph would come back red and the app would
+   become an antibiotic dispenser. Only pus or smell, spreading redness, systemic symptoms, or
+   a model that flags infection turn it red.
+
+Two honest limits of the public arm. It states no wound size, because centimetres need a ruler
+in the frame and two taps on its ends — a study procedure — and inventing a size would be
+worse than omitting one. And on the pressure injury arm there is no trained classifier yet, so
+the headline there runs on the answers alone until one exists.
+
+`test/public-view-leaktest.py` enforces all of this: it walks every rendered element on the
+public tab while unlocked, fails on any of 52 technical fragments or drug names, fails if the
+triage headline, a destination or the rule-out caveat is missing, and fails on any reassuring
+phrase.
+
 ## What the demo shows (30 seconds)
 
 | t (s) | Screen | Talking point |

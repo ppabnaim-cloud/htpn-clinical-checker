@@ -288,6 +288,8 @@ body.detail-full .pub-only{display:none !important}
 .sx{border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-bottom:10px}
 .sxr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 13px;font-size:14px;border-bottom:1px solid var(--line)}
 .sxr:last-child{border-bottom:0}
+.sxr.awaiting{background:#FFF8EC;box-shadow:inset 3px 0 0 var(--amber)}
+.sxr.awaiting .sxk em b{color:#8A4B00}
 .sxk{color:var(--text)}
 .sxk em{display:block;font-style:normal;font-size:11px;color:var(--muted);margin-top:2px;line-height:1.35}
 .sxr>b{font-size:13px;font-weight:600}
@@ -1327,15 +1329,21 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
             handful of cases will be confidently wrong on the next patient.</td></tr>
       </table>
 
-      <div class="note" style="margin-top:10px"><b>Abscess is the exception &mdash; do not deploy a
-      head for it.</b> An abscess is a collection under the surface. It is established by
-      fluctuance on palpation, by probing or by imaging, and it is not in the photograph at all.
-      A head trained on it will reach some accuracy by learning what travels <i>with</i> an
-      abscess in your images &mdash; swelling, erythema, the dressing, the ward &mdash; and will
-      present that as having seen the abscess. Train it if you want the number for the thesis;
-      do not press "Use this model in Assess". <b>Wet gangrene</b> sits between the two: it is
-      visible, but what separates it from dry eschar is moisture, swelling and odour, so treat a
-      head for it as weaker than its figures suggest and hold it to more cases, not fewer.</div>
+      <div class="note" style="margin-top:10px"><b>All three are learnable &mdash; what is
+      missing is labels, not pixels.</b> The colour rule cannot separate pus from slough or wet
+      gangrene from dry eschar, because both pairs share a hue. A trained head is not a colour
+      rule: the ImageNet embedding carries texture, gloss, margin and context, and purulent
+      discharge and moist swollen gangrene differ from fibrinous slough and dry eschar on
+      exactly those. Transfer learning is why this may take tens of labelled positives rather
+      than thousands &mdash; but it never takes zero, which is what step B is for.</div>
+
+      <div class="note" style="margin-top:10px"><b>Abscess is different in kind, not impossible.</b>
+      The collection is under the surface, so a head cannot see it; it predicts it from what
+      travels with it &mdash; swelling, erythema, induration, a pointing head. That is a
+      legitimate prompt to palpate and a legitimate thing to model, but it is a likelihood, not
+      a sighting, so the Assess row says <i>likely</i> where the other two say <i>present</i>.
+      Hold it to more cases than the other two, and check the confusion matrix against the ward
+      and camera the images came from before believing it generalises.</div>
     </details>
 
     <div class="row3">
@@ -1573,7 +1581,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v8.7</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v8.8</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -2957,10 +2965,16 @@ const cautiousInfection = () => {
 };
 
 /* ── findings heads ────────────────────────────────────────────────────────────────────────
-   Pus, abscess and wet gangrene have no detector in the shipped model and no colour signature
-   that separates them from what is already being measured: pus occupies the same yellow hue
-   window as slough, wet gangrene the same L<30 bucket as dry eschar, and an abscess is a
-   subsurface collection that a camera cannot see at all. So they are asked, not claimed.
+   Pus, abscess and wet gangrene have no detector in the shipped model, so they are asked
+   rather than claimed. That is a statement about LABELS, not about what is learnable, and the
+   two were conflated here once. The colour rule cannot separate them — pus sits in the same
+   yellow hue window as slough, wet gangrene in the same L<30 bucket as dry eschar — but a
+   learned head is not a colour rule. An ImageNet embedding carries texture, gloss, margin and
+   context, and on those purulent discharge and moist gangrene are genuinely distinguishable
+   from fibrinous slough and dry eschar. What is missing is labelled examples, which step B is
+   collecting now. Abscess stays different in kind: the collection is subsurface, so a head
+   predicts it from secondary signs rather than seeing it, and its row says "likely" where the
+   other two say "present".
 
    They do not have to stay that way. Step C already trains on them — target "feat:pus" builds
    a pus_present / pus_absent problem out of the step B ticks — and a head kept from such a run
@@ -3025,8 +3039,13 @@ function renderPublic(){
     const src = fp
       ? `${fp.name} · p ${fp.p.toFixed(2)}${fp.n ? ` · ${fp.n} case${fp.n === 1 ? '' : 's'}` : ''}`
       : 'your examination — not in the photograph';
-    const modelSays = fp ? (fp.p >= 0.5 ? 'present' : 'absent') : null;
-    return `<div class="sxr"><div class="sxk">${label}<em>${src}</em></div>
+    /* Abscess is predicted from swelling, erythema and induration, not seen, so its row does
+       not get to say "present" — the word would claim a sighting the model cannot make. */
+    const word = k === 'abscess' ? ['likely', 'unlikely'] : ['present', 'absent'];
+    const modelSays = fp ? (fp.p >= 0.5 ? word[0] : word[1]) : null;
+    /* Flagged and not yet answered: the detect-then-confirm loop, made visible. */
+    const awaiting = fp && fp.p >= 0.5 && ans === undefined;
+    return `<div class="sxr${awaiting ? ' awaiting' : ''}"><div class="sxk">${label}<em>${src}${awaiting ? ' · <b>confirm</b>' : ''}</em></div>
       <select class="tapsel" data-s="${k}">
         <option value=""${ans === undefined ? ' selected' : ''}>${modelSays ? '— model: ' + modelSays : '— not assessed'}</option>
         <option value="y"${ans === true  ? ' selected' : ''}>Present</option>

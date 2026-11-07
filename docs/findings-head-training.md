@@ -19,13 +19,27 @@ has to ask for.
 | **Abscess** | **Asked** |
 | **Wet gangrene** | **Asked** |
 
-The three it asks for have no detector, and no colour rule could give them one:
+The three it asks for have no detector **yet**. That is a statement about labels, not about
+what is learnable, and the two are easy to conflate.
+
+No *colour rule* can give them one:
 
 - **Pus** is yellow — the same hue window (55–105°) the rule already assigns to slough. A rule
   that called yellow "pus" would call every fibrinous wound bed pus.
-- **Wet gangrene** is dark — the same `L < 30` bucket as dry eschar. What separates wet from dry
-  is moisture, swelling and odour, none of which is colour.
-- **Abscess** is a collection *under* the surface. It is not in the photograph at all.
+- **Wet gangrene** is dark — the same `L < 30` bucket as dry eschar.
+
+But a trained head is not a colour rule. The ImageNet embedding carries texture, gloss, margin,
+shape and context, and on those the pairs genuinely differ: purulent discharge is opaque and
+glossy where slough is fibrinous and matt, and often pools or tracks from a sinus; moist
+gangrene is swollen, dusky and frequently bullous with surrounding erythema, where dry eschar is
+desiccated and sharply demarcated. **Both are learnable.** Transfer learning is why that may
+take tens of labelled positives rather than thousands — but it never takes zero, and supplying
+them is what step B is for.
+
+**Abscess is different in kind.** The collection is under the surface, so no model sees it; a
+head predicts it from what travels with it — swelling, erythema, induration, a pointing head.
+That is a legitimate thing to model and a useful prompt to palpate, but it is a likelihood
+rather than a sighting, and the app labels it accordingly.
 
 A *findings head* is a small classifier trained on your own graded images to answer one of those
 three. Train one, keep it, and that row stops asking and starts answering — with its probability
@@ -130,28 +144,51 @@ beside the model's call in Assess.
 
 ---
 
-## Two warnings
+## Two cautions
 
-### Do not deploy an abscess head
+### Abscess is a likelihood, not a sighting
 
-An abscess is a subsurface collection. It is established by fluctuance on palpation, by probing
-or by imaging — it is not in the photograph.
+An abscess is a subsurface collection, established at the bedside by fluctuance, by probing or
+by imaging. A head trained on it is not seeing the abscess; it is learning what accompanies one
+in your images — swelling, erythema, induration, the shape of the forefoot.
 
-A head trained on it **will** reach some accuracy, because it learns what travels *with* an
-abscess in your particular images: swelling, erythema, the dressing, the ward, the camera. It
-will then present that as having seen the abscess. The figure is real; the claim behind it is
-not.
+That is worth having. A prompt to palpate is clinically useful, and it is the honest framing.
+The Assess row for abscess therefore reads **likely / unlikely** where pus and wet gangrene read
+**present / absent**, so the word on screen matches what the model can support.
 
-Train it if you want the number for the thesis. **Do not press "Use this model in Assess".**
+Two things to do differently for it:
 
-### Treat wet gangrene as weaker than its figures suggest
+- Hold it to **more cases** than you would a pus head. Secondary-sign inference is more fragile
+  than direct appearance.
+- Before believing it generalises, ask what else those positives have in common — the same
+  ward, the same dressing, the same camera, the same photographer. A head can reach good
+  held-out accuracy by learning the ward. Grading images from more than one source is the
+  defence.
 
-It sits between the other two. It is genuinely visible, but what distinguishes it from dry
-eschar is moisture, swelling and odour, and only the first of those reaches the camera at all —
-weakly, through specular highlights that vary with the flash. Hold a wet gangrene head to *more*
-cases than you would a pus head, not fewer.
+### Wet gangrene needs more cases than pus
+
+It is genuinely visible, and a head can learn it. But what separates it from dry eschar is
+moisture, swelling and odour, and only the first two reach a camera — moisture weakly, through
+specular highlights that change with the flash and the dressing. Treat a wet gangrene head as
+weaker than its figures suggest and hold it to more cases, not fewer.
 
 ---
+
+## How the confirmation loop works
+
+Once a head is kept, the row does not answer silently. It flags and waits:
+
+```
+Pus   [Findings head · pus · p 0.78 · 54 cases · confirm]   — model: present
+```
+
+The row is highlighted while the model has flagged something and you have not yet answered. The
+dropdown's default shows the model's call; choosing **Present** or **Absent** records yours, and
+yours is what the verdict and the case log use. The model never overwrites a clinician's answer
+and never silently decides.
+
+This is the intended division of labour: the model's job is to make sure the finding is *looked
+for*, and yours is to settle it.
 
 ## What this does not change
 
@@ -176,7 +213,7 @@ A findings head fills in one row. It does not touch:
 - [ ] Case count noted — it appears in Assess beside the model's call
 - [ ] "Use this model in Assess" pressed
 - [ ] Assess tab checked on a real image
-- [ ] Abscess head **not** deployed
+- [ ] Abscess head, if deployed, held to more cases and checked for ward/camera confounding
 
 ---
 

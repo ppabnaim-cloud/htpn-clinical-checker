@@ -65,11 +65,17 @@ above `renderPublic()`:
    each row carries `colour rule · unvalidated` and the tissue line says `by colour,
    unvalidated`.
 
-   Pus, abscess and wet gangrene have no detector and no colour signature that would give them
-   one: pus occupies the same yellow hue window as slough, wet gangrene the same `L < 30`
-   bucket as dry eschar, and an abscess is a subsurface collection a camera cannot see at all.
-   They are asked as a three-way dropdown — not assessed, present, absent — so that *looked
-   and found nothing* is recordable, which a one-way Confirm button could not express.
+   Pus, abscess and wet gangrene have no detector, so they are asked as a three-way dropdown
+   — not assessed, present, absent — which also makes *looked and found nothing* recordable,
+   something a one-way Confirm button could not express.
+
+   That is a statement about labels, not about what is learnable. The colour rule cannot
+   separate them: pus occupies the same yellow hue window as slough, and wet gangrene the same
+   `L < 30` bucket as dry eschar. But a learned head is not a colour rule — an ImageNet
+   embedding carries texture, gloss, margin and context, and purulent discharge and moist
+   swollen gangrene differ from fibrinous slough and dry eschar on exactly those. Abscess is
+   different in kind: the collection is subsurface, so a head predicts it from secondary signs
+   rather than seeing it, and its row says *likely* rather than *present*.
 
    **They can be trained.** Step C already takes `feat:pus` and the rest as targets, building a
    `pus_present` / `pus_absent` problem out of the step B ticks. Keep a head from such a run

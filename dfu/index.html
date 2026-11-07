@@ -296,6 +296,11 @@ body.detail-full .pub-only{display:none !important}
 .sxr>b.y{color:#B3182F}.sxr>b.n{color:var(--muted)}.sxr>b.u{color:var(--faint);font-weight:500}
 .sxr select.tapsel{font-family:var(--sans);font-size:13px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);max-width:46%}
 .tis span{color:var(--muted)}
+.layers{display:flex;flex-wrap:wrap;gap:5px;width:100%;margin-top:7px}
+.lchip{font-family:var(--sans);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer}
+.lchip:hover{border-color:var(--teal-dim);color:var(--teal-dim)}
+.lchip.on{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:600}
+.lchip.none{opacity:.45}
 .reframe{font-size:13px;line-height:1.55;color:var(--text);background:#FFF8EC;border-left:3px solid var(--amber);padding:10px 12px;border-radius:0 9px 9px 0;margin:0 0 11px}
 .tap{border:1px solid var(--line);background:var(--card);color:var(--muted);font-family:var(--sans);font-size:12.5px;padding:3px 11px;border-radius:999px;cursor:pointer}
 .tap:hover{border-color:var(--teal-dim);color:var(--teal-dim)}
@@ -843,6 +848,9 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
     <div class="cam-controls">
       <div class="seg" id="camToggle"><button data-v="0">Photo</button><button data-v="1" class="on">Wound outline</button><button data-v="3">Tissue</button><button data-v="2" class="tech">Grad-CAM</button></div>
       <select id="camTarget" class="hidden"></select>
+      <!-- A layer picker, not a second view toggle: it appears only while Tissue is the view,
+           and changes what that view is asking, which is the weather-map idea. -->
+      <div class="layers hidden" id="layerPick"></div>
       <!-- An unlabelled opacity slider asked a clinician to form an opinion about a number that
            decides nothing. What they want is to see what is underneath, which is one tap. The
            slider stays for the study team, who use it to make figures. -->
@@ -1591,7 +1599,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v9.0</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v9.1</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1636,6 +1644,18 @@ let currentImg = null, currentName = '', lastPred = null, lastActs = null, schem
    cmpSev is set by the study-only comparison, giving cautiousInfection() a second number to
    take the worse of; a public user never runs it, so it is normally null. */
 let pubSigns = {}, cmpSev = null, featPred = {};
+/* The tissue layers. Declared here, not beside paintTissueLayer, because setCam() reads
+   curLayer and setCam runs from the image-load path — a const further down the file would be
+   in its temporal dead zone the first time an image is opened. That exact bug has cost this
+   file two silent failures already. */
+const LAYERS = [
+  ['all',    'All tissue'],
+  ['gran',   'Granulation'],
+  ['slough', 'Slough'],
+  ['necro',  'Necrosis'],
+  ['ery',    'Peri-wound redness']
+];
+let curLayer = 'all';
 let segModel = null, segMetrics = null, lastSeg = null, lastBox = null;   // lastBox = the crop actually classified
 let savedThisImage = false;      // has the photograph on screen been written to the case log yet
 let lastTissue = null;                                                     // wound-bed colour composition
@@ -2369,7 +2389,11 @@ function setCam(v){
   const a = peeking ? 0 : $('camAlpha').value / 100;
   $('segCanvas').style.opacity = (v === 1 && !peeking) ? 1 : 0;
   $('camCanvas').style.opacity = v === 2 ? a : 0;
-  $('tissueCanvas').style.opacity = v === 3 ? a : 0;
+  /* The composite is an overlay and takes the opacity slider. A single layer veils what it
+     is not, so it carries its own alpha and dimming it again only makes it muddy. */
+  $('tissueCanvas').style.opacity = v !== 3 ? 0 : (peeking ? 0 : (curLayer === 'all' ? a : 1));
+  if (v === 3) paintTissueLayer(curLayer);
+  $('layerPick').classList.toggle('hidden', v !== 3);
   $('camTarget').classList.toggle('hidden', v !== 2);
   $('camLegend').classList.toggle('hidden', v !== 2);
   $('tissueLegend').classList.toggle('hidden', v !== 3);
@@ -2394,9 +2418,25 @@ function setCam(v){
   ['pointerup','pointercancel','pointerleave'].forEach(ev =>
     vw.addEventListener(ev, () => set(false)));
 })();
+function renderLayerPick(){
+  const el = $('layerPick'); if (!el) return;
+  el.innerHTML = LAYERS.map(([id, label]) => {
+    /* A layer with nothing in it is offered but says so, rather than looking like a layer the
+       app failed to draw. */
+    const f = lastTissue && lastTissue.frac ? lastTissue.frac[id] : null;
+    const pct = (id === 'all' || id === 'ery' || f === null || f === undefined)
+      ? '' : ` ${Math.round(f*100)}%`;
+    const empty = id !== 'all' && id !== 'ery' && f !== null && f !== undefined && f < 0.005;
+    return `<button class="lchip${curLayer === id ? ' on' : ''}${empty ? ' none' : ''}" data-l="${id}">${label}${pct}</button>`;
+  }).join('');
+  el.querySelectorAll('.lchip').forEach(b => b.onclick = () => {
+    curLayer = b.dataset.l; renderLayerPick(); setCam(3);
+  });
+}
 $('camToggle').querySelectorAll('button').forEach(b => b.onclick = () => setCam(+b.dataset.v));
 $('camAlpha').oninput = () => { const v = +$('camToggle').querySelector('.on').dataset.v, a = $('camAlpha').value/100;
-  if (v === 2) $('camCanvas').style.opacity = a; if (v === 3) $('tissueCanvas').style.opacity = a; };
+  if (v === 2) $('camCanvas').style.opacity = a;
+  if (v === 3 && curLayer === 'all') $('tissueCanvas').style.opacity = a; };
 $('camTarget').onchange = async () => { camManual = true; await drawGradCam(); setCam(2); };
 
 /* ═══════════════════════════ findings → classification, by rule ═══════════════════════════
@@ -3442,14 +3482,14 @@ function dilate(mask, N, r){
   return out;
 }
 
+/* Measures only. Drawing moved to paintTissueLayer(), so that the same measurement can be
+   shown as any one of several layers without being recomputed. */
 function tissueMap(seg){
-  const ctx = $('tissueCanvas').getContext('2d');
-  ctx.clearRect(0, 0, VIEW, VIEW);
+  $('tissueCanvas').getContext('2d').clearRect(0, 0, VIEW, VIEW);
   if (!seg || !seg.found) return null;
 
   const N = SEG, k = VIEW / N, m = seg.mask;
   const src = $('imgCanvas').getContext('2d').getImageData(0, 0, VIEW, VIEW).data;
-  const out = ctx.createImageData(VIEW, VIEW);
 
   // ERY: two annuli. ring = skin immediately around the wound, ref = the patient's own skin
   // further out, used as the baseline. Redness is then a difference in a*, not an absolute value,
@@ -3460,6 +3500,8 @@ function tissueMap(seg){
 
   const count = {}; TISSUE.forEach(t => count[t.id] = 0);
   let total = 0;
+  const grid = new Int8Array(N*N).fill(-1);
+  const ringVal = new Float32Array(N*N).fill(NaN);
 
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
     const i = y*N + x;
@@ -3470,35 +3512,91 @@ function tissueMap(seg){
     const px = (((y*k + k/2) | 0) * VIEW + ((x*k + k/2) | 0)) * 4;
     const [L, A, B] = srgbToLab(src[px], src[px+1], src[px+2]);
 
-    if (inRing){ if (skinLike(L, A, B)){ ringA += A; ringN++; } continue; }
+    if (inRing){ if (skinLike(L, A, B)){ ringA += A; ringN++; ringVal[i] = A; } continue; }
     if (inRef){  if (skinLike(L, A, B)){ refA  += A; refN++;  } continue; }
 
     const id = tissueOf(L, A, B);
     count[id]++; total++;
-    const [cr, cg, cb] = TISSUE.find(t => t.id === id).rgb;
+    grid[i] = TISSUE.findIndex(t => t.id === id);
+  }
+  /* The class of every cell and the redness of every peri-wound cell are kept rather than
+     painted straight to the canvas, so that any one of them can be drawn on its own later. A
+     single composite was all this function could produce before, which is why there was one
+     Tissue overlay and no way to ask "where is the slough". */
+  const dA = (ringN >= 50 && refN >= 50) ? (ringA/ringN - refA/refN) : null;
+  const refMean = refN ? refA/refN : null;
+  return { frac: TISSUE.reduce((f, t) => (f[t.id] = total ? count[t.id]/total : 0, f), {}),
+           total, dA, ringN, refN, sparse: total < 150,
+           grid, ringVal, refMean, N };
+}
+
+/* ── the layers ────────────────────────────────────────────────────────────────────────────
+   One picture, several things to ask of it, one at a time: the weather-map idea, which is the
+   right one here because a composite of five tissue classes is a diagram and a single class
+   over the photograph is an answer to a question.
+
+   Every layer drawn here comes from the SAME colour rule the rows do, so the layers inherit
+   its weakness exactly — see tissueOf(). They are shown because being able to see WHERE the
+   rule thinks the slough is, is the fastest way to catch it being wrong, which a percentage
+   never was. Phase 2 replaces the rule with a trained segmenter; the layer switcher does not
+   change when it does. */
+/* LAYERS and curLayer are declared with the rest of the view state, well above setCam. */
+
+function paintTissueLayer(layer){
+  const t = lastTissue, ctx = $('tissueCanvas').getContext('2d');
+  ctx.clearRect(0, 0, VIEW, VIEW);
+  if (!t || !t.grid) return;
+  const N = t.N, k = VIEW / N;
+  const out = ctx.createImageData(VIEW, VIEW);
+  const put = (x, y, r, g, bl, al) => {
     for (let dy = 0; dy < k; dy++) for (let dx = 0; dx < k; dx++){
       const o = (((y*k + dy) | 0) * VIEW + ((x*k + dx) | 0)) * 4;
-      out.data[o] = cr; out.data[o+1] = cg; out.data[o+2] = cb; out.data[o+3] = 200;
+      out.data[o] = r; out.data[o+1] = g; out.data[o+2] = bl; out.data[o+3] = al;
     }
+  };
+
+  /* "All tissue" is a map, so its classes are drawn in their legend colours over the
+     photograph. A single layer is a question — where is the slough — and the first version
+     answered it by tinting slough-coloured pixels slough colour, which is invisible. So a
+     single layer inverts the treatment: everything that is NOT the layer is veiled, and the
+     layer is what you can still see. That is what makes a weather map readable too. */
+  if (layer === 'all'){
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
+      const i = y*N + x, gi = t.grid[i];
+      if (gi >= 0){ const c = TISSUE[gi]; put(x, y, c.rgb[0], c.rgb[1], c.rgb[2], 200); }
+      else if (!isNaN(t.ringVal[i])) put(x, y, ERY_RGB[0], ERY_RGB[1], ERY_RGB[2], 90);
+    }
+    ctx.putImageData(out, 0, 0);
+    return;
   }
 
-  // paint the peri-wound band faintly so the erythema figure has something to point at
+  const VEIL = [8, 17, 28, 200];
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
-    const i = y*N + x; if (m[i] || !d1[i]) continue;
-    for (let dy = 0; dy < k; dy++) for (let dx = 0; dx < k; dx++){
-      const o = (((y*k + dy) | 0) * VIEW + ((x*k + dx) | 0)) * 4;
-      out.data[o] = ERY_RGB[0]; out.data[o+1] = ERY_RGB[1]; out.data[o+2] = ERY_RGB[2]; out.data[o+3] = 90;
+    const i = y*N + x;
+    let hit = false, tint = null;
+    if (layer === 'ery'){
+      const v = t.ringVal[i];
+      if (!isNaN(v)){
+        /* Each peri-wound cell against the patient's own skin further out, never against an
+           absolute red, so the layer means the same thing on any skin tone. */
+        const d = t.refMean === null ? 0 : v - t.refMean;
+        if (d > 0){ hit = true; tint = [ERY_RGB[0], ERY_RGB[1], ERY_RGB[2], Math.min(170, 30 + d * 16)]; }
+      }
+    } else {
+      const gi = t.grid[i];
+      if (gi >= 0 && TISSUE[gi].id === layer){
+        hit = true;
+        const c = TISSUE[gi]; tint = [c.rgb[0], c.rgb[1], c.rgb[2], 70];
+      }
     }
+    if (hit) put(x, y, tint[0], tint[1], tint[2], tint[3]);
+    else     put(x, y, VEIL[0], VEIL[1], VEIL[2], VEIL[3]);
   }
   ctx.putImageData(out, 0, 0);
-
-  const frac = {}; TISSUE.forEach(t => frac[t.id] = total ? count[t.id] / total : 0);
-  // 50 cells is about 1 % of the mask at this resolution: below that an average is not worth printing
-  const dA = (ringN >= 50 && refN >= 50) ? (ringA/ringN - refA/refN) : null;
-  return { frac, total, dA, ringN, refN, sparse: total < 150 };
 }
 
 function renderTissue(t){
+  renderLayerPick();
   const el = $('tissueLegend');
   if (!t){ el.innerHTML = '<span>No wound outlined, so there is no wound bed to describe.</span>'; return; }
   const parts = TISSUE.filter(x => t.frac[x.id] >= 0.005).map(x =>

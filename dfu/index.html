@@ -288,9 +288,12 @@ body.detail-full .pub-only{display:none !important}
 .sx{border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-bottom:10px}
 .sxr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 13px;font-size:14px;border-bottom:1px solid var(--line)}
 .sxr:last-child{border-bottom:0}
-.sxr>span{color:var(--text)}
+.sxk{color:var(--text)}
+.sxk em{display:block;font-style:normal;font-size:11px;color:var(--muted);margin-top:2px;line-height:1.35}
 .sxr>b{font-size:13px;font-weight:600}
 .sxr>b.y{color:#B3182F}.sxr>b.n{color:var(--muted)}.sxr>b.u{color:var(--faint);font-weight:500}
+.sxr select.tapsel{font-family:var(--sans);font-size:13px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);max-width:46%}
+.tis span{color:var(--muted)}
 .tap{border:1px solid var(--line);background:var(--card);color:var(--muted);font-family:var(--sans);font-size:12.5px;padding:3px 11px;border-radius:999px;cursor:pointer}
 .tap:hover{border-color:var(--teal-dim);color:var(--teal-dim)}
 .tap.on{background:#B3182F;border-color:#B3182F;color:#fff;font-weight:600}
@@ -1428,7 +1431,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v8.4</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v8.5</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1472,7 +1475,7 @@ let currentImg = null, currentName = '', lastPred = null, lastActs = null, schem
    that nothing a family member taps can move a Wagner or Texas grade. Both reset per image.
    cmpSev is set by the study-only comparison, giving cautiousInfection() a second number to
    take the worse of; a public user never runs it, so it is normally null. */
-let pubSigns = {}, cmpSev = null;
+let pubSigns = {}, cmpSev = null, featPred = {};
 let segModel = null, segMetrics = null, lastSeg = null, lastBox = null;   // lastBox = the crop actually classified
 let savedThisImage = false;      // has the photograph on screen been written to the case log yet
 let lastTissue = null;                                                     // wound-bed colour composition
@@ -1706,7 +1709,7 @@ loadModel().catch(e => {
 /* ═══════════════════════════ image intake ═══════════════════════════ */
 function useImage(img, name){
   currentImg = img; currentName = name; lastPred = null; camManual = false; savedThisImage = false;
-  pubSigns = {}; cmpSev = null;
+  pubSigns = {}; cmpSev = null; featPred = {};
   $('imgName').textContent = name;
   const c = $('imgCanvas'), ctx = c.getContext('2d');
   /* Letterbox, never centre-crop. A centre crop of a 4:3 camera frame discards a quarter of its
@@ -2004,6 +2007,9 @@ async function runInference(reuseSeg){
   }
   showResults();
   await drawGradCam();
+  /* After the crop exists, so the heads see the same input the classifier did. */
+  await runFeatHeads();
+  renderPublic(); renderAbx();
 }
 function showResults(){
   const p = lastPred;
@@ -2801,35 +2807,94 @@ const cautiousInfection = () => {
   return e.length ? Math.max(...e.map(r => r[1])) : null;
 };
 
+/* ── findings heads ────────────────────────────────────────────────────────────────────────
+   Pus, abscess and wet gangrene have no detector in the shipped model and no colour signature
+   that separates them from what is already being measured: pus occupies the same yellow hue
+   window as slough, wet gangrene the same L<30 bucket as dry eschar, and an abscess is a
+   subsurface collection that a camera cannot see at all. So they are asked, not claimed.
+
+   They do not have to stay that way. Step C already trains on them — target "feat:pus" builds
+   a pus_present / pus_absent problem out of the step B ticks — and a head kept from such a run
+   is picked up here and offered as the default answer to that row. It never overwrites the
+   examiner: the row stays a dropdown, the model's call sits beside it with its probability,
+   and an answer the clinician gives wins. A model trained on a few dozen local images is a
+   prompt to look, not a finding.                                                             */
+const FEAT_HEAD = /^([a-z_]+)_(absent|present)$/;
+function featHeadFor(feat){
+  return localHeads().find(e => {
+    const cs = e.classes || [];
+    if (cs.length !== 2) return false;
+    return cs.every(c => { const m = FEAT_HEAD.exec(c); return m && m[1] === feat; });
+  }) || null;
+}
+async function runFeatHeads(){
+  featPred = {};
+  const wanted = PUB_TAP.map(t => t[0]).map(f => [f, featHeadFor(f)]).filter(r => r[1]);
+  if (!wanted.length || !currentImg) return;          // nothing kept: costs nothing
+  const base = lastBox ? cropCanvas(lastBox) : $('imgCanvas');
+  for (const [feat, entry] of wanted){
+    try {
+      const x = preprocess(base, entry.inputRange);
+      const acts = entry.conv.predict(x);
+      const o = entry.tail.predict(acts);
+      const probs = Array.from(await (Array.isArray(o) ? o[0] : o).data());
+      (Array.isArray(o) ? o : [o]).forEach(t => t.dispose()); acts.dispose(); x.dispose();
+      const i = entry.classes.findIndex(c => /_present$/.test(c));
+      if (i >= 0) featPred[feat] = { p: probs[i], name: entry.name,
+                                     n: (entry.metrics && entry.metrics.n_cases) || null };
+    } catch(e){ /* a head that will not run is simply not offered */ }
+  }
+}
 function renderPublic(){
   const el = $('pubResult'); if (!el) return;
   if (!currentImg){ el.innerHTML = ''; return; }
   const t = lastTissue && !lastTissue.sparse ? lastTissue : null;
   const pc = x => Math.round(x * 100);
-  const row = (label, state, cls) =>
-    `<div class="sxr"><span>${label}</span><b class="${cls}">${state}</b></div>`;
+
+  /* Every row says where its answer came from. The three colour-rule rows were being printed
+     as flat Present / Not seen, which gave a six-line threshold on Lab lightness and hue more
+     authority than the rows the examiner fills in himself — and it is the weaker of the two.
+     It mislabels a dark wound bed as necrosis wholesale, because below L 30 hue carries no
+     information and everything falls into one bucket. Saying so costs one line per row. */
+  const row = (label, src, value, cls) =>
+    `<div class="sxr"><div class="sxk">${label}<em>${src}</em></div><b class="${cls}">${value}</b></div>`;
 
   const seen = [];
-  if (t){
-    seen.push(row('Slough',   pc(t.frac.slough) >= 5 ? 'Present' : 'Not seen', pc(t.frac.slough) >= 5 ? 'y' : 'n'));
-    seen.push(row('Necrosis', pc(t.frac.necro)  >= 5 ? 'Present' : 'Not seen', pc(t.frac.necro)  >= 5 ? 'y' : 'n'));
-  } else {
-    seen.push(row('Slough',   'Not assessed', 'u'));
-    seen.push(row('Necrosis', 'Not assessed', 'u'));
-  }
+  const colour = (label, present) => row(label, 'colour rule · unvalidated',
+    present === null ? 'Not assessed' : (present ? 'Present' : 'Not seen'),
+    present === null ? 'u' : (present ? 'y' : 'n'));
+  seen.push(colour('Slough',   t ? pc(t.frac.slough) >= 5 : null));
+  seen.push(colour('Necrosis', t ? pc(t.frac.necro)  >= 5 : null));
   const dA = t && t.dA !== null ? t.dA : null;
-  seen.push(row('Peri-wound erythema', dA === null ? 'Not assessed' : (dA >= 3 ? 'Present' : 'Not seen'),
-                dA === null ? 'u' : (dA >= 3 ? 'y' : 'n')));
+  seen.push(colour('Peri-wound erythema', dA === null ? null : dA >= 3));
 
-  const taps = PUB_TAP.map(([k, label]) =>
-    `<div class="sxr"><span>${label}</span>
-       <button class="tap${pubSigns[k] ? ' on' : ''}" data-s="${k}">${pubSigns[k] ? 'Present' : 'Confirm'}</button></div>`).join('');
+  /* The three the camera cannot settle. A dropdown rather than a one-way button: "Confirm"
+     could only ever add a finding, so there was no way to record having looked and found
+     nothing, and the row could not tell "not asked" from "asked and absent". */
+  const taps = PUB_TAP.map(([k, label]) => {
+    const fp = featPred[k], ans = pubSigns[k];
+    const src = fp
+      ? `${fp.name} · p ${fp.p.toFixed(2)}${fp.n ? ` · ${fp.n} case${fp.n === 1 ? '' : 's'}` : ''}`
+      : 'your examination — not in the photograph';
+    const modelSays = fp ? (fp.p >= 0.5 ? 'present' : 'absent') : null;
+    return `<div class="sxr"><div class="sxk">${label}<em>${src}</em></div>
+      <select class="tapsel" data-s="${k}">
+        <option value=""${ans === undefined ? ' selected' : ''}>${modelSays ? '— model: ' + modelSays : '— not assessed'}</option>
+        <option value="y"${ans === true  ? ' selected' : ''}>Present</option>
+        <option value="n"${ans === false ? ' selected' : ''}>Absent</option>
+      </select></div>`;
+  }).join('');
 
-  const tiss = t ? `<p class="tis">Granulation ${pc(t.frac.gran)}% &middot; Slough ${pc(t.frac.slough)}% &middot; Necrosis ${pc(t.frac.necro)}%</p>` : '';
+  const tiss = t ? `<p class="tis">Granulation ${pc(t.frac.gran)}% &middot; Slough ${pc(t.frac.slough)}% &middot; Necrosis ${pc(t.frac.necro)}% &middot; <span>by colour, unvalidated</span></p>` : '';
 
   const est = infEstimates();
   const mp = cautiousInfection();
-  const confirmed = PUB_TAP.filter(([k]) => pubSigns[k]).map(([, l]) => l);
+  /* An answer the clinician has given wins over the head; where there is no answer the head
+     stands in. Only a positive escalates — "absent" does not pull the verdict down, because
+     the verdict is the severity model's, not a tally of these three. */
+  const confirmed = PUB_TAP.filter(([k]) =>
+    pubSigns[k] === true || (pubSigns[k] === undefined && featPred[k] && featPred[k].p >= 0.5))
+    .map(r => r[1]);
 
   /* Three states, not two. A model that declined to classify has not said "no infection", and
      rendering an abstention as a negative is the one error here that costs a limb rather than
@@ -2842,7 +2907,7 @@ function renderPublic(){
   const models = est.length
     ? est.map(r => `${r[0]} ${r[1].toFixed(2)}`).join(' &middot; ')
     : (DISEASE === 'pi' ? 'No pressure injury model has been trained yet' : 'The model declined to classify this image');
-  const basis = confirmed.length ? confirmed.join(', ') + ' confirmed &middot; ' + models : models;
+  const basis = confirmed.length ? confirmed.join(', ') + ' &middot; ' + models : models;
 
   el.innerHTML = `<div class="sx">${seen.join('')}${taps}</div>
     ${tiss}
@@ -2850,9 +2915,11 @@ function renderPublic(){
       <b>${infected ? 'LIKELY INFECTION' : unknown ? 'NOT DETERMINED' : 'NO SIGNS OF INFECTION'}</b>
       <span>${basis}${infected ? ' &middot; clinical review today' : ''}</span>
     </div>`;
-  el.querySelectorAll('.tap').forEach(btn => btn.onclick = () => {
-    const k = btn.dataset.s;
-    if (pubSigns[k]) delete pubSigns[k]; else pubSigns[k] = true;
+  el.querySelectorAll('select.tapsel').forEach(sel => sel.onchange = () => {
+    const k = sel.dataset.s;
+    if (sel.value === 'y') pubSigns[k] = true;
+    else if (sel.value === 'n') pubSigns[k] = false;
+    else delete pubSigns[k];
     renderPublic(); renderAbx();
   });
 }
@@ -5636,6 +5703,9 @@ function describeTarget(){
   const detail = rows.length ? rows.map(([k, v]) => `${k} (${v.length})`).join(' · ') : 'nothing yet';
   let note = t.startsWith('feat:')
     ? `Training <b>${t.slice(5).replace(/_/g, ' ')}</b> as present against absent. Only images you have ticked something on count as absent; an untouched image is left out entirely, because silence is not a negative. `
+      + (['pus','abscess','wet_gangrene'].includes(t.slice(5))
+         ? `Keep a model from this run and the <b>${t.slice(5).replace(/_/g, ' ')}</b> row in Assess stops asking and starts answering \u2014 it is one of the three the camera cannot settle on its own. The examiner can still overrule it. `
+         : '')
     : `Training the <b>${t === 'wagner' ? 'Wagner grade' : 'NPIAP stage'}</b> as one class per grade. `;
   note += `<br><b>${n} image${n === 1 ? '' : 's'}</b> usable for this label: ${detail}.`;
   if (rows.length < 2) note += ' <br>At least two classes with four images each are needed before training can start.';

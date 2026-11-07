@@ -57,10 +57,26 @@ reader is a prescriber. The research apparatus does not — it is noise at the b
 Three points about it are easy to undo by accident, so they are also commented in the source
 above `renderPublic()`:
 
-1. **Three of the six signs have no detector.** Slough, necrosis and peri-wound erythema come
-   from the colour rules. Pus, abscess and wet gangrene are not labelled in any dataset the
-   models have seen, so they are one-tap confirmations, not claims. Rendering them as findings
-   the app had made would be inventing output.
+1. **Every row names its source, because the sources are not equally good.** Slough, necrosis
+   and peri-wound erythema come from `tissueOf()` — a six-line threshold on Lab lightness,
+   chroma and hue, not a model. Below L 30 hue carries no information, so a dark wound bed is
+   called necrosis wholesale. Printing that as a flat *Present / Not seen* gave it more
+   authority than the rows the examiner fills in himself, and it is the weaker of the two, so
+   each row carries `colour rule · unvalidated` and the tissue line says `by colour,
+   unvalidated`.
+
+   Pus, abscess and wet gangrene have no detector and no colour signature that would give them
+   one: pus occupies the same yellow hue window as slough, wet gangrene the same `L < 30`
+   bucket as dry eschar, and an abscess is a subsurface collection a camera cannot see at all.
+   They are asked as a three-way dropdown — not assessed, present, absent — so that *looked
+   and found nothing* is recordable, which a one-way Confirm button could not express.
+
+   **They can be trained.** Step C already takes `feat:pus` and the rest as targets, building a
+   `pus_present` / `pus_absent` problem out of the step B ticks. Keep a head from such a run
+   and `runFeatHeads()` picks it up: that row then shows the model's call, its probability and
+   the case count it learned from, as the dropdown's default. An answer the examiner gives
+   always wins over it — a head trained on a few dozen local images is a prompt to look, not a
+   finding.
 2. **The verdict is the models', not a tally of the six signs.** Slough is present in nearly
    every chronic ulcer and is not itself a sign of infection, so letting the findings list
    drive the verdict would return "infected" for almost every photograph and put an antibiotic

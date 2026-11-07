@@ -12,7 +12,7 @@ BANNED = ['Dice', 'of frame', 'of the frame', 'Share of the frame', 'onfidence',
           'What the classifier actually saw', 'resized to 224', 'out_relu', 'MobileNet',
           'occlusion', 'held-out', 'Heatmap explains', 'How to read this', 'What this shows',
           'AUC', 'weak labels', 'P = ', 'set a scale', 'px', 'a*', 'ms on',
-          'Classification scheme', 'colour rule', 'not validated', 'Compare',
+          'Classification scheme', 'Compare',
           'Longest dimension', 'Segmentation confidence']
 
 # What the Assess tab must carry, in pipeline order. A leak test only catches what creeps in;
@@ -21,7 +21,11 @@ MUST = [('the signs-of-infection list', ['Peri-wound erythema']),
         ('the tissue composition',      ['Granulation']),
         ('an infection verdict',        ['LIKELY INFECTION', 'NO SIGNS OF INFECTION', 'NOT DETERMINED']),
         ('the antibiotic panel',        ['Antibiotics']),
-        ('the grading',                 ['Meggitt', 'NPIAP'])]
+        ('the grading',                 ['Meggitt', 'NPIAP']),
+        # the colour rule is a six-line Lab threshold, not a model. Printing its output as a
+        # flat Present / Not seen gave it more authority than the rows the examiner fills in,
+        # and it is the weaker of the two. Every row names its source.
+        ('provenance on the colour-rule rows', ['colour rule'])]
 
 
 async def main():

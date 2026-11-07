@@ -10,14 +10,14 @@ Deep Learning Healthcare Project, Hospital Tengku Permaisuri Norashikin
 The Assess tab lists six signs of infection. Three of them it works out for itself; three it
 has to ask for.
 
-| Sign | Where the answer comes from |
-|---|---|
-| Slough | Colour rule — unvalidated |
-| Necrosis | Colour rule — unvalidated |
-| Peri-wound erythema | Colour rule — unvalidated |
-| **Pus** | **Asked** |
-| **Abscess** | **Asked** |
-| **Wet gangrene** | **Asked** |
+| Sign | Today | With a head trained |
+|---|---|---|
+| Slough | Colour rule — unvalidated | *unchanged* |
+| Necrosis | Colour rule — unvalidated | *unchanged* |
+| Peri-wound erythema | Colour rule — unvalidated | *unchanged* |
+| **Pus** | Asked | Model flags it, you confirm — *present / absent* |
+| **Wet gangrene** | Asked | Model flags it, you confirm — *present / absent* |
+| **Abscess** | Asked | Model flags it, you confirm — *likely / unlikely* |
 
 The three it asks for have no detector **yet**. That is a statement about labels, not about
 what is learnable, and the two are easy to conflate.
@@ -104,14 +104,11 @@ See *When to believe it* below. This is the step that matters.
 ### 5. Press "Use this model in Assess"
 
 **Without this the model is lost on reload.** A completed run that is never kept leaves nothing
-behind. Once kept, open the Assess tab and load an image: the matching row now reads
+behind.
 
-```
-Pus    [Findings head · pus · p 0.64 · 37 cases]    — model: present
-```
-
-The dropdown defaults to the model's call. Choosing *Present* or *Absent* yourself overrides it,
-and your answer is what the verdict uses.
+Once kept, open the Assess tab and load an image: the matching row stops asking and starts
+flagging. See *How the confirmation loop works* below for what that looks like and what it does
+not do.
 
 ---
 
@@ -187,8 +184,14 @@ dropdown's default shows the model's call; choosing **Present** or **Absent** re
 yours is what the verdict and the case log use. The model never overwrites a clinician's answer
 and never silently decides.
 
+For abscess the words change but the loop does not: the row offers **likely / unlikely**, so a
+confirmation there means *I palpated and there is a collection*, not *the model was right about
+the picture*.
+
 This is the intended division of labour: the model's job is to make sure the finding is *looked
-for*, and yours is to settle it.
+for*; yours is to settle it.
+
+---
 
 ## What this does not change
 
@@ -212,7 +215,8 @@ A findings head fills in one row. It does not touch:
 - [ ] Recall on *present* checked in the per-class table
 - [ ] Case count noted — it appears in Assess beside the model's call
 - [ ] "Use this model in Assess" pressed
-- [ ] Assess tab checked on a real image
+- [ ] Assess tab checked on a real image — the row flags and waits rather than deciding
+- [ ] Flagged rows confirmed or corrected, not left on the model's default
 - [ ] Abscess head, if deployed, held to more cases and checked for ward/camera confounding
 
 ---

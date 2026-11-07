@@ -302,6 +302,7 @@ body.detail-full .pub-only{display:none !important}
 ol.guide{margin:0;padding-left:20px}
 ol.guide li{font-size:13px;line-height:1.6;margin-bottom:7px;color:var(--text)}
 ol.guide b{color:var(--navy)}
+.mono2{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--cloud);border-radius:7px;padding:7px 9px;margin:6px 0}
 .qgroup{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:16px 0 7px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;font-size:11px}
 .qgroup:first-child{margin-top:4px}
 .qgroup span{font-family:var(--mono);font-size:10.5px;font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0}
@@ -1290,9 +1291,10 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
          are written where the run is started rather than in a document nobody opens. -->
     <details class="labmore" id="featGuide">
       <summary>Training a findings head &mdash; pus, abscess, wet gangrene</summary>
-      <p class="small" style="margin:6px 0 10px">These three are the only signs the Assess tab
-      cannot settle from the photograph, so it asks for them. Train a head on one and that row
-      starts answering instead of asking. The examiner can still overrule it.</p>
+      <p class="small" style="margin:6px 0 10px">These three have no detector <b>yet</b>, so the
+      Assess tab asks for them. That is a shortage of labels, not of pixels &mdash; see the note
+      at the foot of this panel. Train a head on one and that row stops asking and starts
+      flagging, for you to confirm or correct.</p>
 
       <ol class="guide">
         <li><b>Grade enough images in step B.</b> Tick <i>Pus</i>, <i>Abscess</i> or <i>Wet
@@ -1307,9 +1309,16 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
           right starting point. The 20 % held-out split is taken <b>by case</b>, so serial
           photographs of one ulcer cannot sit on both sides of it.</li>
         <li><b>Read the result before keeping it.</b> See the thresholds below.</li>
-        <li><b>Press "Use this model in Assess".</b> Without this the model is lost on reload.
-          The matching row in Assess then shows the model's call, its probability and the number
-          of cases it learned from.</li>
+        <li><b>Press "Use this model in Assess".</b> Without this the model is lost on reload.</li>
+        <li><b>The row then flags, and waits for you.</b> It is highlighted while the model has
+          flagged something you have not yet answered, and its line ends <i>&middot; confirm</i>:
+          <span class="mono2">Pus &nbsp;[Findings head &middot; pus &middot; p 0.78 &middot; 54
+          cases &middot; confirm] &nbsp;&mdash; model: present</span>
+          Choosing <i>Present</i> or <i>Absent</i> records your answer, clears the highlight, and
+          is what the verdict and the case log use. The model never overwrites you and never
+          decides silently. For abscess the words are <i>likely</i> and <i>unlikely</i>, so a
+          confirmation there means <i>I palpated and there is a collection</i> &mdash; not
+          <i>the model read the picture correctly</i>.</li>
       </ol>
 
       <p class="small" style="margin:10px 0 6px"><b>When to believe it</b></p>
@@ -1581,7 +1590,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v8.8</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v8.9</span>
 </footer>
 <div class="toast" id="toast"></div>
 

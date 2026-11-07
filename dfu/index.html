@@ -297,6 +297,9 @@ body.detail-full .pub-only{display:none !important}
 .tap{border:1px solid var(--line);background:var(--card);color:var(--muted);font-family:var(--sans);font-size:12.5px;padding:3px 11px;border-radius:999px;cursor:pointer}
 .tap:hover{border-color:var(--teal-dim);color:var(--teal-dim)}
 .tap.on{background:#B3182F;border-color:#B3182F;color:#fff;font-weight:600}
+ol.guide{margin:0;padding-left:20px}
+ol.guide li{font-size:13px;line-height:1.6;margin-bottom:7px;color:var(--text)}
+ol.guide b{color:var(--navy)}
 .qgroup{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:16px 0 7px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;font-size:11px}
 .qgroup:first-child{margin-top:4px}
 .qgroup span{font-family:var(--mono);font-size:10.5px;font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0}
@@ -1196,6 +1199,61 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   <section class="card">
     <div class="step"><span class="n">C</span><h3>Transfer learning on this device</h3><span class="hint">frozen backbone · new head</span></div>
     <p class="small" style="margin-bottom:8px">Every image is passed once through the ImageNet‑pre‑trained MobileNetV2 backbone to obtain a 1,280‑number embedding. A new classification head is then trained on those embeddings, here in the browser. A stratified 20 % of images is held out to estimate performance. Fine‑tuning the backbone itself needs a GPU: use the Colab notebook.</p>
+    <!-- Findings heads are the one training target whose result changes a screen the clinician
+         reads, so the rules for when to believe one are stricter than for a Wagner head and
+         are written where the run is started rather than in a document nobody opens. -->
+    <details class="labmore" id="featGuide">
+      <summary>Training a findings head &mdash; pus, abscess, wet gangrene</summary>
+      <p class="small" style="margin:6px 0 10px">These three are the only signs the Assess tab
+      cannot settle from the photograph, so it asks for them. Train a head on one and that row
+      starts answering instead of asking. The examiner can still overrule it.</p>
+
+      <ol class="guide">
+        <li><b>Grade enough images in step B.</b> Tick <i>Pus</i>, <i>Abscess</i> or <i>Wet
+          gangrene</i> under <b>Signs of infection</b>. An image counts as <i>absent</i> only if
+          you ticked or graded something on it &mdash; an untouched image is left out entirely,
+          because silence is not a negative. So grade the negatives too, or the head learns
+          from positives alone.</li>
+        <li><b>Choose the target above.</b> Pick <i>Pus, present or absent</i>. The option text
+          reports what you have: <i>2 classes, smallest 31</i>. Four per class is the mechanical
+          minimum to run at all; it is not the number that makes a result worth believing.</li>
+        <li><b>Train.</b> Defaults (40 epochs, 128 hidden units, flip augmentation on) are the
+          right starting point. The 20 % held-out split is taken <b>by case</b>, so serial
+          photographs of one ulcer cannot sit on both sides of it.</li>
+        <li><b>Read the result before keeping it.</b> See the thresholds below.</li>
+        <li><b>Press "Use this model in Assess".</b> Without this the model is lost on reload.
+          The matching row in Assess then shows the model's call, its probability and the number
+          of cases it learned from.</li>
+      </ol>
+
+      <p class="small" style="margin:10px 0 6px"><b>When to believe it</b></p>
+      <table class="keep">
+        <tr><td>Macro F1, not accuracy</td><td class="y">Read F1</td>
+          <td>Pus is uncommon. If 1 image in 10 has it, a head that always answers
+            <i>absent</i> scores 90&nbsp;% accuracy and is useless. Macro F1 exposes that;
+            accuracy hides it.</td></tr>
+        <tr><td>Recall on the <i>present</i> class</td><td class="y">Check it</td>
+          <td>In the per-class table. Missing pus is the costly error here, not flagging it
+            when it is absent.</td></tr>
+        <tr><td>Cases, not images</td><td class="y">Count cases</td>
+          <td>Ten photographs of one ulcer are one case. The run reports both; the case count is
+            the one that bounds what the head can have learned.</td></tr>
+        <tr><td>Under ~30 positive cases</td><td class="n2">Do not keep</td>
+          <td>Train it to see where you stand, read the numbers, then discard. A head on a
+            handful of cases will be confidently wrong on the next patient.</td></tr>
+      </table>
+
+      <div class="note" style="margin-top:10px"><b>Abscess is the exception &mdash; do not deploy a
+      head for it.</b> An abscess is a collection under the surface. It is established by
+      fluctuance on palpation, by probing or by imaging, and it is not in the photograph at all.
+      A head trained on it will reach some accuracy by learning what travels <i>with</i> an
+      abscess in your images &mdash; swelling, erythema, the dressing, the ward &mdash; and will
+      present that as having seen the abscess. Train it if you want the number for the thesis;
+      do not press "Use this model in Assess". <b>Wet gangrene</b> sits between the two: it is
+      visible, but what separates it from dry eschar is moisture, swelling and odour, so treat a
+      head for it as weaker than its figures suggest and hold it to more cases, not fewer.</div>
+    </details>
+
     <div class="row3">
       <div class="field"><label>Epochs</label><input id="tEpochs" type="number" value="40" min="5" max="300"></div>
       <div class="field"><label>Hidden units</label><input id="tHidden" type="number" value="128" min="16" max="512"></div>
@@ -1431,7 +1489,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v8.5</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v8.6</span>
 </footer>
 <div class="toast" id="toast"></div>
 

@@ -19,7 +19,7 @@ application would mean two copies of the same models to version and deploy, and 
 twice or not at all.
 
 
-A browser-based demonstrator for the Deep Learning Healthcare Centre of Excellence. A clinician photographs a
+A browser-based demonstrator for the Deep Learning Healthcare Project. A clinician photographs a
 diabetic foot ulcer on a phone, the image is classified **on the device** by a transfer-learned convolutional
 network, a Grad-CAM heatmap shows what the model looked at, the result is mapped onto the University of Texas
 Diabetic Wound Classification, and the clinician records the ground truth (clinical grade/stage and tissue

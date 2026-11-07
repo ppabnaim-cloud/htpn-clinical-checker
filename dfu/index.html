@@ -672,30 +672,23 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
     <h2>Wound Vision</h2>
     <p style="font-family:var(--mono);font-size:12px;color:var(--faint);margin-bottom:14px">A prototype by Dr Naim Bin Abdul Malek</p>
 
-    <!-- One line each, not paragraphs. Everything material stays on screen; the detail is one
-         tap away for anyone who wants it. A disclaimer nobody reads protects nobody, and a wall
-         of text at the door is the surest way to lose the uptake this phase needs.
-         The storage line says what the code actually does. No image is ever uploaded and no
-         image is written to storage (the case row carries thumb:''), but the file NAME and the
-         grader's own entries are kept in this browser, so the promise is scoped to images and
-         identifiers and the file-naming instruction is part of it. Promising "nothing is
-         stored" would be false the moment a case is recorded. -->
-    <!-- One line each, stated and not argued. An earlier draft explained every point and read
-         as a conversation rather than a notice; the explanation belongs further in, not at the
-         door. The storage line can stand flat because the undertaking that makes it true — not
-         putting patient details in a file name — sits in the acknowledgement below, which is
-         where an undertaking belongs. No image is written to storage in any case: the case row
-         carries thumb:''. -->
-    <ul class="keypoints">
-      <li><b>A clinical support tool for earlier detection.</b> It reads a wound photograph and reports what it sees.</li>
-      <li><b>It does not replace clinical examination or the doctor.</b></li>
-      <li><b>Clinician input is required before any treatment decision.</b></li>
-      <li><b>No images and no patient identifiers are stored.</b></li>
-      <li><b>To start,</b> tap one of the demo images.</li>
-    </ul>
-
+    <!-- What this is and what it aims to change are one subject, so they are one section
+         rather than a list at the door and a second list behind a toggle saying much the same
+         thing. The two statements that bind the reader are not in here: they are the
+         acknowledgements below, which have to be ticked rather than scrolled past.
+         The storage line can stand flat because the undertaking that makes it true — not
+         putting patient details in a file name — is one of those acknowledgements. No image is
+         written to storage in any case: the case row carries thumb:''.
+         "To start, tap a demo image" is gone: the capture card says it, on the screen where
+         the demo images actually are. -->
     <details class="more">
       <summary>More about this project</summary>
+      <ul class="keypoints">
+        <li><b>A clinical support tool for earlier detection.</b> It reads a wound photograph and reports what it sees.</li>
+        <li><b>It does not replace clinical examination or the doctor.</b></li>
+        <li><b>Clinician input is required before any treatment decision.</b></li>
+        <li><b>No images and no patient identifiers are stored.</b></li>
+      </ul>
       <!-- The study's causal chain, which was four lines of prose. It is a sequence of steps where
            each one is the reason the next is possible, and a reader has to reconstruct that from a
            paragraph. Drawn as a chain, the structure is the content. -->
@@ -728,10 +721,10 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
           <div><b>Back to work</b><span>Measured as disability- and quality-adjusted life years.</span></div>
         </li>
       </ol>
-      <p>Built for the Deep Learning Healthcare Centre of Excellence, Hospital Tengku Permaisuri Norashikin.</p>
+      <p>Built for the Deep Learning Healthcare Project, Hospital Tengku Permaisuri Norashikin.</p>
     </details>
 
-    <label><input type="checkbox" id="ack1"> I understand this is a research prototype, not validated for clinical use.</label>
+    <label><input type="checkbox" id="ack1"> I understand this is a clinical support tool with data training and validation still ongoing.</label>
     <label><input type="checkbox" id="ack2"> I will not upload a photograph showing a name, I.C. number or face, and will not put patient details in a file name.</label>
     <button class="btn btn-primary" id="enter" disabled>Continue to the tool</button>
   </div>
@@ -741,7 +734,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   <div class="wrap">
     <div>
       <h1>Wound <span>Vision</span></h1>
-      <small>Dr Naim Bin Abdul Malek · Deep Learning Healthcare Centre of Excellence</small>
+      <small>Dr Naim Bin Abdul Malek · Deep Learning Healthcare Project</small>
       <!-- Which wound type this link grades. On screen at all times, because every scale, panel
            and model below depends on it and a grader should never have to infer it. -->
       <small class="armbar"><b class="arm-name">—</b></small>
@@ -1243,7 +1236,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
       <dt>Labels — important caveat</dt><dd>Demonstrator labels are <b>weak labels</b> derived from expert wound masks (wound area for depth/severity) and wound‑bed colour features (slough, eschar for infection). They are not clinician‑adjudicated or culture‑confirmed. Step 3 and the Train tab exist precisely to replace them.</dd>
       <dt>Held‑out performance (against the weak labels)</dt><dd id="mcPerf">Loading…</dd>
       <dt>Data source</dt><dd>FUSeg 2021 / AZH Wound and Vascular Center dataset, Wang C. et al., <i>Sci Rep</i> 2020;10:21897, github.com/uwm-bigdata/wound-segmentation.</dd>
-      <dt>Author</dt><dd>Dr Naim Bin Abdul Malek. Built as a demonstrator for the Deep Learning Healthcare Centre of Excellence and as the technical pilot for a DrPH study on diabetic foot ulcer infection classification, extended to pressure injury staging.</dd>
+      <dt>Author</dt><dd>Dr Naim Bin Abdul Malek. Built as a demonstrator for the Deep Learning Healthcare Project and as the technical pilot for a DrPH study on diabetic foot ulcer infection classification, extended to pressure injury staging.</dd>
       <dt>Patient data</dt><dd>Images are processed entirely in this browser and are not transmitted anywhere. Photographs must be de&#8209;identified before use: no name, no identity card number, no face, and no identifying metadata.</dd>
     </dl>
   </section>
@@ -1429,13 +1422,13 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
 </main>
 <footer>
   <b>Wound Vision</b> &middot; developed by Dr Naim Bin Abdul Malek<br>
-  Deep Learning Healthcare Centre of Excellence &middot; diabetic foot ulcer and pressure injury<br>
+  Deep Learning Healthcare Project &middot; diabetic foot ulcer and pressure injury<br>
   Built to help a wound be caught earlier and graded consistently, so that treatment starts sooner
   and fewer patients lose a limb. A clinical decision support tool: it supports the clinician’s
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v8.3</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v8.4</span>
 </footer>
 <div class="toast" id="toast"></div>
 

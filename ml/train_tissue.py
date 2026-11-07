@@ -66,32 +66,37 @@ IMG_EXT = ("*.png", "*.jpg", "*.jpeg", "*.bmp")
 
 
 def find_pairs(root):
-    """Image/mask pairs. Accepts the two layouts these datasets ship in: parallel images/ and
-    masks/ directories, or a flat directory with a _mask suffix."""
-    pairs = []
-    for sub, msub in (("images", "masks"), ("images", "labels"), ("img", "mask")):
+    """Image/mask pairs, across the layouts these datasets actually ship in.
+
+    The image and mask directories are matched by NAME ANYWHERE in the path, not as the
+    immediate parent, because DFUTissue nests a split under each: Images/TrainVal/x.png beside
+    Annotations/TrainVal/x.png. WoundTissue is the flat case, image/x.png beside label/x.png.
+    """
+    DIRS = [("images", "masks"), ("images", "labels"), ("image", "label"),
+            ("img", "mask"), ("Images", "Annotations"), ("Images", "Masks")]
+    pairs, seen = [], set()
+    for sub, msub in DIRS:
         for pat in IMG_EXT:
-            for p in sorted(glob.glob(os.path.join(root, "**", sub, pat), recursive=True)):
-                m = p.replace(os.sep + sub + os.sep, os.sep + msub + os.sep)
-                for ext in (".png", ".bmp", ".jpg"):
-                    cand = os.path.splitext(m)[0] + ext
-                    if os.path.exists(cand):
-                        pairs.append((p, cand)); break
-    if not pairs:
+            for p in sorted(glob.glob(os.path.join(root, "**", sub, "**", pat), recursive=True)):
+                parts = p.split(os.sep)
+                if sub not in parts:
+                    continue
+                i = len(parts) - 1 - parts[::-1].index(sub)      # the last such component
+                stem = os.sep.join(parts[:i] + [msub] + parts[i+1:])
+                for ext in (".png", ".bmp", ".jpg", ".jpeg"):
+                    cand = os.path.splitext(stem)[0] + ext
+                    if os.path.exists(cand) and p not in seen:
+                        seen.add(p); pairs.append((p, cand)); break
+    if not pairs:                                                # flat, with a _mask suffix
         for pat in IMG_EXT:
             for p in sorted(glob.glob(os.path.join(root, "**", pat), recursive=True)):
                 if "_mask" in p or "_label" in p:
                     continue
                 for suf in ("_mask", "_label"):
                     cand = os.path.splitext(p)[0] + suf + ".png"
-                    if os.path.exists(cand):
-                        pairs.append((p, cand)); break
-    # de-duplicate while keeping order
-    seen, out = set(), []
-    for a, b in pairs:
-        if a not in seen:
-            seen.add(a); out.append((a, b))
-    return out
+                    if os.path.exists(cand) and p not in seen:
+                        seen.add(p); pairs.append((p, cand)); break
+    return pairs
 
 
 def inspect(root, limit=40):
@@ -102,6 +107,21 @@ def inspect(root, limit=40):
     if not pairs:
         print("No pairs found. Check --root, or the directory layout (images/ + masks/).")
         return
+    probe = np.asarray(Image.open(pairs[0][1]))
+    if probe.ndim == 2 and probe.max() <= 32:
+        vals = collections.Counter()
+        for _, mp in pairs[:limit]:
+            for v, n in collections.Counter(np.asarray(Image.open(mp)).ravel().tolist()).items():
+                vals[int(v)] += n
+        tot = sum(vals.values())
+        print("\nthese are INDEX masks, not colour masks. Values found:")
+        for v, n in sorted(vals.items()):
+            print(f"  {v:<3d} {100*n/tot:6.2f} %  (key \"{v}\")")
+        print("\nAn index tells you nothing about which tissue it is. Read the dataset's own")
+        print("code or documentation, or overlay a mask on its photograph, before mapping it.")
+        print("Values must map to:", CLASSES)
+        return
+
     tally = collections.Counter()
     for _, mp in pairs[:limit]:
         a = np.asarray(Image.open(mp).convert("RGB")).reshape(-1, 3)
@@ -120,18 +140,33 @@ def inspect(root, limit=40):
 
 
 def load_palette(path):
+    """Two mask encodings in the wild, so two key forms. "r,g,b" means a colour mask
+    (WoundTissue); a bare integer means an index mask (DFUTissue). Keys starting with _ are
+    notes — provenance, licence and the traps — and are deliberately carried in the same file
+    as the mapping so they cannot drift apart from it."""
     raw = json.load(open(path))
-    pal = {}
+    pal, indexed = {}, None
     for k, v in raw.items():
+        if k.startswith("_"):
+            continue
         if v not in CLASSES:
             raise SystemExit(f"palette maps {k} to {v!r}, which is not one of {CLASSES}")
-        pal[tuple(int(x) for x in k.replace(" ", "").split(","))] = CLASSES.index(v)
-    return pal
+        key = k.replace(" ", "")
+        isidx = "," not in key
+        if indexed is None:
+            indexed = isidx
+        elif indexed != isidx:
+            raise SystemExit("palette mixes index keys and r,g,b keys; use one or the other")
+        pal[int(key) if isidx else tuple(int(x) for x in key.split(","))] = CLASSES.index(v)
+    if not pal:
+        raise SystemExit(f"{path} has no mapping entries (keys starting with _ are notes)")
+    return pal, bool(indexed)
 
 
-def load_pair(img_path, mask_path, pal):
+def load_pair(img_path, mask_path, pal, indexed=False):
     im = Image.open(img_path).convert("RGB")
-    mk = Image.open(mask_path).convert("RGB")
+    mk = Image.open(mask_path)
+    mk = mk.convert("L") if indexed else mk.convert("RGB")
     if mk.size != im.size:
         mk = mk.resize(im.size, Image.NEAREST)
     w, h = im.size
@@ -141,19 +176,23 @@ def load_pair(img_path, mask_path, pal):
     im = im.resize((IMG, IMG), Image.BILINEAR)
     mk = mk.resize((IMG, IMG), Image.NEAREST)
     a = np.asarray(mk)
-    y = np.zeros((IMG, IMG), dtype=np.uint8)              # unmapped colours fall to background
-    for col, ci in pal.items():
-        y[(a[:, :, 0] == col[0]) & (a[:, :, 1] == col[1]) & (a[:, :, 2] == col[2])] = ci
+    y = np.zeros((IMG, IMG), dtype=np.uint8)              # anything unmapped falls to background
+    if indexed:
+        for idx, ci in pal.items():
+            y[a == idx] = ci
+    else:
+        for col, ci in pal.items():
+            y[(a[:, :, 0] == col[0]) & (a[:, :, 1] == col[1]) & (a[:, :, 2] == col[2])] = ci
     return np.asarray(im, dtype=np.uint8), y
 
 
-def build_arrays(root, pal, limit=0):
+def build_arrays(root, pal, limit=0, indexed=False):
     pairs = find_pairs(root)
     if limit:
         pairs = pairs[:limit]
     X, Y = [], []
     for p, mp in pairs:
-        x, y = load_pair(p, mp, pal)
+        x, y = load_pair(p, mp, pal, indexed)
         if (y > 0).sum() < 50:                            # nothing but background
             continue
         X.append(x); Y.append(y)
@@ -199,12 +238,21 @@ def main():
     tf.random.set_seed(0); np.random.seed(0)
     t0 = time.time()
 
-    pal = load_palette(a.palette)
+    pal, indexed = load_palette(a.palette)
     pairs = find_pairs(a.root)[: a.limit or None]
-    X, Y = build_arrays(a.root, pal, a.limit)
+    X, Y = build_arrays(a.root, pal, a.limit, indexed)
     names = [p for p, _ in pairs][: len(X)]
     Xtr, Ytr, Xva, Yva, ncase, nval = split_by_case(X, Y, names)
     share = {c: float((Ytr == i).mean()) for i, c in enumerate(CLASSES)}
+    # Which classes the training data actually contained. A class absent here is one the model
+    # can never predict, and the app must keep using the colour rule for it rather than
+    # silently reporting it as never present. DFUTissue has no necrosis label at all.
+    present = [c for i, c in enumerate(CLASSES) if (Ytr == i).sum() > 0]
+    missing = [c for c in CLASSES if c not in present]
+    if missing:
+        print(f"WARNING: no training pixels for {missing}. The model cannot predict "
+              f"{'it' if len(missing) == 1 else 'them'}; the app will fall back to the colour "
+              f"rule for {'that class' if len(missing) == 1 else 'those classes'}.", flush=True)
     print(f"train {Xtr.shape} val {Xva.shape} from {ncase} cases ({nval} held out)", flush=True)
     print("pixel share:", json.dumps({k: round(v, 4) for k, v in share.items()}), flush=True)
 
@@ -320,6 +368,7 @@ def main():
                "train_images": int(len(Xtr)), "val_images": int(len(Xva)),
                "cases": int(ncase), "val_cases": int(nval), "split": "by case",
                "per_class": per, "macro_dice_tissue": macro,
+               "classes_present": present, "classes_missing": missing,
                "data": a.dataset, "palette": a.palette,
                "minutes": round((time.time() - t0) / 60, 1)},
               open(os.path.join(a.out, "metrics.json"), "w"), indent=1)

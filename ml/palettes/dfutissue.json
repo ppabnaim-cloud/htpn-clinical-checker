@@ -1,0 +1,12 @@
+{
+  "_source": "github.com/uwm-bigdata/DFUTissueSegNet — index masks, order confirmed by inspecting two masks against their photographs",
+  "_licence": "NO LICENCE FILE in the repository; the README asks only for citation. Absence of a licence is not a grant of permission — confirm terms with the authors before using it.",
+  "_indices": "0 background/unlabelled · 1 fibrin · 2 granulation · 3 callus",
+  "_warning": "The released annotations carry FOUR values, not the eight tissue categories the README lists. There is NO necrosis or eschar class: dark necrotic tissue sits in class 0 with true background. A model trained on this alone learns that necrosis is background.",
+  "_unmapped": "callus is not a class of this model and falls to background",
+
+  "0": "background",
+  "1": "slough",
+  "2": "gran",
+  "3": "background"
+}

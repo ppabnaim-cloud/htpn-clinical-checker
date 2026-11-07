@@ -1599,7 +1599,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v9.2</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v9.3</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3103,18 +3103,21 @@ function renderPublic(){
   /* Whichever path produced the classification is what the row names. Saying "colour rule"
      under a trained segmenter would understate it; saying "model" under the rule would be a
      lie, and that one matters more. */
-  const tsrc = (t && t.src === 'model')
-    ? (tissueMetrics && tissueMetrics.macro_dice_tissue
-        ? `tissue model \u00b7 Dice ${tissueMetrics.macro_dice_tissue.toFixed(2)}`
-        : 'tissue model')
-    : 'colour rule \u00b7 unvalidated';
+  const RULE_SRC = 'colour rule \u00b7 unvalidated';
+  const MODEL_SRC = (tissueMetrics && tissueMetrics.macro_dice_tissue)
+    ? `tissue model \u00b7 Dice ${tissueMetrics.macro_dice_tissue.toFixed(2)}`
+    : 'tissue model';
+  /* Per class. With a model trained on a set that had no necrosis label, the slough row is
+     the model's and the necrosis row is still the rule's, and one provenance line for both
+     would be wrong about one of them. */
+  const tsrc = id => (t && t.src !== 'rule' && (t.covered || []).includes(id)) ? MODEL_SRC : RULE_SRC;
 
   const seen = [];
-  const colour = (label, present) => row(label, tsrc,
+  const colour = (label, id, present) => row(label, tsrc(id),
     present === null ? 'Not assessed' : (present ? 'Present' : 'Not seen'),
     present === null ? 'u' : (present ? 'y' : 'n'));
-  seen.push(colour('Slough',   t ? pc(t.frac.slough) >= 5 : null));
-  seen.push(colour('Necrosis', t ? pc(t.frac.necro)  >= 5 : null));
+  seen.push(colour('Slough',   'slough', t ? pc(t.frac.slough) >= 5 : null));
+  seen.push(colour('Necrosis', 'necro',  t ? pc(t.frac.necro)  >= 5 : null));
   const dA = t && t.dA !== null ? t.dA : null;
   /* Not tsrc: the ring is measured against the patient's own skin on either path, and no
      tissue model has a peri-wound class. */
@@ -3144,7 +3147,7 @@ function renderPublic(){
       </select></div>`;
   }).join('');
 
-  const tiss = t ? `<p class="tis">Granulation ${pc(t.frac.gran)}% &middot; Slough ${pc(t.frac.slough)}% &middot; Necrosis ${pc(t.frac.necro)}% &middot; <span>${t.src === 'model' ? 'by the tissue model' : 'by colour, unvalidated'}</span></p>` : '';
+  const tiss = t ? `<p class="tis">Granulation ${pc(t.frac.gran)}% &middot; Slough ${pc(t.frac.slough)}% &middot; Necrosis ${pc(t.frac.necro)}% &middot; <span>${t.src === 'model' ? 'by the tissue model' : t.src === 'mixed' ? 'tissue model, with the colour rule for what it was not trained on' : 'by colour, unvalidated'}</span></p>` : '';
 
   const est = infEstimates();
   const mp = cautiousInfection();
@@ -3522,7 +3525,12 @@ async function tissueMap(seg){
      NOT taken from it: the model has no peri-wound class, and the redness measure is a
      comparison against the patient's own skin rather than a classification, so it stays where
      it is on either path. */
-  let cls = null;
+  let cls = null, fellBack = false;
+  /* Which classes the model was actually trained on, from its own metrics.json. Anything not
+     listed stays with the colour rule. */
+  const covered = new Set((tissueMetrics && tissueMetrics.classes_present) || []);
+  const uncovered = new Set(TISSUE.map(t => t.id)
+    .filter(id => id !== 'other' && covered.size && !covered.has(id)));
   if (tissueModel){
     try {
       const t = tf.tidy(() => tissueModel.predict(preprocess($('imgCanvas'), '[-1,1]')).argMax(-1).squeeze());
@@ -3554,7 +3562,29 @@ async function tissueMap(seg){
     if (inRing){ if (skinLike(L, A, B)){ ringA += A; ringN++; ringVal[i] = A; } continue; }
     if (inRef){  if (skinLike(L, A, B)){ refA  += A; refN++;  } continue; }
 
-    const gi = cls ? TISSUE_FROM_MODEL[cls[i]] : TISSUE.findIndex(t => t.id === tissueOf(L, A, B));
+    /* Per class, not per image. A tissue model trained on a set with no necrosis label — which
+       DFUTissue is — can never predict necrosis, and taking its word for the whole wound bed
+       would turn "the model was never taught this" into "this wound has none", silently and
+       on every image. So where the model says background and the colour rule names a class
+       the model was never trained on, the rule's answer stands and the row says so. */
+    let gi;
+    if (cls){
+      gi = TISSUE_FROM_MODEL[cls[i]];
+      /* A class the model was never trained on is not the model's to claim, even if the
+         softmax happens to put mass there. Discard it and let the rule answer, so the
+         provenance on the row is true of the pixels under it. */
+      if (uncovered.has(TISSUE[gi].id)) gi = 4;
+      /* Not only where the model abstained: a class it was never trained on is the rule's
+         outright, on every pixel. Otherwise a model that confidently calls a black eschar
+         "slough" would erase the necrosis while the row still read "colour rule", and the
+         provenance would be a lie about the pixels under it. */
+      if (uncovered.size){
+        const rg = TISSUE.findIndex(t => t.id === tissueOf(L, A, B));
+        if (uncovered.has(TISSUE[rg].id)){ gi = rg; fellBack = true; }
+      }
+    } else {
+      gi = TISSUE.findIndex(t => t.id === tissueOf(L, A, B));
+    }
     count[TISSUE[gi].id]++; total++;
     grid[i] = gi;
   }
@@ -3566,7 +3596,9 @@ async function tissueMap(seg){
   const refMean = refN ? refA/refN : null;
   return { frac: TISSUE.reduce((f, t) => (f[t.id] = total ? count[t.id]/total : 0, f), {}),
            total, dA, ringN, refN, sparse: total < 150,
-           grid, ringVal, refMean, N, src: cls ? 'model' : 'rule' };
+           grid, ringVal, refMean, N,
+           src: cls ? (fellBack ? 'mixed' : 'model') : 'rule',
+           covered: cls ? [...covered] : [] };
 }
 
 /* ── the layers ────────────────────────────────────────────────────────────────────────────

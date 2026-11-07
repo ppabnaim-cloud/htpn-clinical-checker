@@ -1407,6 +1407,14 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
       <dt>Labels — important caveat</dt><dd>Demonstrator labels are <b>weak labels</b> derived from expert wound masks (wound area for depth/severity) and wound‑bed colour features (slough, eschar for infection). They are not clinician‑adjudicated or culture‑confirmed. Step 3 and the Train tab exist precisely to replace them.</dd>
       <dt>Held‑out performance (against the weak labels)</dt><dd id="mcPerf">Loading…</dd>
       <dt>Data source</dt><dd>FUSeg 2021 / AZH Wound and Vascular Center dataset, Wang C. et al., <i>Sci Rep</i> 2020;10:21897, github.com/uwm-bigdata/wound-segmentation.</dd>
+      <!-- The DFUTissue release asks for this citation and nothing else. It is the one term its
+           authors state, so it is honoured in the app rather than only in the README. -->
+      <dt>Tissue model &mdash; data source</dt><dd>DFUTissue, 110 expert-labelled diabetic foot ulcer
+      images from the AZH Wound Center: Dhar M.K. et al., <i>Wound Tissue Segmentation in Diabetic
+      Foot Ulcer Images Using Deep Learning: A Pilot Study</i>, arXiv:2406.16012, 2024;
+      github.com/uwm-bigdata/DFUTissueSegNet. Its released annotations label granulation, fibrin
+      and callus only &mdash; there is no necrosis class, so necrosis on this screen continues to
+      come from the colour rule and every tissue row names which of the two produced it.</dd>
       <dt>Author</dt><dd>Dr Naim Bin Abdul Malek. Built as a demonstrator for the Deep Learning Healthcare Project and as the technical pilot for a DrPH study on diabetic foot ulcer infection classification, extended to pressure injury staging.</dd>
       <dt>Patient data</dt><dd>Images are processed entirely in this browser and are not transmitted anywhere. Photographs must be de&#8209;identified before use: no name, no identity card number, no face, and no identifying metadata.</dd>
     </dl>
@@ -1599,7 +1607,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v9.3</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v9.4</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3104,7 +3112,10 @@ function renderPublic(){
      under a trained segmenter would understate it; saying "model" under the rule would be a
      lie, and that one matters more. */
   const RULE_SRC = 'colour rule \u00b7 unvalidated';
-  const MODEL_SRC = (tissueMetrics && tissueMetrics.macro_dice_tissue)
+  /* "Dice 0.67" is a segmentation metric. What a clinician needs from this line is which of
+     the two produced the row; the figure is instrumentation and belongs with the rest of it
+     in Assess (full). */
+  const MODEL_SRC = (detailFull() && tissueMetrics && tissueMetrics.macro_dice_tissue)
     ? `tissue model \u00b7 Dice ${tissueMetrics.macro_dice_tissue.toFixed(2)}`
     : 'tissue model';
   /* Per class. With a model trained on a set that had no necrosis label, the slough row is

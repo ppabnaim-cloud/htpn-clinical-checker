@@ -158,9 +158,14 @@ Slough at 0.564 is the weaker of the two and is the class the public dataset has
 (3.2 % of pixels). It is also the one that matters most here, since slough is what the colour
 rule got wrong.
 
-**The weights are not committed.** DFUTissue carries no licence file; the README asks only for
-citation. Training on it for research is ordinary academic practice, but shipping a derived
-model to a public URL is a further step, and that question is open with the authors.
+The weights ship in `dfu/tissue/` (12 MB, float16). DFUTissue carries no licence file and its
+README asks only for citation, which is honoured in the app's model card and here:
+
+> Dhar M.K. et al., *Wound Tissue Segmentation in Diabetic Foot Ulcer Images Using Deep
+> Learning: A Pilot Study*, arXiv:2406.16012, 2024. github.com/uwm-bigdata/DFUTissueSegNet
+
+Absence of a licence is not a grant of permission, so confirming reuse terms with the authors
+remains worth doing before anything is published on the strength of this model.
 
 #### Training one
 

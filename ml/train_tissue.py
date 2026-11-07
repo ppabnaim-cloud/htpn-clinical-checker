@@ -1,0 +1,330 @@
+"""
+Wound-bed tissue segmentation for Wound Vision: MobileNetV2-UNet, multi-class.
+
+Why this exists: the app currently classifies wound-bed pixels with tissueOf() — six hand-written
+thresholds on CIELAB lightness, chroma and hue. It fails in the way hand-written thresholds do.
+On a real heel ulcer it put 78 % of the bed in "other" and reported "Slough — Not seen" over a
+plainly sloughy, purulent bed, because calling a pixel slough needs chroma above 15 and that bed
+was a pale, desaturated cream-yellow. Below L 30 it has no hue information at all, so any dark
+bed becomes necrosis wholesale.
+
+A learned segmenter replaces the rule. The app keeps the rule as a fallback and labels whichever
+it used, so the provenance on screen is always true.
+
+This is the sibling of train_segmentation.py and shares its architecture deliberately: the same
+encoder, the same four skips, the same export path. That model answers "where is the wound" with
+one sigmoid channel; this one answers "what is each pixel of it" with a softmax over tissue
+classes.
+
+CLASSES (fixed, and matching the TISSUE array in dfu/index.html so the app can map by index):
+
+    0 background    anything that is not wound bed, including intact skin
+    1 gran          granulation — red, beefy
+    2 slough        slough / fibrin — yellow, stringy
+    3 necro         necrosis / eschar — black, leathery
+    4 pale          epithelial / re-epithelialising — pale pink
+
+Datasets. None of the public sets uses these five names, so each needs a mapping, and none of
+them labels pus, abscess, gangrene, peri-wound erythema or bleeding — those remain findings the
+clinician supplies, and are the gap an HTPN-labelled set would fill.
+
+    woundtissue   github.com/akabircs/WoundTissue — 147 images, colour-coded masks:
+                  granulation, necrosis, slough, maceration, tendon, bone
+    dfutissue     arXiv 2406.16012 — 110 expert-labelled DFU images (+600 unlabelled).
+                  Reported class lists differ between papers; inspect before trusting.
+    toledo        Toledo et al., VISAPP 2022 — 222 specialist-labelled images:
+                  background, epithelialisation, healthy skin, granulation, slough,
+                  necrotic, exposed tendon
+
+Masks are colour-coded and the palettes are NOT guessed here. Run --inspect first:
+
+    python ml/train_tissue.py --root /data/WoundTissue --inspect
+
+which prints every distinct mask colour with its pixel share, then write the mapping into a JSON
+file and pass it with --palette. A wrong palette trains a confident, wrong model in silence,
+which is exactly the failure this script is meant to remove.
+
+Usage:
+  TF_USE_LEGACY_KERAS=1 python ml/train_tissue.py \
+      --root /data/WoundTissue --palette ml/palettes/woundtissue.json --out dfu/tissue
+
+Licensing: WoundTissue, DFUTissue and the Toledo set each carry their own terms. Check them
+before use and record which you trained on — the exported metrics.json has a "data" field for it.
+"""
+import os, glob, json, argparse, time, collections
+os.environ.setdefault("TF_USE_LEGACY_KERAS", "1")
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+import numpy as np
+from PIL import Image
+
+IMG = 224
+CLASSES = ["background", "gran", "slough", "necro", "pale"]
+NC = len(CLASSES)
+SKIPS = ["block_13_expand_relu", "block_6_expand_relu", "block_3_expand_relu", "block_1_expand_relu"]
+
+IMG_EXT = ("*.png", "*.jpg", "*.jpeg", "*.bmp")
+
+
+def find_pairs(root):
+    """Image/mask pairs. Accepts the two layouts these datasets ship in: parallel images/ and
+    masks/ directories, or a flat directory with a _mask suffix."""
+    pairs = []
+    for sub, msub in (("images", "masks"), ("images", "labels"), ("img", "mask")):
+        for pat in IMG_EXT:
+            for p in sorted(glob.glob(os.path.join(root, "**", sub, pat), recursive=True)):
+                m = p.replace(os.sep + sub + os.sep, os.sep + msub + os.sep)
+                for ext in (".png", ".bmp", ".jpg"):
+                    cand = os.path.splitext(m)[0] + ext
+                    if os.path.exists(cand):
+                        pairs.append((p, cand)); break
+    if not pairs:
+        for pat in IMG_EXT:
+            for p in sorted(glob.glob(os.path.join(root, "**", pat), recursive=True)):
+                if "_mask" in p or "_label" in p:
+                    continue
+                for suf in ("_mask", "_label"):
+                    cand = os.path.splitext(p)[0] + suf + ".png"
+                    if os.path.exists(cand):
+                        pairs.append((p, cand)); break
+    # de-duplicate while keeping order
+    seen, out = set(), []
+    for a, b in pairs:
+        if a not in seen:
+            seen.add(a); out.append((a, b))
+    return out
+
+
+def inspect(root, limit=40):
+    """Print every distinct mask colour and its share, so the palette is read off the data
+    rather than assumed. Guessing a palette is how you train a confident wrong model."""
+    pairs = find_pairs(root)
+    print(f"{len(pairs)} image/mask pairs under {root}")
+    if not pairs:
+        print("No pairs found. Check --root, or the directory layout (images/ + masks/).")
+        return
+    tally = collections.Counter()
+    for _, mp in pairs[:limit]:
+        a = np.asarray(Image.open(mp).convert("RGB")).reshape(-1, 3)
+        for col, n in collections.Counter(map(tuple, a)).items():
+            tally[tuple(int(c) for c in col)] += n   # plain ints: numpy scalars print as np.uint8(…)
+    total = sum(tally.values())
+    print(f"\ndistinct mask colours in the first {min(limit, len(pairs))} masks:")
+    for col, n in tally.most_common(30):
+        print("  %-22s %6.2f %%  (key \"%d,%d,%d\")" % ("rgb%s" % (col,), 100*n/total, col[0], col[1], col[2]))
+    print("\nWrite these into a palette JSON, e.g.")
+    print(json.dumps({"0,0,0": "background", "255,0,0": "gran",
+                      "255,255,0": "slough", "0,255,0": "necro",
+                      "255,0,255": "pale"}, indent=1))
+    print("keys are \"r,g,b\"; values must be one of", CLASSES)
+    print("Any colour not listed is treated as background.")
+
+
+def load_palette(path):
+    raw = json.load(open(path))
+    pal = {}
+    for k, v in raw.items():
+        if v not in CLASSES:
+            raise SystemExit(f"palette maps {k} to {v!r}, which is not one of {CLASSES}")
+        pal[tuple(int(x) for x in k.replace(" ", "").split(","))] = CLASSES.index(v)
+    return pal
+
+
+def load_pair(img_path, mask_path, pal):
+    im = Image.open(img_path).convert("RGB")
+    mk = Image.open(mask_path).convert("RGB")
+    if mk.size != im.size:
+        mk = mk.resize(im.size, Image.NEAREST)
+    w, h = im.size
+    s = min(w, h)
+    box = ((w - s) // 2, (h - s) // 2, (w - s) // 2 + s, (h - s) // 2 + s)
+    im, mk = im.crop(box), mk.crop(box)
+    im = im.resize((IMG, IMG), Image.BILINEAR)
+    mk = mk.resize((IMG, IMG), Image.NEAREST)
+    a = np.asarray(mk)
+    y = np.zeros((IMG, IMG), dtype=np.uint8)              # unmapped colours fall to background
+    for col, ci in pal.items():
+        y[(a[:, :, 0] == col[0]) & (a[:, :, 1] == col[1]) & (a[:, :, 2] == col[2])] = ci
+    return np.asarray(im, dtype=np.uint8), y
+
+
+def build_arrays(root, pal, limit=0):
+    pairs = find_pairs(root)
+    if limit:
+        pairs = pairs[:limit]
+    X, Y = [], []
+    for p, mp in pairs:
+        x, y = load_pair(p, mp, pal)
+        if (y > 0).sum() < 50:                            # nothing but background
+            continue
+        X.append(x); Y.append(y)
+    if not X:
+        raise SystemExit("no usable pairs — check --root and --palette")
+    return np.stack(X), np.stack(Y)
+
+
+def split_by_case(X, Y, names, val_frac=0.2, seed=0):
+    """Split on the case the image came from, not on the image. Several photographs of one
+    ulcer are not independent, and splitting by image leaks the wound across the split and
+    inflates every number this script prints."""
+    rng = np.random.RandomState(seed)
+    cases = sorted({os.path.basename(n).split("_")[0] for n in names})
+    rng.shuffle(cases)
+    val = set(cases[:max(1, int(round(len(cases) * val_frac)))])
+    m = np.array([os.path.basename(n).split("_")[0] in val for n in names])
+    return X[~m], Y[~m], X[m], Y[m], len(cases), len(val)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--root", required=True)
+    ap.add_argument("--palette", help="JSON mapping \"r,g,b\" -> class name; see --inspect")
+    ap.add_argument("--out", default="dfu/tissue")
+    ap.add_argument("--dataset", default="woundtissue", help="recorded in metrics.json")
+    ap.add_argument("--epochs_dec", type=int, default=25)
+    ap.add_argument("--epochs_ft", type=int, default=10)
+    ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--inspect", action="store_true")
+    a = ap.parse_args()
+
+    if a.inspect:
+        # Reading a mask palette is a data task, so it must not need a training stack. TF is
+        # imported below this branch so --inspect runs anywhere PIL and numpy do.
+        inspect(a.root); return
+    if not a.palette:
+        raise SystemExit("--palette is required (run --inspect first to read the mask colours)")
+
+    import tensorflow as tf, tf_keras as keras
+    from tf_keras import layers
+
+    tf.random.set_seed(0); np.random.seed(0)
+    t0 = time.time()
+
+    pal = load_palette(a.palette)
+    pairs = find_pairs(a.root)[: a.limit or None]
+    X, Y = build_arrays(a.root, pal, a.limit)
+    names = [p for p, _ in pairs][: len(X)]
+    Xtr, Ytr, Xva, Yva, ncase, nval = split_by_case(X, Y, names)
+    share = {c: float((Ytr == i).mean()) for i, c in enumerate(CLASSES)}
+    print(f"train {Xtr.shape} val {Xva.shape} from {ncase} cases ({nval} held out)", flush=True)
+    print("pixel share:", json.dumps({k: round(v, 4) for k, v in share.items()}), flush=True)
+
+    def augment(x, y):
+        k = tf.random.uniform([], 0, 4, dtype=tf.int32)
+        x, y = tf.image.rot90(x, k), tf.image.rot90(y, k)
+        if tf.random.uniform([]) < 0.5:
+            x, y = tf.image.flip_left_right(x), tf.image.flip_left_right(y)
+        if tf.random.uniform([]) < 0.5:
+            x, y = tf.image.flip_up_down(x), tf.image.flip_up_down(y)
+        # Photometric augmentation on the image only — and deliberately strong on saturation
+        # and hue, because the whole point is a model that does not fail the way a chroma
+        # threshold fails on a washed-out bed.
+        x = tf.image.random_brightness(x, 30.0)
+        x = tf.image.random_contrast(x, 0.75, 1.25)
+        x = tf.image.random_saturation(x, 0.7, 1.3)
+        x = tf.image.random_hue(x, 0.02)
+        return tf.clip_by_value(x, 0.0, 255.0), y
+
+    def make_ds(Xa, Ya, train, batch=8):
+        ds = tf.data.Dataset.from_tensor_slices((Xa, Ya))
+        ds = ds.map(lambda x, y: (tf.cast(x, tf.float32), tf.cast(y, tf.int32)),
+                    num_parallel_calls=tf.data.AUTOTUNE)
+        if train:
+            ds = ds.shuffle(512, seed=0).map(augment, num_parallel_calls=tf.data.AUTOTUNE)
+        ds = ds.map(lambda x, y: (x / 127.5 - 1.0, tf.one_hot(tf.cast(y, tf.int32), NC)),
+                    num_parallel_calls=tf.data.AUTOTUNE)
+        return ds.batch(batch).prefetch(tf.data.AUTOTUNE)
+
+    def build_model():
+        inp = keras.Input((IMG, IMG, 3), name="image")
+        enc = keras.applications.MobileNetV2(input_tensor=inp, include_top=False, weights="imagenet")
+        enc.trainable = False
+        x = enc.get_layer("out_relu").output
+        for name, ch in zip(SKIPS, [192, 96, 48, 24]):
+            x = layers.UpSampling2D(2, interpolation="bilinear")(x)
+            x = layers.Concatenate()([x, enc.get_layer(name).output])
+            x = layers.Conv2D(ch, 3, padding="same", use_bias=False)(x)
+            x = layers.BatchNormalization()(x)
+            x = layers.Activation("relu")(x)
+        logit = layers.Conv2D(NC, 1, name="logit")(x)                 # 112x112xNC
+        up = layers.UpSampling2D(2, interpolation="bilinear")(logit)
+        # No Lambda layer anywhere: TensorFlow.js cannot deserialise one, and a Lambda used
+        # merely to rename an output silently breaks the browser build.
+        out = layers.Activation("softmax", name="tissue")(up)
+        return keras.Model(inp, out, name="tissue_unet_mobilenetv2"), enc
+
+    # Tissue classes are heavily imbalanced — necrosis and epithelium are a few percent of
+    # pixels — so an unweighted loss learns "granulation everywhere" and scores well on
+    # accuracy. Weight by inverse pixel frequency, and report macro Dice, never accuracy.
+    w = np.array([1.0 / max(share[c], 1e-4) for c in CLASSES], dtype=np.float32)
+    w = (w / w.sum() * NC).astype(np.float32)
+    print("class weights:", dict(zip(CLASSES, [round(float(v), 2) for v in w])), flush=True)
+    wt = tf.constant(w)
+
+    def loss_fn(y_true, y_pred):
+        ce = -tf.reduce_sum(y_true * tf.math.log(y_pred + 1e-7) * wt, axis=-1)
+        yt = tf.reshape(y_true, [tf.shape(y_true)[0], -1, NC])
+        yp = tf.reshape(y_pred, [tf.shape(y_pred)[0], -1, NC])
+        num = 2.0 * tf.reduce_sum(yt * yp, 1) + 1.0
+        den = tf.reduce_sum(yt, 1) + tf.reduce_sum(yp, 1) + 1.0
+        return tf.reduce_mean(ce) + (1.0 - tf.reduce_mean(num / den))
+
+    def macro_dice(y_true, y_pred):
+        yp = tf.one_hot(tf.argmax(y_pred, -1), NC)
+        yt = tf.reshape(y_true, [-1, NC]); yp = tf.reshape(yp, [-1, NC])
+        num = 2.0 * tf.reduce_sum(yt * yp, 0) + 1e-6
+        den = tf.reduce_sum(yt, 0) + tf.reduce_sum(yp, 0) + 1e-6
+        return tf.reduce_mean(num / den)
+
+    model, enc = build_model()
+    print(f"{model.count_params():,} parameters", flush=True)
+    cb = lambda p: [keras.callbacks.EarlyStopping(monitor="val_macro_dice", mode="max",
+                                                  patience=p, restore_best_weights=True)]
+
+    model.compile(optimizer=keras.optimizers.Adam(1e-3), loss=loss_fn, metrics=[macro_dice])
+    model.fit(make_ds(Xtr, Ytr, True), validation_data=make_ds(Xva, Yva, False),
+              epochs=a.epochs_dec, verbose=2, callbacks=cb(6))
+
+    enc.trainable = True
+    for l in enc.layers[:-30]:
+        l.trainable = False
+    for l in enc.layers:
+        if isinstance(l, layers.BatchNormalization):
+            l.trainable = False
+    model.compile(optimizer=keras.optimizers.Adam(5e-5), loss=loss_fn, metrics=[macro_dice])
+    model.fit(make_ds(Xtr, Ytr, True), validation_data=make_ds(Xva, Yva, False),
+              epochs=a.epochs_ft, verbose=2, callbacks=cb(4))
+
+    # Per-class Dice on the held-out cases. Accuracy is not reported on purpose: with
+    # background at 70 % of pixels it is a number that cannot go wrong.
+    P = []
+    for i in range(0, len(Xva), 8):
+        P.append(model.predict(Xva[i:i+8].astype(np.float32) / 127.5 - 1.0, verbose=0).argmax(-1))
+    P = np.concatenate(P)
+    per = {}
+    for i, c in enumerate(CLASSES):
+        pr, tr = P == i, Yva == i
+        per[c] = {"dice": float(2 * (pr & tr).sum() / (pr.sum() + tr.sum() + 1e-6)),
+                  "iou": float((pr & tr).sum() / ((pr | tr).sum() + 1e-6)),
+                  "true_pixel_share": float(tr.mean())}
+    macro = float(np.mean([per[c]["dice"] for c in CLASSES[1:]]))   # excluding background
+    print("held-out per class:", json.dumps(per, indent=1))
+    print(f"macro Dice over tissue classes (background excluded): {macro:.3f}")
+
+    os.makedirs(a.out, exist_ok=True)
+    import tensorflowjs as tfjs
+    tfjs.converters.save_keras_model(model, a.out, quantization_dtype_map={"float16": "*"})
+    json.dump({"task": "wound-bed tissue segmentation",
+               "architecture": "MobileNetV2-UNet (ImageNet encoder, 4 skip connections)",
+               "input": [IMG, IMG, 3], "input_range": "[-1,1]",
+               "output": f"{IMG}x{IMG}x{NC} softmax", "classes": CLASSES,
+               "train_images": int(len(Xtr)), "val_images": int(len(Xva)),
+               "cases": int(ncase), "val_cases": int(nval), "split": "by case",
+               "per_class": per, "macro_dice_tissue": macro,
+               "data": a.dataset, "palette": a.palette,
+               "minutes": round((time.time() - t0) / 60, 1)},
+              open(os.path.join(a.out, "metrics.json"), "w"), indent=1)
+    print("exported to", a.out, f"in {(time.time()-t0)/60:.1f} min")
+
+
+if __name__ == "__main__":
+    main()

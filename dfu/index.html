@@ -1599,7 +1599,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v9.1</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v9.2</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1658,7 +1658,14 @@ const LAYERS = [
 let curLayer = 'all';
 let segModel = null, segMetrics = null, lastSeg = null, lastBox = null;   // lastBox = the crop actually classified
 let savedThisImage = false;      // has the photograph on screen been written to the case log yet
-let lastTissue = null;                                                     // wound-bed colour composition
+let lastTissue = null;                                                     // wound-bed composition
+/* The trained tissue segmenter, when one has been built and deployed to dfu/tissue/. Absent by
+   default, and the colour rule stands in — see tissueMap(). Its five classes are ordered
+   background, gran, slough, necro, pale by ml/train_tissue.py; this maps them onto TISSUE,
+   with the model's background becoming "Unclassified" rather than being dropped, because the
+   segmenter said the pixel is wound and the tissue model disagreeing is worth seeing. */
+let tissueModel = null, tissueMetrics = null;
+const TISSUE_FROM_MODEL = [4, 0, 1, 2, 3];
 let fit = null;            // how the photograph was letterboxed into the square view
 let manualBox = null, boxing = false, boxStart = null;   // clinician-drawn region of interest
 let pxPerCm = null, picking = false, pickPts = [];                        // optional ruler scale
@@ -1827,6 +1834,13 @@ async function loadModel(){
     tf.tidy(() => segModel.predict(tf.zeros([1, SEG, SEG, 3])));
   } catch(e){ segModel = null; console.warn('segmentation model unavailable', e); }
   try { segMetrics = await (await fetch('seg/metrics.json')).json(); } catch(e){ segMetrics = null; }
+  /* Optional. No tissue model is shipped yet, so this 404s and the colour rule stays in
+     charge — which is why the failure is silent rather than loud. */
+  try {
+    tissueModel = await tf.loadLayersModel('tissue/model.json');
+    tf.tidy(() => tissueModel.predict(tf.zeros([1, IMG, IMG, 3])));
+    tissueMetrics = await (await fetch('tissue/metrics.json')).json().catch(() => null);
+  } catch(e){ tissueModel = null; tissueMetrics = null; }
 
   $('modelPill').textContent = `ready · ${tf.getBackend()} · ${((performance.now()-t0)/1000).toFixed(1)}s`;
   $('modelPill').classList.add('ok');
@@ -2136,7 +2150,7 @@ async function runInference(reuseSeg){
   if (!active){ $('statusText').textContent = 'Still loading the model \u2014 this will run by itself in a moment.'; return; }
   lastBox = manualBox ? manualBox : ((active.wantsRoi && lastSeg && lastSeg.found) ? roiBox(lastSeg) : null);
   drawSegOverlay(lastSeg, lastBox); showWound(lastSeg);
-  lastTissue = tissueMap(lastSeg); renderTissue(lastTissue);
+  lastTissue = await tissueMap(lastSeg); renderTissue(lastTissue);
   showCrop(lastBox);
   /* The old test was `DISEASE === 'pi' && active.kind === 'demo'`, which let a locally trained
      head run on any wound type. A Wagner head then printed a Wagner grade for a sacral pressure
@@ -3086,14 +3100,27 @@ function renderPublic(){
        instruments and dressings out of the way.</p>`
     : '';
 
+  /* Whichever path produced the classification is what the row names. Saying "colour rule"
+     under a trained segmenter would understate it; saying "model" under the rule would be a
+     lie, and that one matters more. */
+  const tsrc = (t && t.src === 'model')
+    ? (tissueMetrics && tissueMetrics.macro_dice_tissue
+        ? `tissue model \u00b7 Dice ${tissueMetrics.macro_dice_tissue.toFixed(2)}`
+        : 'tissue model')
+    : 'colour rule \u00b7 unvalidated';
+
   const seen = [];
-  const colour = (label, present) => row(label, 'colour rule · unvalidated',
+  const colour = (label, present) => row(label, tsrc,
     present === null ? 'Not assessed' : (present ? 'Present' : 'Not seen'),
     present === null ? 'u' : (present ? 'y' : 'n'));
   seen.push(colour('Slough',   t ? pc(t.frac.slough) >= 5 : null));
   seen.push(colour('Necrosis', t ? pc(t.frac.necro)  >= 5 : null));
   const dA = t && t.dA !== null ? t.dA : null;
-  seen.push(colour('Peri-wound erythema', dA === null ? null : dA >= 3));
+  /* Not tsrc: the ring is measured against the patient's own skin on either path, and no
+     tissue model has a peri-wound class. */
+  seen.push(row('Peri-wound erythema', 'colour rule \u00b7 unvalidated',
+    dA === null ? 'Not assessed' : (dA >= 3 ? 'Present' : 'Not seen'),
+    dA === null ? 'u' : (dA >= 3 ? 'y' : 'n')));
 
   /* The three the camera cannot settle. A dropdown rather than a one-way button: "Confirm"
      could only ever add a finding, so there was no way to record having looked and found
@@ -3117,7 +3144,7 @@ function renderPublic(){
       </select></div>`;
   }).join('');
 
-  const tiss = t ? `<p class="tis">Granulation ${pc(t.frac.gran)}% &middot; Slough ${pc(t.frac.slough)}% &middot; Necrosis ${pc(t.frac.necro)}% &middot; <span>by colour, unvalidated</span></p>` : '';
+  const tiss = t ? `<p class="tis">Granulation ${pc(t.frac.gran)}% &middot; Slough ${pc(t.frac.slough)}% &middot; Necrosis ${pc(t.frac.necro)}% &middot; <span>${t.src === 'model' ? 'by the tissue model' : 'by colour, unvalidated'}</span></p>` : '';
 
   const est = infEstimates();
   const mp = cautiousInfection();
@@ -3484,12 +3511,24 @@ function dilate(mask, N, r){
 
 /* Measures only. Drawing moved to paintTissueLayer(), so that the same measurement can be
    shown as any one of several layers without being recomputed. */
-function tissueMap(seg){
+async function tissueMap(seg){
   $('tissueCanvas').getContext('2d').clearRect(0, 0, VIEW, VIEW);
   if (!seg || !seg.found) return null;
 
   const N = SEG, k = VIEW / N, m = seg.mask;
   const src = $('imgCanvas').getContext('2d').getImageData(0, 0, VIEW, VIEW).data;
+
+  /* One class per pixel from the trained segmenter, if there is one. The peri-wound ring is
+     NOT taken from it: the model has no peri-wound class, and the redness measure is a
+     comparison against the patient's own skin rather than a classification, so it stays where
+     it is on either path. */
+  let cls = null;
+  if (tissueModel){
+    try {
+      const t = tf.tidy(() => tissueModel.predict(preprocess($('imgCanvas'), '[-1,1]')).argMax(-1).squeeze());
+      cls = await t.data(); t.dispose();
+    } catch(e){ cls = null; console.warn('tissue model failed, falling back to the colour rule', e); }
+  }
 
   // ERY: two annuli. ring = skin immediately around the wound, ref = the patient's own skin
   // further out, used as the baseline. Redness is then a difference in a*, not an absolute value,
@@ -3515,9 +3554,9 @@ function tissueMap(seg){
     if (inRing){ if (skinLike(L, A, B)){ ringA += A; ringN++; ringVal[i] = A; } continue; }
     if (inRef){  if (skinLike(L, A, B)){ refA  += A; refN++;  } continue; }
 
-    const id = tissueOf(L, A, B);
-    count[id]++; total++;
-    grid[i] = TISSUE.findIndex(t => t.id === id);
+    const gi = cls ? TISSUE_FROM_MODEL[cls[i]] : TISSUE.findIndex(t => t.id === tissueOf(L, A, B));
+    count[TISSUE[gi].id]++; total++;
+    grid[i] = gi;
   }
   /* The class of every cell and the redness of every peri-wound cell are kept rather than
      painted straight to the canvas, so that any one of them can be drawn on its own later. A
@@ -3527,7 +3566,7 @@ function tissueMap(seg){
   const refMean = refN ? refA/refN : null;
   return { frac: TISSUE.reduce((f, t) => (f[t.id] = total ? count[t.id]/total : 0, f), {}),
            total, dA, ringN, refN, sparse: total < 150,
-           grid, ringVal, refMean, N };
+           grid, ringVal, refMean, N, src: cls ? 'model' : 'rule' };
 }
 
 /* ── the layers ────────────────────────────────────────────────────────────────────────────

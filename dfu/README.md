@@ -92,6 +92,69 @@ above `renderPublic()`:
    "no infection", so an abstention reads *Not determined* rather than *No signs of infection*.
    Of the errors available here that is the one that costs a limb rather than a clinic visit.
 
+### Tissue layers
+
+The Tissue view has a layer picker — All tissue, Granulation, Slough, Necrosis, Peri-wound
+redness — and shows one at a time. `tissueMap()` measures and keeps the class of every cell and
+the redness of every peri-wound cell; `paintTissueLayer()` draws any one of them from that.
+
+A single layer veils what it is *not*, rather than tinting what it is. Tinting slough-coloured
+pixels slough colour is invisible, and the same for granulation on red granulation. The
+composite keeps its legend colours and the opacity slider; a veiled layer carries its own alpha.
+
+The peri-wound layer is per-cell: each cell is drawn by its a\* above the patient's own skin
+further out, so it shows where the redness is and how strong, and means the same thing on any
+skin tone.
+
+### Where tissue classes come from
+
+Two paths, and every row on screen names which one produced it.
+
+**The colour rule** (`tissueOf`) is the default and the fallback: six thresholds on CIELAB
+lightness, chroma and hue. It fails the way hand-written thresholds fail. On a real heel ulcer
+it put 78 % of the bed in "other" and reported *Slough — Not seen* over a plainly sloughy,
+purulent bed, because calling a pixel slough needs chroma above 15 and that bed was a pale,
+desaturated cream-yellow. Below L 30 it has no hue information at all, so any dark bed becomes
+necrosis wholesale. Rows produced this way say `colour rule · unvalidated`.
+
+**A trained segmenter**, when `dfu/tissue/model.json` exists. `ml/train_tissue.py` trains a
+multi-class MobileNetV2-UNet — the sibling of `train_segmentation.py`, same encoder, same four
+skips — over five classes ordered background, gran, slough, necro, pale. The app loads it
+beside the wound segmenter, and `tissueMap()` prefers it. Rows then say `tissue model · Dice
+0.71`. No model is shipped, so the colour rule is what runs today; the load 404s silently and
+nothing changes.
+
+The peri-wound row stays on the colour rule either way: no tissue model has a peri-wound class,
+and the redness measure is a comparison against the patient's own skin rather than a
+classification.
+
+#### Training one
+
+Public datasets with pixel-level tissue labels: [WoundTissue](https://github.com/akabircs/WoundTissue)
+(147 images — granulation, necrosis, slough, maceration, tendon, bone),
+[DFUTissue](https://arxiv.org/abs/2406.16012) (110 labelled DFU images; class lists differ
+between papers, so check the release), and Toledo et al., VISAPP 2022 (222 images). Each carries
+its own licence — read it and record which you used; `metrics.json` has a `data` field for it.
+
+None of them labels pus, abscess, gangrene, peri-wound erythema or bleeding. Those stay findings
+the clinician supplies, and are the gap an HTPN-labelled set would fill.
+
+Mask palettes are not guessed. Run the inspector first:
+
+    python ml/train_tissue.py --root /data/WoundTissue --inspect
+
+which prints every distinct mask colour with its pixel share and the JSON key to use. Write the
+mapping, then train:
+
+    TF_USE_LEGACY_KERAS=1 python ml/train_tissue.py \
+        --root /data/WoundTissue --palette ml/palettes/woundtissue.json --out dfu/tissue
+
+A wrong palette trains a confident, wrong model in silence, which is the failure the inspector
+exists to remove. The split is by case, not by image. Class weights are inverse pixel frequency,
+because necrosis and epithelium are a few percent of pixels and an unweighted loss learns
+"granulation everywhere" and scores well on accuracy — which is why the script reports per-class
+Dice and macro Dice over the tissue classes, and never accuracy.
+
 ### Which question earns its place
 
 Every question is tagged in `ASK` with the outputs that actually read it, audited against the

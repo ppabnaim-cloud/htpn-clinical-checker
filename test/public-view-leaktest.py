@@ -22,10 +22,10 @@ MUST = [('the signs-of-infection list', ['Peri-wound erythema']),
         ('an infection verdict',        ['LIKELY INFECTION', 'NO SIGNS OF INFECTION', 'NOT DETERMINED']),
         ('the antibiotic panel',        ['Antibiotics']),
         ('the grading',                 ['Meggitt', 'NPIAP']),
-        # the colour rule is a six-line Lab threshold, not a model. Printing its output as a
-        # flat Present / Not seen gave it more authority than the rows the examiner fills in,
-        # and it is the weaker of the two. Every row names its source.
-        ('provenance on the colour-rule rows', ['colour rule'])]
+        # Every tissue row names its source, whichever produced it: the six-line Lab threshold
+        # or a trained segmenter. Printing either without provenance gave the colour rule more
+        # authority than the rows the examiner fills in, and it is the weaker of the two.
+        ('provenance on the tissue rows', ['colour rule', 'tissue model'])]
 
 
 async def main():

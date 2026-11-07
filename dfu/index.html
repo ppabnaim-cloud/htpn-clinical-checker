@@ -296,6 +296,16 @@ body.detail-full .pub-only{display:none !important}
 .sxr>b.y{color:#B3182F}.sxr>b.n{color:var(--muted)}.sxr>b.u{color:var(--faint);font-weight:500}
 .sxr select.tapsel{font-family:var(--sans);font-size:13px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);max-width:46%}
 .tis span{color:var(--muted)}
+.maskwrap{position:relative;width:100%;max-width:448px;aspect-ratio:1;overflow:hidden;border-radius:12px;border:1px solid var(--line);background:#0b1f3a;touch-action:none}
+.maskzoom{position:absolute;inset:0;transform-origin:0 0}
+.maskwrap canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#maskPaint{opacity:.62}
+.maskbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+.brushlab{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.brushlab input{width:110px}
+.mchip{display:inline-flex;align-items:center;gap:6px;font-family:var(--sans);font-size:12.5px;padding:4px 11px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer}
+.mchip i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.mchip.on{border-color:var(--navy);background:var(--navy);color:#fff;font-weight:600}
 .layers{display:flex;flex-wrap:wrap;gap:5px;width:100%;margin-top:7px}
 .lchip{font-family:var(--sans);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer}
 .lchip:hover{border-color:var(--teal-dim);color:var(--teal-dim)}
@@ -1219,6 +1229,49 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
           </div>
           <span class="lab" style="margin-top:4px">Present in this image <em>tick all that apply</em></span>
           <div class="chips" id="labFeats"></div>
+        <!-- Why a brush and not a polygon. On a phone, placing polygon vertices with a
+             finger is hopeless: the finger covers the boundary it is placing, and a ragged
+             wound bed needs dozens of points. Painting works, for three reasons together —
+             a round brush forgives imprecision, the grader starts from the model's own
+             prediction and corrects it rather than drawing from nothing, and the boundaries
+             are genuinely fuzzy anyway (the DFUTissue authors say so: "annotating wound
+             tissues is challenging due to less defined boundaries and irregular shapes").
+             Paint and Move are separate modes rather than gestures, because disambiguating a
+             one-finger paint from a one-finger pan by feel is the thing that makes mobile
+             annotation tools frustrating. -->
+        <details class="labmore" id="maskBox">
+          <summary>Draw the tissue map <span class="cnt" id="maskCnt"></span></summary>
+          <p class="small" style="margin:6px 0 8px">Paint what the camera can see, inside the
+          wound. This is the only way the app will ever localise <b>pus</b>: no public dataset
+          labels it, so every pus mask in the world that is any use to this project has to be
+          drawn here. Start from the model and correct it &mdash; that is far less work than
+          drawing from scratch, and it is the same mask either way.</p>
+
+          <div class="maskwrap" id="maskWrap">
+            <div class="maskzoom" id="maskZoom">
+              <canvas id="maskPhoto" width="448" height="448"></canvas>
+              <canvas id="maskPaint" width="448" height="448"></canvas>
+            </div>
+          </div>
+
+          <div class="chips" id="maskClasses" style="margin-top:8px"></div>
+          <div class="maskbar">
+            <div class="seg" id="maskMode"><button data-m="paint" class="on">Paint</button><button data-m="move">Move</button></div>
+            <div class="seg" id="maskZoomPick"><button data-z="1" class="on">1&times;</button><button data-z="2">2&times;</button><button data-z="3">3&times;</button></div>
+            <label class="brushlab">Brush <input type="range" id="maskBrush" min="3" max="40" value="14"></label>
+          </div>
+          <div class="labnav" style="margin-top:8px">
+            <button class="btn btn-ghost btn-sm" id="maskSeed">Start from the model</button>
+            <button class="btn btn-ghost btn-sm" id="maskUndo">Undo</button>
+            <button class="btn btn-ghost btn-sm danger" id="maskClear">Clear</button>
+            <button class="btn btn-teal btn-sm" id="maskSave">Save mask</button>
+          </div>
+          <div class="labnav" style="margin-top:6px">
+            <button class="btn btn-ghost btn-sm" id="maskExport">Export all masks</button>
+            <span class="small" id="maskStat" style="align-self:center"></span>
+          </div>
+        </details>
+
         <details class="labmore" id="labExamBox">
           <summary>What only your examination supplies <span class="cnt" id="labExamCnt"></span></summary>
           <p class="small" style="margin:6px 0 8px">The same questions as step 2b at the bedside. These are what a photograph cannot show, and they are what the published definitions are made of — answer them and the grade is worked out rather than guessed.</p>
@@ -1607,7 +1660,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v9.4</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v9.5</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1661,6 +1714,7 @@ const LAYERS = [
   ['gran',   'Granulation'],
   ['slough', 'Slough'],
   ['necro',  'Necrosis'],
+  ['pus',    'Pus'],
   ['ery',    'Peri-wound redness']
 ];
 let curLayer = 'all';
@@ -1673,7 +1727,19 @@ let lastTissue = null;                                                     // wo
    with the model's background becoming "Unclassified" rather than being dropped, because the
    segmenter said the pixel is wound and the tissue model disagreeing is worth seeing. */
 let tissueModel = null, tissueMetrics = null;
-const TISSUE_FROM_MODEL = [4, 0, 1, 2, 3];
+/* Built from the model's OWN class list in metrics.json, so a model with more classes than
+   today's five drops in without this array being hand-edited to match. Anything the app has
+   no TISSUE entry for maps to Unclassified rather than silently landing on the wrong colour. */
+let TISSUE_FROM_MODEL = [];
+const OTHER_IX = () => TISSUE.findIndex(t => t.id === 'other');
+function buildTissueMap(){
+  const cls = (tissueMetrics && tissueMetrics.classes) || [];
+  TISSUE_FROM_MODEL = cls.map(c => {
+    if (c === 'background') return OTHER_IX();
+    const i = TISSUE.findIndex(t => t.id === c);
+    return i < 0 ? OTHER_IX() : i;
+  });
+}
 let fit = null;            // how the photograph was letterboxed into the square view
 let manualBox = null, boxing = false, boxStart = null;   // clinician-drawn region of interest
 let pxPerCm = null, picking = false, pickPts = [];                        // optional ruler scale
@@ -1848,6 +1914,8 @@ async function loadModel(){
     tissueModel = await tf.loadLayersModel('tissue/model.json');
     tf.tidy(() => tissueModel.predict(tf.zeros([1, IMG, IMG, 3])));
     tissueMetrics = await (await fetch('tissue/metrics.json')).json().catch(() => null);
+    buildTissueMap();
+    if (!TISSUE_FROM_MODEL.length){ tissueModel = null; console.warn('tissue model has no class list; ignoring it'); }
   } catch(e){ tissueModel = null; tissueMetrics = null; }
 
   $('modelPill').textContent = `ready · ${tf.getBackend()} · ${((performance.now()-t0)/1000).toFixed(1)}s`;
@@ -3473,6 +3541,10 @@ const TISSUE = [
   { id:'gran',   name:'Granulation',    rgb:[214, 69, 80],  hint:'red, beefy'    },
   { id:'slough', name:'Slough',         rgb:[232,163, 61],  hint:'yellow, fibrinous' },
   { id:'necro',  name:'Necrosis',       rgb:[ 59, 46, 74],  hint:'black eschar'  },
+  /* No colour rule returns pus and no public dataset labels it, so this class exists only to
+     be drawn by hand in step B and, once enough has been drawn, predicted. Until then its
+     layer is offered and reads 0 %, which is a measurement rather than a missing feature. */
+  { id:'pus',    name:'Pus',            rgb:[246,224,120],  hint:'opaque, glossy, pooling' },
   { id:'pale',   name:'Epithelial/pale',rgb:[242,184,198],  hint:'pale, re-epithelialising' },
   { id:'other',  name:'Unclassified',   rgb:[150,160,172],  hint:'no rule fits'  }
 ];
@@ -3581,10 +3653,11 @@ async function tissueMap(seg){
     let gi;
     if (cls){
       gi = TISSUE_FROM_MODEL[cls[i]];
+      if (gi === undefined) gi = OTHER_IX();
       /* A class the model was never trained on is not the model's to claim, even if the
          softmax happens to put mass there. Discard it and let the rule answer, so the
          provenance on the row is true of the pixels under it. */
-      if (uncovered.has(TISSUE[gi].id)) gi = 4;
+      if (uncovered.has(TISSUE[gi].id)) gi = OTHER_IX();
       /* Not only where the model abstained: a class it was never trained on is the rule's
          outright, on every pixel. Otherwise a model that confidently calls a black eschar
          "slough" would erase the necrosis while the row still read "colour rule", and the
@@ -5648,6 +5721,10 @@ function renderLabeller(){
   cur = Math.max(0, Math.min(cur, pool.length - 1));
   const it = pool[cur];
   $('labImg').src = poolUrl(it);
+  /* The photo element may not have decoded yet, so the mask editor is loaded on its load
+     event as well as now: whichever happens second wins, and both are idempotent. */
+  $('labImg').onload = () => maskLoadImage(it);
+  maskLoadImage(it);
   $('labName').textContent = it.name;
   const done = pool.filter(labelled).length;
   const nCase = poolCases().size;
@@ -5751,6 +5828,226 @@ function renderLabeller(){
    set, the same wording and the same rule functions as the bedside means a training label and a
    logged case say the same thing in the same vocabulary, and can be pooled. It also means the
    examiner is never asked to hold seven criteria in their head.                              */
+/* ══════════════════════════ hand-drawn tissue masks ══════════════════════════════════════
+   The five findings the app cannot localise — pus above all — have no pixel labels anywhere
+   public. Every one that is any use to this project has to be drawn, and it has to be drawable
+   on the phone the photograph was taken with, or it will not happen.
+
+   Three things make that workable, and none of them is sufficient alone:
+     a round BRUSH rather than polygon vertices, because a finger covers the boundary it is
+     placing and a wound bed needs dozens of points;
+     SEEDING from the model's own prediction, so the job is correction rather than drawing —
+     the largest single saving available here;
+     fuzzy boundaries being acceptable, which they genuinely are. Inter-rater variability on
+     wound-bed boundaries is wide, and ±2 px at this resolution sits inside it.
+
+   The mask is stored at MASKN, the resolution the model trains at, so nothing is interpolated
+   between drawing and training. 0 means "not labelled", not "background": a grader who paints
+   the slough and stops has said nothing about the rest, and the exporter must be able to tell
+   that from a deliberate background stroke.                                                  */
+const MASKN = 224;
+const MASK_DB = 'wv_masks', MASK_STORE = 'masks';
+let maskArr = null, maskKey = null, maskClass = 0, maskMode = 'paint', maskZoom = 1,
+    maskPan = { x: 0, y: 0 }, maskUndoStack = [], maskDirty = false;
+
+/* Painting background is a real statement — "I looked, this is not wound tissue" — so it is a
+   class, and Erase (0) is separate and means "I have not said". */
+const MASK_CLASSES = [
+  { id: 'erase', name: 'Erase', v: 0, rgb: [120, 130, 145] },
+  ...TISSUE.filter(t => t.id !== 'other').map((t, i) => ({ id: t.id, name: t.name, v: i + 1, rgb: t.rgb })),
+  { id: 'bg', name: 'Not wound', v: 90, rgb: [40, 60, 90] }
+];
+
+function idb(){
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(MASK_DB, 1);
+    r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains(MASK_STORE)) r.result.createObjectStore(MASK_STORE); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function maskPut(key, arr){
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(MASK_STORE, 'readwrite');
+    tx.objectStore(MASK_STORE).put(arr, key);
+    tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error);
+  });
+}
+async function maskGet(key){
+  const db = await idb();
+  return new Promise(res => {
+    const tx = db.transaction(MASK_STORE, 'readonly');
+    const q = tx.objectStore(MASK_STORE).get(key);
+    q.onsuccess = () => res(q.result || null); q.onerror = () => res(null);
+  });
+}
+async function maskKeys(){
+  const db = await idb();
+  return new Promise(res => {
+    const tx = db.transaction(MASK_STORE, 'readonly');
+    const q = tx.objectStore(MASK_STORE).getAllKeys();
+    q.onsuccess = () => res(q.result || []); q.onerror = () => res([]);
+  });
+}
+
+function maskPaintRender(){
+  const c = $('maskPaint'); if (!c) return;
+  const ctx = c.getContext('2d'), k = VIEW / MASKN;
+  const img = ctx.createImageData(VIEW, VIEW);
+  if (maskArr){
+    for (let y = 0; y < MASKN; y++) for (let x = 0; x < MASKN; x++){
+      const v = maskArr[y * MASKN + x]; if (!v) continue;
+      const cl = MASK_CLASSES.find(m => m.v === v); if (!cl) continue;
+      for (let dy = 0; dy < k; dy++) for (let dx = 0; dx < k; dx++){
+        const o = (((y * k + dy) | 0) * VIEW + ((x * k + dx) | 0)) * 4;
+        img.data[o] = cl.rgb[0]; img.data[o+1] = cl.rgb[1]; img.data[o+2] = cl.rgb[2]; img.data[o+3] = 255;
+      }
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const n = maskArr ? maskArr.reduce((a, v) => a + (v ? 1 : 0), 0) : 0;
+  const st = $('maskStat');
+  if (st) st.textContent = maskArr ? `${Math.round(100 * n / (MASKN * MASKN))} % of the frame painted${maskDirty ? ' · unsaved' : ''}` : '';
+}
+
+function maskRenderClasses(){
+  const el = $('maskClasses'); if (!el) return;
+  el.innerHTML = MASK_CLASSES.map((m, i) =>
+    `<button class="mchip${i === maskClass ? ' on' : ''}" data-i="${i}"><i style="background:rgb(${m.rgb.join(',')})"></i>${m.name}</button>`).join('');
+  el.querySelectorAll('.mchip').forEach(b => b.onclick = () => { maskClass = +b.dataset.i; maskRenderClasses(); });
+}
+
+function maskApplyZoom(){
+  const z = $('maskZoom'); if (!z) return;
+  z.style.transform = `translate(${maskPan.x}px, ${maskPan.y}px) scale(${maskZoom})`;
+}
+
+function maskSnapshot(){
+  /* An empty mask is a state worth returning to. Skipping the snapshot when maskArr is still
+     null meant the FIRST stroke on an image could never be undone, which is exactly the one
+     most likely to be a mis-tap. */
+  maskUndoStack.push(maskArr ? maskArr.slice() : new Uint8Array(MASKN * MASKN));
+  if (maskUndoStack.length > 12) maskUndoStack.shift();   // ~50 KB each, bounded on purpose
+}
+
+function maskStroke(cx, cy){
+  if (!maskArr) maskArr = new Uint8Array(MASKN * MASKN);
+  const r = Math.max(1, +$('maskBrush').value / 2), v = MASK_CLASSES[maskClass].v, r2 = r * r;
+  const x0 = Math.max(0, Math.floor(cx - r)), x1 = Math.min(MASKN - 1, Math.ceil(cx + r));
+  const y0 = Math.max(0, Math.floor(cy - r)), y1 = Math.min(MASKN - 1, Math.ceil(cy + r));
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++){
+    const dx = x - cx, dy = y - cy;
+    if (dx*dx + dy*dy <= r2) maskArr[y * MASKN + x] = v;
+  }
+  maskDirty = true;
+}
+
+function maskLoadImage(it){
+  maskKey = it ? labKey(it) : null;
+  maskArr = null; maskUndoStack = []; maskDirty = false;
+  const pc = $('maskPhoto'); if (!pc) return;
+  const ctx = pc.getContext('2d'); ctx.clearRect(0, 0, VIEW, VIEW);
+  const img = $('labImg');
+  if (img && img.complete && img.naturalWidth){
+    /* Same square centre-crop the trainer uses, so what is painted is what is learned. */
+    const w = img.naturalWidth, h = img.naturalHeight, side = Math.min(w, h);
+    ctx.drawImage(img, (w - side) / 2, (h - side) / 2, side, side, 0, 0, VIEW, VIEW);
+  }
+  maskPaintRender();
+  if (maskKey) maskGet(maskKey).then(a => {
+    if (a && maskKey){ maskArr = new Uint8Array(a); maskDirty = false; maskPaintRender(); maskCount(); }
+  });
+}
+
+async function maskCount(){
+  const el = $('maskCnt'); if (!el) return;
+  const keys = await maskKeys();
+  el.textContent = keys.length ? `${keys.length} drawn` : 'none yet';
+  el.classList.toggle('on', keys.length > 0);
+}
+
+/* Run-length encoded so a mostly-unpainted mask costs almost nothing, and the result is plain
+   text that survives a copy-paste out of a phone browser. */
+function maskRLE(arr){
+  const out = []; let v = arr[0], n = 1;
+  for (let i = 1; i < arr.length; i++){
+    if (arr[i] === v) n++; else { out.push(v, n); v = arr[i]; n = 1; }
+  }
+  out.push(v, n); return out.join(',');
+}
+
+function wireMask(){
+  const wrap = $('maskWrap'); if (!wrap) return;
+  maskRenderClasses(); maskApplyZoom(); maskCount();
+
+  const toMask = e => {
+    const r = $('maskPaint').getBoundingClientRect();
+    return { x: (e.clientX - r.left) / r.width * MASKN, y: (e.clientY - r.top) / r.height * MASKN };
+  };
+  let drawing = false, panning = false, last = null;
+  wrap.addEventListener('pointerdown', e => {
+    if (maskMode === 'move'){ panning = true; last = { x: e.clientX, y: e.clientY }; }
+    else { drawing = true; maskSnapshot(); const p = toMask(e); maskStroke(p.x, p.y); maskPaintRender(); }
+    wrap.setPointerCapture(e.pointerId);
+  });
+  wrap.addEventListener('pointermove', e => {
+    if (panning){ maskPan.x += e.clientX - last.x; maskPan.y += e.clientY - last.y; last = { x: e.clientX, y: e.clientY }; maskApplyZoom(); return; }
+    if (!drawing) return;
+    const p = toMask(e); maskStroke(p.x, p.y); maskPaintRender();
+  });
+  ['pointerup','pointercancel','pointerleave'].forEach(ev =>
+    wrap.addEventListener(ev, () => { drawing = false; panning = false; }));
+
+  $('maskMode').querySelectorAll('button').forEach(b => b.onclick = () => {
+    maskMode = b.dataset.m;
+    $('maskMode').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  });
+  $('maskZoomPick').querySelectorAll('button').forEach(b => b.onclick = () => {
+    maskZoom = +b.dataset.z; if (maskZoom === 1) maskPan = { x: 0, y: 0 };
+    $('maskZoomPick').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    maskApplyZoom();
+  });
+  $('maskUndo').onclick = () => { if (maskUndoStack.length){ maskArr = maskUndoStack.pop(); maskDirty = true; maskPaintRender(); } };
+  $('maskClear').onclick = () => { maskSnapshot(); maskArr = new Uint8Array(MASKN * MASKN); maskDirty = true; maskPaintRender(); };
+  $('maskSave').onclick = async () => {
+    if (!maskKey || !maskArr) return toast('Open an image in step B first');
+    await maskPut(maskKey, maskArr); maskDirty = false; maskPaintRender(); maskCount();
+    toast('Mask saved on this device');
+  };
+  $('maskSeed').onclick = () => {
+    /* The model's prediction for THIS image, at mask resolution, as a starting point. It is
+       the current tissue map: whatever produced it, model or colour rule, is what the grader
+       is correcting, and correcting a wrong seed is still faster than an empty canvas. */
+    if (!lastTissue || !lastTissue.grid || !lastSeg || !lastSeg.found)
+      return toast('Analyse this image on the Assess tab first — the seed is its tissue map');
+    maskSnapshot();
+    const a = new Uint8Array(MASKN * MASKN);
+    for (let i = 0; i < a.length && i < lastTissue.grid.length; i++){
+      const gi = lastTissue.grid[i];
+      if (gi < 0) continue;
+      const cl = MASK_CLASSES.find(m => m.id === TISSUE[gi].id);
+      if (cl) a[i] = cl.v;
+    }
+    maskArr = a; maskDirty = true; maskPaintRender();
+    toast('Seeded from the current tissue map — correct it, then save');
+  };
+  $('maskExport').onclick = async () => {
+    const keys = await maskKeys();
+    if (!keys.length) return toast('No masks drawn yet');
+    const lines = [];
+    for (const k of keys){
+      const a = await maskGet(k);
+      if (a) lines.push(JSON.stringify({ key: k, n: MASKN,
+        classes: MASK_CLASSES.map(m => [m.v, m.id]), rle: maskRLE(new Uint8Array(a)) }));
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'application/x-ndjson' });
+    const u = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = u; link.download = `wound-masks-${new Date().toISOString().slice(0,10)}.ndjson`;
+    link.click(); setTimeout(() => URL.revokeObjectURL(u), 2000);
+    toast(`${lines.length} mask${lines.length === 1 ? '' : 's'} exported`);
+  };
+}
+
 function renderLabExam(it){
   const pi = it.wtype === 'pi', spec = ASK[pi ? 'pi' : 'dfu'];
   const host = $('labAsk');
@@ -6093,6 +6390,10 @@ renderFormulary();
 /* Labels already in storage become case rows at start-up, so a grader who labelled before this
    existed does not have to touch 441 images again to see them in the log. It is keyed and
    idempotent, so running it on every load cannot duplicate anything. */
+/* After MASK_CLASSES and the rest of the editor's consts, not beside the other startup
+   wiring further up: maskRenderClasses() reads MASK_CLASSES, and a call from up there sits
+   in its temporal dead zone. */
+wireMask();
 noteUse();
 try {
   const n = syncLabelsToLog();

@@ -22,7 +22,12 @@ CLASSES (fixed, and matching the TISSUE array in dfu/index.html so the app can m
     1 gran          granulation — red, beefy
     2 slough        slough / fibrin — yellow, stringy
     3 necro         necrosis / eschar — black, leathery
-    4 pale          epithelial / re-epithelialising — pale pink
+    4 pus           purulent discharge — opaque, glossy, pooling
+    5 pale          epithelial / re-epithelialising — pale pink
+
+No public dataset labels pus. It is here for masks drawn in the app's own editor, exported with
+ml/masks_to_png.py. A model trained without it simply records that in classes_missing and the
+app keeps the colour rule for whatever is absent.
 
 Datasets. None of the public sets uses these five names, so each needs a mapping, and none of
 them labels pus, abscess, gangrene, peri-wound erythema or bleeding — those remain findings the
@@ -58,7 +63,10 @@ import numpy as np
 from PIL import Image
 
 IMG = 224
-CLASSES = ["background", "gran", "slough", "necro", "pale"]
+# "pus" is here although no public dataset labels it: masks drawn in the app's own editor can,
+# and the app builds its model->display mapping from the class list in metrics.json, so a model
+# with pus drops in beside one without it.
+CLASSES = ["background", "gran", "slough", "necro", "pus", "pale"]
 NC = len(CLASSES)
 SKIPS = ["block_13_expand_relu", "block_6_expand_relu", "block_3_expand_relu", "block_1_expand_relu"]
 

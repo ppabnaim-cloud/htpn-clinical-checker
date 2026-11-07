@@ -167,6 +167,42 @@ README asks only for citation, which is honoured in the app's model card and her
 Absence of a licence is not a grant of permission, so confirming reuse terms with the authors
 remains worth doing before anything is published on the strength of this model.
 
+#### Drawing masks on a phone
+
+The five findings the app cannot localise — pus above all — have no pixel labels in any public
+dataset, so every useful one has to be drawn. Step B has a **Draw the tissue map** panel for
+that, and it is built for a phone, because that is the device the photograph was taken on.
+
+A brush, not polygon vertices. Placing vertices with a finger is hopeless: the finger covers
+the boundary it is placing, and a ragged wound bed needs dozens of points. Three things make
+painting work where polygons do not:
+
+- a **round brush** forgives imprecision;
+- **Start from the model** seeds the canvas with the current tissue map, so the job is
+  correction rather than drawing — the largest single saving available;
+- the boundaries are **genuinely fuzzy**. The DFUTissue authors say so themselves: *"annotating
+  wound tissues is challenging due to less defined boundaries and irregular shapes."* A couple
+  of pixels at 224 sits inside normal inter-rater variability.
+
+Paint and Move are separate modes rather than gestures, because telling a one-finger paint from
+a one-finger pan by feel is what makes mobile annotation tools infuriating. Zoom is 1× / 2× / 3×.
+
+Masks are stored at 224 px — the resolution the model trains at, so nothing is interpolated
+between drawing and training — in IndexedDB, keyed the same way as the labels. **0 means "not
+labelled", which is not the same as "Not wound".** A grader who paints the slough and stops has
+said nothing about the rest of the frame, and that distinction has to survive to the trainer.
+
+`Export all masks` writes one run-length-encoded NDJSON line per mask. The photographs are not
+in it — they never leave the browser — so the export carries only the key, and
+`ml/masks_to_png.py` matches them back against the originals:
+
+    python ml/masks_to_png.py --ndjson wound-masks-2026-11-07.ndjson \
+        --images /path/to/the/photographs --out /data/htpn-tissue
+
+It prints the pixel share per class and the unpainted proportion of every mask, and warns on
+any mask more than half unpainted, because those pixels will train as background whether or not
+that is what the grader meant.
+
 #### Training one
 
 Public datasets with pixel-level tissue labels: [WoundTissue](https://github.com/akabircs/WoundTissue)

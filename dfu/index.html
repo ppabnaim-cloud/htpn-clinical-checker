@@ -1099,6 +1099,90 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   </section>
 
   <!-- B: tick what each image shows -->
+
+  <!-- Where graders actually disagree is precedence, not definitions: everyone knows what
+       Wagner 4 means and still argues about a superficial ulcer that probes to bone. So this
+       is a precedence table, not a glossary.
+       It sits ABOVE step B rather than inside it, because step B is hidden until images are
+       loaded and a grader being shown the method for the first time has none. -->
+  <section class="card only-dfu" id="gradeGuideCard">
+    <div class="step"><span class="n">&#9432;</span><h3>Grading method</h3><span class="hint">read once, before you start</span></div>
+    <details class="labmore" id="gradeGuide">
+        <summary>How to grade &mdash; Wagner and Texas</summary>
+        <p class="small" style="margin:6px 0 10px">Both are <b>definitions applied to findings</b>,
+        not opinions about a photograph. Answer the questions below and the grade follows. If
+        two graders disagree it is almost always about precedence, not about what a word means
+        &mdash; so that is what this table is.</p>
+
+        <p class="small" style="margin:0 0 6px"><b>One depth answer, two different boundaries</b></p>
+        <table class="keep">
+          <tr><td><b>Depth on probing</b></td><td><b>Wagner</b></td><td><b>Texas grade</b></td></tr>
+          <tr><td>No break in the skin</td><td>0</td><td>0</td></tr>
+          <tr><td>Superficial</td><td>1</td><td>1</td></tr>
+          <tr><td>To tendon or capsule</td><td>2</td><td>2</td></tr>
+          <tr><td>To joint</td><td>2</td><td class="y">3</td></tr>
+          <tr><td>To bone</td><td>2</td><td class="y">3</td></tr>
+        </table>
+        <p class="small" style="margin:6px 0 10px">Wagner 2 covers tendon, capsule, ligament
+        <i>and</i> joint. Texas puts the joint with bone, in grade 3. That is why the joint is
+        a separate answer rather than bundled with tendon.</p>
+
+        <p class="small" style="margin:0 0 6px"><b>Wagner precedence, in the order it is applied</b></p>
+        <ol class="guide">
+          <li>Gangrene of the whole foot &rarr; <b>5</b></li>
+          <li>Localised gangrene &rarr; <b>4</b></li>
+          <li>Abscess, purulent collection or confirmed osteomyelitis, <i>or</i> probe-to-bone
+            positive &rarr; <b>3</b>, however shallow the ulcer looks</li>
+          <li>No break in the skin &rarr; <b>0</b> (an at-risk or healed foot)</li>
+          <li>Otherwise depth decides: tendon, capsule, joint or bone &rarr; <b>2</b>;
+            superficial &rarr; <b>1</b></li>
+        </ol>
+        <div class="note" style="margin:8px 0 12px">A Wagner grade below 4 is
+        <b>provisional until gangrene is answered</b>, because gangrene outranks everything
+        beneath it. The panel says "Still needed: gangrene" when that is the case &mdash; read it.</div>
+
+        <p class="small" style="margin:0 0 6px"><b>Texas is two independent axes</b></p>
+        <table class="keep">
+          <tr><td>Grade 0&ndash;3</td><td class="y">Depth only</td>
+            <td>Nothing else moves it. Probe-to-bone, abscess and gangrene do not change the grade.</td></tr>
+          <tr><td>Stage A&ndash;D</td><td class="y">Infection &times; ischaemia</td>
+            <td>A neither &middot; B infected &middot; C ischaemic &middot; D both. Independent of depth.</td></tr>
+        </table>
+        <p class="small" style="margin:6px 0 10px">So a superficial infected ulcer is
+        <b>1B</b>, not grade 2 because it is infected. And Texas gives <b>no stage at all</b>
+        until both infection and perfusion are answered &mdash; "not assessed" for ischaemia
+        leaves it undetermined, which is correct rather than a fault.</p>
+
+        <p class="small" style="margin:0 0 6px"><b>The five that go wrong most often</b></p>
+        <ol class="guide">
+          <li><b>Grading depth from the photograph.</b> Wagner 1 against 2 is depth
+            <i>on probing</i>. If nobody probed it, leave it unanswered.</li>
+          <li><b>Missing that probe-to-bone outranks depth.</b> A shallow-looking ulcer that
+            probes to bone is Wagner 3, not 1.</li>
+          <li><b>Reading Wagner 0 as healed-looking.</b> It is intact or fully epithelialised
+            skin &mdash; an at-risk foot. Red but unbroken is still 0.</li>
+          <li><b>Letting infection raise the Texas grade.</b> It raises the stage. The grade is
+            depth and only depth.</li>
+          <li><b>Guessing perfusion.</b> Ischaemia is pulses, ABPI below 0.9 or toe pressure
+            below 30&nbsp;mmHg. No photograph shows it. <i>Not assessed</i> is an honest answer
+            and is better than a wrong stage.</li>
+        </ol>
+
+        <p class="small" style="margin:0 0 6px"><b>Second grading, and why it matters</b></p>
+        <p class="small" style="margin:0 0 10px">Every accuracy figure in this app is agreement
+        with <i>one</i> clinician. Without a double-graded subset there is no way to say whether
+        a model that disagrees is wrong or is simply reading the wound as the other grader
+        would. Open a case in the log and fill in <b>Reviewer</b> and their grade; the dashboard
+        computes Cohen's &kappa; from those pairs. <b>100 to 150 double-graded cases</b> is the
+        usual ask. Raw agreement is not a substitute &mdash; 85&nbsp;% raw can be a &kappa; of
+        0.3 when one grade dominates the set.</p>
+
+        <div class="note">Not sure about an image? Use <b>Flag for review</b> rather than
+        guessing, and filter to <i>Flagged for review</i> later. A guessed grade enters the
+        reference standard looking exactly like a confident one.</div>
+    </details>
+  </section>
+
   <section class="card hidden" id="labelCard">
     <div class="step"><span class="n">B</span><h3>Tick what each image shows</h3><span class="hint" id="labelProg">0 of 0 labelled</span>
       <button class="btn btn-ghost btn-sm" id="labExport" style="margin-left:auto">Export labels CSV</button></div>
@@ -1489,7 +1573,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v8.6</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v8.7</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -2333,8 +2417,14 @@ const ASK = {
   dfu: [
     { req:['wagner','texas'], id:'ulcer', q:'Is there a break in the skin?', why:'Wagner 0 and Texas grade 0 are intact or fully epithelialised skin.',
       opts:[['yes','Ulcer present'],['no','Intact or healed']] },
-    { req:['wagner','texas','abx'], id:'depth', q:'How deep does it probe?', why:'This alone separates Texas grade 1, 2 and 3, and Wagner 1 from 2.',
-      opts:[['superficial','Superficial'],['tendon','To tendon, capsule or joint'],['bone','To bone']] },
+    { req:['wagner','texas','abx'], id:'depth', q:'How deep does it probe?', why:'Separates Texas grade 1, 2 and 3, and Wagner 1 from 2. The joint is asked separately because Wagner counts it as grade 2 and Texas as grade 3.',
+      /* Wagner and Texas put the joint on opposite sides of a boundary. Wagner 2 is a deep
+         ulcer to tendon, capsule, ligament OR joint; Texas grade 2 is tendon or capsule and
+         grade 3 is bone OR joint. One option reading "tendon, capsule or joint" therefore
+         graded every joint-penetrating ulcer Texas 2, contradicting this file's own
+         TEXAS_DESC, which says grade 3 is "penetrating to bone or joint". Asking for the
+         joint separately is the only way one answer can serve both scales. */
+      opts:[['superficial','Superficial'],['tendon','To tendon or capsule'],['joint','To joint'],['bone','To bone']] },
     { req:['wagner','abx'], id:'ptb', q:'Probe-to-bone?', why:'Positive probing raises the probability of osteomyelitis sharply, and is what makes an ulcer Wagner 3.',
       opts:[['pos','Positive'],['neg','Negative'],['nd','Not done']] },
     { req:['wagner','abx'], id:'abscess', q:'Abscess, purulent collection or confirmed osteomyelitis?', why:'Any of these makes it Wagner 3 regardless of depth.',
@@ -2692,8 +2782,8 @@ function ruleWagner(a){
                                                         : 'Probe-to-bone positive, which is the bedside finding for osteomyelitis.', need , notes };
   if (a.ulcer === 'no') return { label:'Wagner 0', why:'No break in the skin; an at-risk foot rather than an ulcer.', need , notes };
   if (!a.ulcer) { need.push('a break in the skin'); return { label:null, why:'', need , notes }; }
-  if (a.depth === 'tendon' || a.depth === 'bone')
-    return { label:'Wagner 2', why:'Ulcer penetrating to tendon, capsule or joint, with no abscess or osteomyelitis recorded.', need:need.concat(a.abscess?[]:['abscess or osteomyelitis']) , notes };
+  if (a.depth === 'tendon' || a.depth === 'joint' || a.depth === 'bone')
+    return { label:'Wagner 2', why:'Ulcer penetrating to tendon, capsule, joint or bone, with no abscess or osteomyelitis recorded.', need:need.concat(a.abscess?[]:['abscess or osteomyelitis']) , notes };
   if (a.depth === 'superficial')
     return { label:'Wagner 1', why:'Superficial ulcer, not reaching tendon, capsule or bone.', need:need.concat(a.abscess?[]:['abscess or osteomyelitis']) , notes };
   need.push('depth on probing');
@@ -2707,6 +2797,7 @@ function ruleTexas(a){
   if (a.ulcer === 'no') g = '0';
   else if (a.depth === 'superficial') g = '1';
   else if (a.depth === 'tendon') g = '2';
+  else if (a.depth === 'joint') g = '3';     // Texas grade 3 is "bone or joint", not grade 2
   else if (a.depth === 'bone') g = '3';
   else need.push(a.ulcer ? 'depth on probing' : 'a break in the skin');
   let st = null;

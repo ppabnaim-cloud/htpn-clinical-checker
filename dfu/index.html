@@ -296,6 +296,7 @@ body.detail-full .pub-only{display:none !important}
 .sxr>b.y{color:#B3182F}.sxr>b.n{color:var(--muted)}.sxr>b.u{color:var(--faint);font-weight:500}
 .sxr select.tapsel{font-family:var(--sans);font-size:13px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);max-width:46%}
 .tis span{color:var(--muted)}
+.reframe{font-size:13px;line-height:1.55;color:var(--text);background:#FFF8EC;border-left:3px solid var(--amber);padding:10px 12px;border-radius:0 9px 9px 0;margin:0 0 11px}
 .tap{border:1px solid var(--line);background:var(--card);color:var(--muted);font-family:var(--sans);font-size:12.5px;padding:3px 11px;border-radius:999px;cursor:pointer}
 .tap:hover{border-color:var(--teal-dim);color:var(--teal-dim)}
 .tap.on{background:#B3182F;border-color:#B3182F;color:#fff;font-weight:600}
@@ -1590,7 +1591,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v8.9</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v9.0</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3031,6 +3032,20 @@ function renderPublic(){
   const row = (label, src, value, cls) =>
     `<div class="sxr"><div class="sxk">${label}<em>${src}</em></div><b class="${cls}">${value}</b></div>`;
 
+  /* With no outline every row below reads "Not assessed" and the screen gives no reason. The
+     cause is almost always framing — a hand or a dressing filling the frame, or a sinus with
+     no wound bed to find — and it is recoverable in one re-take, so it is worth saying. It
+     also forecloses the wrong conclusion, which is that the findings were looked for and were
+     absent: a trained findings head would see nothing here either, because it reads the same
+     crop the segmenter produced. */
+  const noWound = !lastSeg || !lastSeg.found;
+  const reframe = noWound
+    ? `<p class="reframe"><b>No wound was outlined in this photograph.</b> Nothing below could be
+       measured, and a trained findings model would see nothing either &mdash; it reads the same
+       crop. Re-take it with the wound filling most of the frame, in even light, with hands,
+       instruments and dressings out of the way.</p>`
+    : '';
+
   const seen = [];
   const colour = (label, present) => row(label, 'colour rule · unvalidated',
     present === null ? 'Not assessed' : (present ? 'Present' : 'Not seen'),
@@ -3047,7 +3062,7 @@ function renderPublic(){
     const fp = featPred[k], ans = pubSigns[k];
     const src = fp
       ? `${fp.name} · p ${fp.p.toFixed(2)}${fp.n ? ` · ${fp.n} case${fp.n === 1 ? '' : 's'}` : ''}`
-      : 'your examination — not in the photograph';
+      : 'no model trained for this yet — your examination';
     /* Abscess is predicted from swelling, erythema and induration, not seen, so its row does
        not get to say "present" — the word would claim a sighting the model cannot make. */
     const word = k === 'abscess' ? ['likely', 'unlikely'] : ['present', 'absent'];
@@ -3083,10 +3098,11 @@ function renderPublic(){
   /* Both models side by side, which is the comparison this study exists to make. */
   const models = est.length
     ? est.map(r => `${r[0]} ${r[1].toFixed(2)}`).join(' &middot; ')
+    : noWound ? 'No wound was outlined — re-take the photograph'
     : (DISEASE === 'pi' ? 'No pressure injury model has been trained yet' : 'The model declined to classify this image');
   const basis = confirmed.length ? confirmed.join(', ') + ' &middot; ' + models : models;
 
-  el.innerHTML = `<div class="sx">${seen.join('')}${taps}</div>
+  el.innerHTML = `${reframe}<div class="sx">${seen.join('')}${taps}</div>
     ${tiss}
     <div class="verdict ${infected ? 'inf' : unknown ? 'unk' : 'noinf'}">
       <b>${infected ? 'LIKELY INFECTION' : unknown ? 'NOT DETERMINED' : 'NO SIGNS OF INFECTION'}</b>

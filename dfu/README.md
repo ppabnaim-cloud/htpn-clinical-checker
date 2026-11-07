@@ -128,6 +128,40 @@ The peri-wound row stays on the colour rule either way: no tissue model has a pe
 and the redness measure is a comparison against the patient's own skin rather than a
 classification.
 
+#### The model trained so far
+
+Trained on DFUTissue, 83 train / 21 held-out images, split by case, 3.3 minutes on four CPU
+cores. Figures in `ml/results/dfutissue-tissue-metrics.json`.
+
+| class | Dice | IoU | share of held-out pixels |
+|---|---|---|---|
+| background | 0.978 | 0.957 | 90.7 % |
+| granulation | 0.774 | 0.631 | 6.1 % |
+| slough | 0.564 | 0.393 | 3.2 % |
+| necrosis | — | — | not labelled in this dataset |
+| epithelial | — | — | not labelled in this dataset |
+
+Macro Dice over the two scored classes: **0.669**.
+
+On the heel ulcer that prompted this work, where the colour rule put 78 % of the bed in
+"other" and reported *Slough — Not seen*:
+
+| | granulation | slough | necrosis | other |
+|---|---|---|---|---|
+| colour rule | 6 % | **0 %** | 6 % | **78 %** |
+| tissue model | 25 % | **57 %** | 6 % | 2 % |
+
+Slough reads *Present* from the model; necrosis still reads *Present* from the colour rule,
+which is what the per-class fallback is for.
+
+Slough at 0.564 is the weaker of the two and is the class the public dataset has least of
+(3.2 % of pixels). It is also the one that matters most here, since slough is what the colour
+rule got wrong.
+
+**The weights are not committed.** DFUTissue carries no licence file; the README asks only for
+citation. Training on it for research is ordinary academic practice, but shipping a derived
+model to a public URL is a further step, and that question is open with the authors.
+
 #### Training one
 
 Public datasets with pixel-level tissue labels: [WoundTissue](https://github.com/akabircs/WoundTissue)

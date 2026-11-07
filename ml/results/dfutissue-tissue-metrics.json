@@ -1,0 +1,67 @@
+{
+ "task": "wound-bed tissue segmentation",
+ "architecture": "MobileNetV2-UNet (ImageNet encoder, 4 skip connections)",
+ "input": [
+  224,
+  224,
+  3
+ ],
+ "input_range": "[-1,1]",
+ "output": "224x224x5 softmax",
+ "classes": [
+  "background",
+  "gran",
+  "slough",
+  "necro",
+  "pale"
+ ],
+ "train_images": 83,
+ "val_images": 21,
+ "cases": 104,
+ "val_cases": 21,
+ "split": "by case",
+ "per_class": {
+  "background": {
+   "dice": 0.978225710149091,
+   "iou": 0.9573794524540519,
+   "true_pixel_share": 0.906926665755588
+  },
+  "gran": {
+   "dice": 0.7737141769561028,
+   "iou": 0.6309411414669891,
+   "true_pixel_share": 0.06068068968658892
+  },
+  "slough": {
+   "dice": 0.5644852021597265,
+   "iou": 0.3932284104691866,
+   "true_pixel_share": 0.032392644557823126
+  },
+  "necro": {
+   "dice": 0.0,
+   "iou": 0.0,
+   "true_pixel_share": 0.0
+  },
+  "pale": {
+   "dice": 0.0,
+   "iou": 0.0,
+   "true_pixel_share": 0.0
+  }
+ },
+ "macro_dice_tissue": 0.6690996895579147,
+ "classes_present": [
+  "background",
+  "gran",
+  "slough"
+ ],
+ "classes_missing": [
+  "necro",
+  "pale"
+ ],
+ "macro_scored_over": [
+  "gran",
+  "slough"
+ ],
+ "data": "DFUTissue (uwm-bigdata/DFUTissueSegNet), 110 annotated images, AZH Wound Center",
+ "palette": "ml/palettes/dfutissue.json",
+ "minutes": 3.3
+}

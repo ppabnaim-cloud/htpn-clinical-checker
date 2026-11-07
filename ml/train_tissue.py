@@ -270,15 +270,19 @@ def main():
         x = tf.image.random_contrast(x, 0.75, 1.25)
         x = tf.image.random_saturation(x, 0.7, 1.3)
         x = tf.image.random_hue(x, 0.02)
-        return tf.clip_by_value(x, 0.0, 255.0), y
+        return tf.clip_by_value(x, 0.0, 255.0), y     # y untouched by the photometric ops
 
     def make_ds(Xa, Ya, train, batch=8):
         ds = tf.data.Dataset.from_tensor_slices((Xa, Ya))
-        ds = ds.map(lambda x, y: (tf.cast(x, tf.float32), tf.cast(y, tf.int32)),
+        # The label is an index map, so it carries a channel axis through augmentation:
+        # tf.image.rot90 and the flips require at least three dimensions, and a 2-D mask
+        # fails there rather than at the loss, which is a long way from the cause.
+        ds = ds.map(lambda x, y: (tf.cast(x, tf.float32), tf.cast(y, tf.int32)[..., None]),
                     num_parallel_calls=tf.data.AUTOTUNE)
         if train:
             ds = ds.shuffle(512, seed=0).map(augment, num_parallel_calls=tf.data.AUTOTUNE)
-        ds = ds.map(lambda x, y: (x / 127.5 - 1.0, tf.one_hot(tf.cast(y, tf.int32), NC)),
+        ds = ds.map(lambda x, y: (x / 127.5 - 1.0,
+                                  tf.one_hot(tf.squeeze(tf.cast(y, tf.int32), -1), NC)),
                     num_parallel_calls=tf.data.AUTOTUNE)
         return ds.batch(batch).prefetch(tf.data.AUTOTUNE)
 
@@ -303,8 +307,16 @@ def main():
     # Tissue classes are heavily imbalanced — necrosis and epithelium are a few percent of
     # pixels — so an unweighted loss learns "granulation everywhere" and scores well on
     # accuracy. Weight by inverse pixel frequency, and report macro Dice, never accuracy.
-    w = np.array([1.0 / max(share[c], 1e-4) for c in CLASSES], dtype=np.float32)
-    w = (w / w.sum() * NC).astype(np.float32)
+    # A class with NO pixels must get weight ZERO, not the largest weight in the set. Clamping
+    # its share to a small epsilon and inverting is the obvious way to write this and it is
+    # catastrophic: on DFUTissue, which has no necrosis or epithelium label, the two absent
+    # classes took all the weight (2.49 each) and the three real ones fell to ~0.00, so the
+    # loss was almost entirely about classes the data could not teach. Weight the present
+    # classes by inverse frequency and normalise over those alone.
+    w = np.array([0.0 if share[c] <= 0 else 1.0 / share[c] for c in CLASSES], dtype=np.float32)
+    if w.sum() <= 0:
+        raise SystemExit("no class has any training pixels")
+    w = (w / w.sum() * len(present)).astype(np.float32)
     print("class weights:", dict(zip(CLASSES, [round(float(v), 2) for v in w])), flush=True)
     wt = tf.constant(w)
 
@@ -354,13 +366,30 @@ def main():
         per[c] = {"dice": float(2 * (pr & tr).sum() / (pr.sum() + tr.sum() + 1e-6)),
                   "iou": float((pr & tr).sum() / ((pr | tr).sum() + 1e-6)),
                   "true_pixel_share": float(tr.mean())}
-    macro = float(np.mean([per[c]["dice"] for c in CLASSES[1:]]))   # excluding background
+    # Over the tissue classes that exist in the data. Averaging in a class with no pixels
+    # scores it 0 and halves the headline number for a reason that has nothing to do with the
+    # model, which would then read as a worse model rather than a smaller label set.
+    scored = [c for c in CLASSES[1:] if c in present]
+    macro = float(np.mean([per[c]["dice"] for c in scored])) if scored else 0.0
     print("held-out per class:", json.dumps(per, indent=1))
     print(f"macro Dice over tissue classes (background excluded): {macro:.3f}")
 
     os.makedirs(a.out, exist_ok=True)
-    import tensorflowjs as tfjs
-    tfjs.converters.save_keras_model(model, a.out, quantization_dtype_map={"float16": "*"})
+    # Always write the Keras model first. tensorflowjs and tensorflow pin conflicting versions
+    # of numpy and protobuf, so the two live in separate virtualenvs here and the conversion is
+    # a second step. Losing a finished training run to an import error is not acceptable.
+    h5 = os.path.join(a.out, "tissue_model.h5")
+    model.save(h5)
+    print("saved", h5, flush=True)
+    try:
+        import tensorflowjs as tfjs
+        tfjs.converters.save_keras_model(model, a.out, quantization_dtype_map={"float16": "*"})
+        print("converted to TensorFlow.js in", a.out, flush=True)
+    except Exception as e:
+        print(f"\nTensorFlow.js conversion skipped ({type(e).__name__}: {e}).")
+        print("The trained model IS saved. Convert it in an environment that has tensorflowjs:")
+        print(f"  tensorflowjs_converter --input_format=keras --quantize_float16='*' \\\n"
+              f"      {h5} {a.out}")
     json.dump({"task": "wound-bed tissue segmentation",
                "architecture": "MobileNetV2-UNet (ImageNet encoder, 4 skip connections)",
                "input": [IMG, IMG, 3], "input_range": "[-1,1]",
@@ -369,6 +398,7 @@ def main():
                "cases": int(ncase), "val_cases": int(nval), "split": "by case",
                "per_class": per, "macro_dice_tissue": macro,
                "classes_present": present, "classes_missing": missing,
+               "macro_scored_over": scored,
                "data": a.dataset, "palette": a.palette,
                "minutes": round((time.time() - t0) / 60, 1)},
               open(os.path.join(a.out, "metrics.json"), "w"), indent=1)

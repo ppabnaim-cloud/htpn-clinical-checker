@@ -768,10 +768,10 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
     <button class="pill lockpill hidden" id="lockBtn" title="Return to the tester's view">Study team · lock</button>
   </div>
   <nav class="tabs">
-    <button class="on" data-tab="assess" id="tabAssess">Assess</button>
-    <button data-tab="assessfull" id="tabAssessFull">Assess (full) <span class="lock" id="tabLock0">●</span></button>
-    <button data-tab="train" id="tabTrain">Study team <span class="lock" id="tabLock">●</span></button>
-    <button data-tab="data" id="tabData">Dashboard <span class="lock" id="tabLock2">●</span></button>
+    <button class="on" data-tab="findings" id="tabFindings">Findings</button>
+    <button data-tab="grading" id="tabGrading">Grading</button>
+    <button data-tab="train" id="tabTrain">Study team <span class="lock" id="tabLock">&#9679;</span></button>
+    <button data-tab="data" id="tabData">Dashboard <span class="lock" id="tabLock2">&#9679;</span></button>
   </nav>
 </header>
 
@@ -796,12 +796,13 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
      carry that weight. -->
 <div id="modeBar" class="hidden">
   <span><b>Study team view.</b> You are seeing the grading screens, the case log and the model card. A tester sees none of this.</span>
+  <button class="btn btn-sm" id="detailBtn">Technical detail: off</button>
   <button class="btn btn-sm" id="modeBarLock">See the tester's view</button>
 </div>
 
 <main>
 <!-- ═══════════════════════════ ASSESS TAB ═══════════════════════════ -->
-<div id="tab-assess">
+<div id="tab-findings">
 
   <!-- Where you are in one case. Compact by default: a clinician scrolls past this at every
        bedside, so the map must not cost more than the glance it saves. -->
@@ -1030,14 +1031,24 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   </section>
 
   <!-- STEP 2b: FINDINGS -> CLASSIFICATION BY RULE -->
+  <!-- What the camera sees. The grading, and the antibiotic the grading drives, are a
+       different question asked at a different moment, so they are a different tab. -->
   <section class="card hidden" id="decide">
     <div class="step"><span class="n">2b</span>
-      <h3><span class="tech">Your examination decides this</span><span class="pub-only">Assessment</span></h3>
-      <span class="hint"><span class="tech">human in the loop</span><span class="pub-only">on-device</span></span></div>
+      <h3>Signs of infection</h3>
+      <span class="hint">on-device</span></div>
+    <div id="pubResult"></div>
+    <p class="small nextstep" id="toGrading">Wagner, Texas and the antibiotic are under
+      <b>Grading</b>, from your examination.</p>
+  </section>
 
-    <!-- The Assess tab's clinical read: signs, tissue, verdict. See renderPublic(). -->
-    <span class="lab pub-only">Signs of infection</span>
-    <div id="pubResult" class="pub-only"></div>
+</div>
+
+<!-- ═══════════════════════════ GRADING TAB ═══════════════════════════ -->
+<div id="tab-grading" class="hidden">
+  <section class="card hidden" id="gradeCard">
+    <div class="step"><span class="n">3</span><h3>Grading and antibiotic</h3>
+      <span class="hint">from your examination</span></div>
 
     <!-- The design argument of the whole app, stated where it happens rather than left for the
          reader to infer. Wagner, Texas and NPIAP are definitions, not predictions, and most of
@@ -1045,32 +1056,28 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
          stops at what a camera can see and the clinician finishes the job. -->
     <div class="hitl tech" id="hitl">
       <div class="hitlbar">
-        <div class="side cam"><b id="hitlCamN">—</b><span>from the photograph</span></div>
+        <div class="side cam"><b id="hitlCamN">&mdash;</b><span>from the photograph</span></div>
         <div class="vs">+</div>
-        <div class="side you"><b id="hitlYouN">—</b><span>only you can answer</span></div>
+        <div class="side you"><b id="hitlYouN">&mdash;</b><span>only you can answer</span></div>
       </div>
       <p id="hitlMsg"></p>
     </div>
-
-    <!-- Order matters here, and it changed. The findings and the result now come before the
-         questions, because a user who has just uploaded a photograph wants to see something, and
-         because the result showing what it is STILL MISSING is what makes the questions worth
-         answering. Told "eleven questions" nobody starts; shown "Wagner 1 or 2, one answer away"
-         they finish. The grade itself is never guessed from the photograph \u2014 depth on probing,
-         probe-to-bone, perfusion and systemic signs are not in the image, and a camera that
-         reports Wagner 2 when one probe would have made it Wagner 3 with osteomyelitis is worse
-         than one that says it does not know. -->
 
     <!-- Antibiotic before grading. The order is the clinical one: what is this, what does it
          need now, and what is it called for the record. Wagner and Texas are documentation;
          the antibiotic decision is the one with a clock on it. -->
     <div id="abxBox"></div>
-    <span class="lab" style="margin-top:14px"><span class="tech">Result </span><span class="pub-only">Grading </span><em id="resultState"></em></span>
+    <span class="lab" style="margin-top:14px">Grading <em id="resultState"></em></span>
     <div class="ruleout" id="ruleOut"></div>
 
-    <span class="lab" style="margin-top:16px"><span class="tech">Your examination </span><span class="pub-only">Optional &middot; your examination </span><em id="askLead">the app cannot answer these, and will not guess</em></span>
+    <span class="lab" style="margin-top:16px">Your examination <em id="askLead">the app cannot answer these, and will not guess</em></span>
     <div class="findlist" id="askFind"></div>
   </section>
+  <section class="card" id="gradeWait">
+    <p class="small" style="margin:0">Take or upload a photograph under <b>Findings</b> first.
+      The grading is built from your examination of that patient.</p>
+  </section>
+</div>
 
 </div>
 
@@ -1660,7 +1667,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-07 &middot; v9.5</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-08 &middot; v10.0</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1761,13 +1768,14 @@ $('enter').onclick = () => $('gate').classList.add('hidden');
    can address.                                                                               */
 const STUDY_PASS = '12345678';
 const STUDY_KEY  = 'wound_vision_study_mode';
+const DETAIL_KEY = 'wv_detail_v1';   // declared here so setStudyMode(), above setDetail(), can read it
 let studyMode = false;
 try { studyMode = localStorage.getItem(STUDY_KEY) === '1'; } catch(e){}
 
 function setStudyMode(on){
   studyMode = on;
   try { localStorage.setItem(STUDY_KEY, on ? '1' : '0'); } catch(e){}
-  [$('tabLock'), $('tabLock2'), $('tabLock0')].forEach(el => { if (!el) return;
+  [$('tabLock'), $('tabLock2')].forEach(el => { if (!el) return;
     el.textContent = on ? '○' : '●'; el.title = on ? 'unlocked' : 'locked'; });
   /* Study mode persists, which is right for a grader working across days but meant there was no
      way back: once unlocked, the owner could never see what a tester sees, and would reasonably
@@ -1788,20 +1796,26 @@ function setStudyMode(on){
   /* The journey shows one step fewer outside study mode, so it is redrawn when the mode
      changes, not only when the image does. */
   if (typeof renderAssessJourney === 'function') renderAssessJourney();
+  /* Technical detail is the study team's switch, so locking has to put it back as well as
+     hiding the bar it lives on — otherwise "see the tester's view" would show the tester's
+     tabs with the study team's detail still on them. */
+  if (!on) setDetail(false);
+  else { let want = false; try { want = localStorage.getItem(DETAIL_KEY) === '1'; } catch(e){} setDetail(want); }
 }
 
 function openTab(name){
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === name));
   const pane = PANE[name] || name;
-  TABS.forEach(t => $('tab-' + t).classList.toggle('hidden', t !== pane));
-  setDetail(name);
+  TABS.forEach(t => { const el = $('tab-' + t); if (el) el.classList.toggle('hidden', t !== pane); });
   if (name === 'data' && typeof renderDashboard === 'function'){ renderDashboard(); renderAttrBox(); }
-  const assess = name === 'assess';
-  $('tab-assess').classList.toggle('hidden', !assess);
-  $('tab-train').classList.toggle('hidden', assess);
+  /* The grading pane reads the same answers as the findings pane, so it is rebuilt on arrival
+     rather than left showing whatever was true when the photograph was first analysed. */
+  if (name === 'grading' && typeof renderDecide === 'function' && typeof currentImg !== 'undefined' && currentImg)
+    renderDecide();
   window.scrollTo({top:0});
 }
 
+$('detailBtn') && ($('detailBtn').onclick = () => setDetail(!detailFull()));
 $('passGo') && ($('passGo').onclick = () => {
   if ($('passInput').value.trim() !== STUDY_PASS){
     $('passMsg').textContent = 'That is not the passcode.'; return;
@@ -1816,7 +1830,7 @@ $('passCancel') && ($('passCancel').onclick = () => {
 $('passInput') && ($('passInput').onkeydown = e => { if (e.key === 'Enter') $('passGo').click(); });
 
 const leaveStudyMode = () => {
-  setStudyMode(false); openTab('assess');
+  setStudyMode(false); openTab('findings');
   toast('Locked — this is exactly what a tester sees');
 };
 $('lockBtn') && ($('lockBtn').onclick = leaveStudyMode);
@@ -1824,35 +1838,36 @@ $('modeBarLock') && ($('modeBarLock').onclick = leaveStudyMode);
 
 /* Two assessment tabs, ONE assessment pane. Two panes would be two copies of the same markup
    to fix twice and drift apart; the tab chooses how much of the one pane is shown. */
-const TABS = ['assess', 'train', 'data'];
-const PANE = { assess: 'assess', assessfull: 'assess', train: 'train', data: 'data' };
-function setDetail(tab){
-  const full = tab === 'assessfull';
+const TABS = ['findings', 'grading', 'train', 'data'];
+const PANE = { findings: 'findings', grading: 'grading', train: 'train', data: 'data' };
+/* Technical detail used to be a tab of its own, "Assess (full)". With the audience settled as
+   clinicians, a whole tab to say the same thing twice stopped earning its place: it is a
+   SWITCH now, shown only to the study team, over whichever clinical tab you are on. Everything
+   marked .tech still hides by default, so the leak test means exactly what it meant before. */
+function setDetail(on){
   const was = document.body.classList.contains('detail-full');
-  document.body.classList.toggle('detail-full', full);
-  /* The findings are written once, at whatever detail level was in force then, so switching
-     tabs has to redraw them — otherwise the fuller view kept the public wording and the two
-     tabs looked identical. */
-  if (was !== full && typeof renderDecide === 'function' && typeof currentImg !== 'undefined' && currentImg)
+  document.body.classList.toggle('detail-full', !!on);
+  const b = $('detailBtn');
+  if (b){ b.classList.toggle('on', !!on); b.textContent = on ? 'Technical detail: on' : 'Technical detail: off'; }
+  try { localStorage.setItem(DETAIL_KEY, on ? '1' : '0'); } catch(e){}
+  /* The findings are written once, at whatever detail level was in force then, so flipping the
+     switch has to redraw them — otherwise the fuller view keeps the shorter wording. */
+  if (was !== !!on && typeof renderDecide === 'function' && typeof currentImg !== 'undefined' && currentImg)
     renderDecide();
 }
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
-  /* Every pane but the public assessment sits behind the same switch. */
-  if (b.dataset.tab !== 'assess' && !studyMode){
+  /* The two clinical panes are open; the study team's two sit behind the switch. */
+  if (b.dataset.tab !== 'findings' && b.dataset.tab !== 'grading' && !studyMode){
     $('passGate').classList.remove('hidden');
     setTimeout(() => $('passInput').focus(), 50);
     return;
   }
-  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
-  const assess = PANE[b.dataset.tab] === 'assess';
-  /* Three panes now, so the panes are driven from the list rather than from a boolean that
-     only ever had room for two. */
-  const pane = PANE[b.dataset.tab] || b.dataset.tab;
-  TABS.forEach(t => $('tab-' + t).classList.toggle('hidden', t !== pane));
-  setDetail(b.dataset.tab);
-  if (pane === 'assess') renderAssessJourney();
-  if (b.dataset.tab === 'data'){ renderDashboard(); renderAttrBox(); }
-  window.scrollTo({top:0});
+  /* One code path for switching panes. This handler used to repeat openTab() line for line,
+     and the copy drifted: after detail stopped being a tab it was still calling
+     setDetail(tabName), passing a string to something that now takes a boolean, so every tab
+     click turned technical detail ON. */
+  openTab(b.dataset.tab);
+  if (PANE[b.dataset.tab] === 'findings') renderAssessJourney();
 });
 document.querySelectorAll('.src-tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.src-tabs button').forEach(x => x.classList.toggle('on', x === b));
@@ -3179,7 +3194,7 @@ function renderPublic(){
   /* Whichever path produced the classification is what the row names. Saying "colour rule"
      under a trained segmenter would understate it; saying "model" under the rule would be a
      lie, and that one matters more. */
-  const RULE_SRC = 'colour rule \u00b7 unvalidated';
+  const RULE_SRC = 'colour estimate \u00b7 validation in progress';
   /* "Dice 0.67" is a segmentation metric. What a clinician needs from this line is which of
      the two produced the row; the figure is instrumentation and belongs with the rest of it
      in Assess (full). */
@@ -3200,7 +3215,7 @@ function renderPublic(){
   const dA = t && t.dA !== null ? t.dA : null;
   /* Not tsrc: the ring is measured against the patient's own skin on either path, and no
      tissue model has a peri-wound class. */
-  seen.push(row('Peri-wound erythema', 'colour rule \u00b7 unvalidated',
+  seen.push(row('Peri-wound erythema', RULE_SRC,
     dA === null ? 'Not assessed' : (dA >= 3 ? 'Present' : 'Not seen'),
     dA === null ? 'u' : (dA >= 3 ? 'y' : 'n')));
 
@@ -3211,7 +3226,7 @@ function renderPublic(){
     const fp = featPred[k], ans = pubSigns[k];
     const src = fp
       ? `${fp.name} · p ${fp.p.toFixed(2)}${fp.n ? ` · ${fp.n} case${fp.n === 1 ? '' : 's'}` : ''}`
-      : 'no model trained for this yet — your examination';
+      : 'your examination supplies this';
     /* Abscess is predicted from swelling, erythema and induration, not seen, so its row does
        not get to say "present" — the word would claim a sighting the model cannot make. */
     const word = k === 'abscess' ? ['likely', 'unlikely'] : ['present', 'absent'];
@@ -3226,7 +3241,7 @@ function renderPublic(){
       </select></div>`;
   }).join('');
 
-  const tiss = t ? `<p class="tis">Granulation ${pc(t.frac.gran)}% &middot; Slough ${pc(t.frac.slough)}% &middot; Necrosis ${pc(t.frac.necro)}% &middot; <span>${t.src === 'model' ? 'by the tissue model' : t.src === 'mixed' ? 'tissue model, with the colour rule for what it was not trained on' : 'by colour, unvalidated'}</span></p>` : '';
+  const tiss = t ? `<p class="tis">Granulation ${pc(t.frac.gran)}% &middot; Slough ${pc(t.frac.slough)}% &middot; Necrosis ${pc(t.frac.necro)}% &middot; <span>${t.src === 'model' ? 'by the tissue model' : t.src === 'mixed' ? 'tissue model, with the colour rule for what it was not trained on' : 'colour estimate'}</span></p>` : '';
 
   const est = infEstimates();
   const mp = cautiousInfection();
@@ -3254,7 +3269,7 @@ function renderPublic(){
   el.innerHTML = `${reframe}<div class="sx">${seen.join('')}${taps}</div>
     ${tiss}
     <div class="verdict ${infected ? 'inf' : unknown ? 'unk' : 'noinf'}">
-      <b>${infected ? 'LIKELY INFECTION' : unknown ? 'NOT DETERMINED' : 'NO SIGNS OF INFECTION'}</b>
+      <b>${infected ? 'LIKELY INFECTION' : unknown ? 'AWAITING YOUR EXAMINATION' : 'NO SIGNS OF INFECTION'}</b>
       <span>${basis}${infected ? ' &middot; clinical review today' : ''}</span>
     </div>`;
   el.querySelectorAll('select.tapsel').forEach(sel => sel.onchange = () => {
@@ -3267,8 +3282,12 @@ function renderPublic(){
 }
 
 function renderDecide(){
-  if (!currentImg){ $('decide').classList.add('hidden'); return; }
-  $('decide').classList.remove('hidden');
+  /* The grading pane is built by the same pass, so it is shown or held back here too. */
+  const has = !!currentImg;
+  $('decide').classList.toggle('hidden', !has);
+  if ($('gradeCard')) $('gradeCard').classList.toggle('hidden', !has);
+  if ($('gradeWait'))  $('gradeWait').classList.toggle('hidden', has);
+  if (!has) return;
   $('autoFind').innerHTML = autoFindings().map(r =>
     `<div class="find"><div class="k">${r.k}<em>${r.why}</em></div><div class="v ${r.cls||''}">${r.v}</div><div class="src">${r.src}</div></div>`).join('');
 
@@ -6622,7 +6641,7 @@ $('activateBtn').onclick = async () => {
   const entry = headEntry(trained.head, trained.classes, name, trained.metrics, when); registry[name] = entry; setActive(entry);
   try { const key = 'dfu-head-' + Date.now(); await trained.head.save('indexeddb://' + key); const meta = loadHeadsMeta(); meta.unshift({ key, name, classes: trained.classes, metrics: trained.metrics, when }); localStorage.setItem(HEADS_KEY, JSON.stringify(meta.slice(0, 10))); toast('Model active and saved on this device'); }
   catch(e){ toast('Model active (could not persist: ' + e.message + ')'); }
-  renderModelList(); renderJourney(); openTab('assess');
+  renderModelList(); renderJourney(); openTab('findings');
   } catch (e) {
     console.error(e);
     log('\nCould not keep the model: ' + (e && e.message ? e.message : e)

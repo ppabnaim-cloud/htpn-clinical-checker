@@ -17,15 +17,19 @@ BANNED = ['Dice', 'of frame', 'of the frame', 'Share of the frame', 'onfidence',
 
 # What the Assess tab must carry, in pipeline order. A leak test only catches what creeps in;
 # these catch what falls out.
-MUST = [('the signs-of-infection list', ['Peri-wound erythema']),
+# Split by pane, because the clinical read is split by tab now: Findings is what the camera
+# sees, Grading is what the examination adds and what follows from it.
+MUST_FINDINGS = [
+        ('the signs-of-infection list', ['Peri-wound erythema']),
         ('the tissue composition',      ['Granulation']),
-        ('an infection verdict',        ['LIKELY INFECTION', 'NO SIGNS OF INFECTION', 'NOT DETERMINED']),
-        ('the antibiotic panel',        ['Antibiotics']),
-        ('the grading',                 ['Meggitt', 'NPIAP']),
-        # Every tissue row names its source, whichever produced it: the six-line Lab threshold
-        # or a trained segmenter. Printing either without provenance gave the colour rule more
+        ('an infection verdict',        ['LIKELY INFECTION', 'NO SIGNS OF INFECTION', 'AWAITING YOUR EXAMINATION']),
+        # Every tissue row names its source, whichever produced it: the Lab colour estimate or
+        # a trained segmenter. Printing either without provenance gave the estimate more
         # authority than the rows the examiner fills in, and it is the weaker of the two.
-        ('provenance on the tissue rows', ['colour rule', 'tissue model'])]
+        ('provenance on the tissue rows', ['colour estimate', 'tissue model'])]
+MUST_GRADING = [
+        ('the antibiotic panel', ['Antibiotics']),
+        ('the grading',          ['Meggitt', 'NPIAP'])]
 
 
 async def main():
@@ -47,16 +51,16 @@ async def main():
             await pg.evaluate("() => { const s=document.querySelectorAll('.sample');"
                               " (s[1] || s[0]).click(); }")
             await pg.wait_for_function("() => typeof lastPred!=='undefined' && lastPred", timeout=90000)
-            await pg.click('#tabAssess')
+            await pg.click('#tabFindings')
             await pg.wait_for_timeout(900)
 
-            print(f'--- {arm}: ASSESS tab while UNLOCKED ---')
+            print(f'--- {arm}: FINDINGS tab while UNLOCKED ---')
 
             # Per element, not innerText on the container: innerText falls back to textContent
             # for anything not being rendered, so a container-level read reported hidden strings
             # as leaks and sent me hunting for text that was never on screen.
             hits = await pg.evaluate('''(words) => { const out = [];
-              document.querySelectorAll('#tab-assess *').forEach(el => {
+              document.querySelectorAll('#tab-findings *').forEach(el => {
                 if (!el.offsetParent && getComputedStyle(el).position !== 'fixed') return;
                 const own = [...el.childNodes].filter(n => n.nodeType === 3)
                               .map(n => n.textContent).join(' ');
@@ -71,9 +75,9 @@ async def main():
                 print('   leaked: nothing')
             bad += len(hits)
 
-            shown = await pg.evaluate("() => document.getElementById('tab-assess').innerText")
+            shown = await pg.evaluate("() => document.getElementById('tab-findings').innerText")
             low = shown.lower()
-            for what, options in MUST:
+            for what, options in MUST_FINDINGS:
                 if not any(o.lower() in low for o in options):
                     bad += 1
                     print(f'   MISSING: {what} — none of {options}')
@@ -82,15 +86,29 @@ async def main():
                 " return v ? v.innerText.trim() : '(no verdict block)'; }")
             print('   verdict:', verdict)
 
-            # and the full tab must still have the research apparatus
-            await pg.click('#tabAssessFull')
+            # the Grading pane carries what the examination drives
+            await pg.click('#tabGrading')
             await pg.wait_for_timeout(900)
-            txt2 = await pg.inner_text('#tab-assess')
+            glow = (await pg.inner_text('#tab-grading')).lower()
+            for what, options in MUST_GRADING:
+                if not any(o.lower() in glow for o in options):
+                    bad += 1
+                    print(f'   MISSING from Grading: {what} — none of {options}')
+
+            # Technical detail is a switch now, not a tab. With it on, the research apparatus
+            # must come back; with it off, none of it may be on screen. That is the same
+            # guarantee the Assess (full) tab used to give.
+            await pg.evaluate("() => setDetail(true)")
+            await pg.wait_for_timeout(700)
+            txt2 = await pg.inner_text('#tab-grading') + await pg.evaluate(
+                "() => { openTab('findings'); return document.getElementById('tab-findings').innerText; }")
+            await pg.wait_for_timeout(500)
+            txt2 = txt2 + await pg.inner_text('#tab-findings')
             present = [w for w in BANNED if w.lower() in txt2.lower()]  # presence only; container read is fine here
-            print(f'   full tab shows {len(present)} of {len(BANNED)} technical items')
+            print(f'   with technical detail on: {len(present)} of {len(BANNED)} items back')
             if not present:
                 bad += 1
-                print('   !! full tab shows nothing technical')
+                print('   !! technical detail on shows nothing technical')
             if errs:
                 bad += 1
                 print('   PAGE ERRORS:', errs[:2])

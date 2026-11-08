@@ -38,13 +38,52 @@ Live path once deployed with the rest of this repository on Vercel: `https://<yo
 
 | Tab | What it shows |
 |---|---|
-| **Assess** | The clinical read: signs of infection, tissue composition, infection verdict, antibiotic, grading |
-| **Assess (full)** | The same plus the research apparatus — Grad-CAM, probability bars, % of frame, segmentation confidence, the occlusion test, the model comparison |
-| **Study team** | Labelling, training, the case log |
+| **Findings** | What the camera sees: signs of infection, tissue composition, infection verdict |
+| **Grading** | What your examination adds: Wagner, Texas, NPIAP, and the NAG antibiotic |
+| **Study team** | Labelling, mask drawing, training, the case log |
 | **Dashboard** | Data readiness, class balance, training history |
 
-The last three are behind a passcode. That passcode is a mode switch, not a security control,
-and the app says so on screen.
+Findings and Grading are open. The other two are behind a passcode, which is a mode switch
+rather than a security control, and the app says so.
+
+**Technical detail is a switch, not a tab.** It used to be a whole tab, "Assess (full)", saying
+the same thing twice. With the audience settled as clinicians it is now a toggle on the study
+team's mode bar, over whichever clinical tab you are on. Everything marked `.tech` still hides
+by default, so the leak test guarantees exactly what it guaranteed before.
+
+### Why Findings and Grading are separate
+
+They are different questions asked at different moments. Findings is the photograph; Grading is
+the patient. Nothing on the Grading tab reads a model:
+
+    ruleWagner      pure function of the examination answers
+    ruleTexas       pure function of the examination answers
+    ruleInfection   pure function of the examination answers   (the antibiotic)
+    ruleNpiap       pure function of the examination answers
+
+That is worth stating plainly because it is easy to assume the opposite: **Wagner, Texas, NPIAP
+and the antibiotic are not blocked on any model.** They work today on every image and would
+work if every model in the app were deleted. The only bug they have ever had was the Texas
+joint boundary, which was a definition error.
+
+### What the findings rows can and cannot say
+
+| finding | source |
+|---|---|
+| Granulation, Slough | trained tissue model |
+| Necrosis | colour estimate |
+| Peri-wound erythema | measured, a\* against the patient's own skin |
+| Pus, Abscess, Wet gangrene | your examination, until a findings head is trained |
+
+No public dataset labels pus, abscess, gangrene or bleeding — that was checked across DFUC
+2020/2021/2022, DFUTissue, WoundTissue and LUTSeg. Those four can only come from HTPN labelling,
+and abscess cannot be localised at all, being subsurface.
+
+Every row names its source. That is a fact rather than a criticism, and it stays because of a
+real case: on a heel ulcer the colour estimate reported *Slough — Not seen* over a plainly
+purulent bed, and a clinician needs to know which rows are an estimate and which are a model.
+The wording is neutral — `colour estimate · validation in progress`, `your examination supplies
+this` — but the distinction is visible.
 
 ### The Assess pipeline
 

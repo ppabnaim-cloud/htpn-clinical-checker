@@ -281,6 +281,9 @@ def main():
                     help="another dataset to ADD to training only; repeatable. Its pairs never "
                          "enter the held-out fold, so the headline stays on the main set.")
     ap.add_argument("--extra-palette", action="append", default=[])
+    ap.add_argument("--arch", default="unet", choices=["unet", "attention", "deeplab"],
+                    help="decoder. unet is the shipped one; attention adds gates on the skips; "
+                         "deeplab replaces the decoder with ASPP + the DeepLabV3+ head.")
     ap.add_argument("--pred-out", help="write per-image held-out predictions here as .npz")
     a = ap.parse_args()
 
@@ -400,23 +403,75 @@ def main():
                     num_parallel_calls=tf.data.AUTOTUNE)
         return ds.batch(batch).prefetch(tf.data.AUTOTUNE)
 
+    def cbr(x, ch, k=3, d=1):
+        x = layers.Conv2D(ch, k, padding="same", dilation_rate=d, use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        return layers.Activation("relu")(x)
+
+    def attn_gate(skip, gate, ch):
+        """Attention gate on a skip connection (Oktay et al.).
+
+        The decoder's own feature map says roughly where the wound is; the gate turns that
+        into a per-pixel weight on the encoder's skip before it is concatenated, so the fine
+        detail that gets through is the detail near what the decoder already believes. It
+        costs two 1x1 convolutions per skip, which is why it is worth trying on a model that
+        has to stay small enough to ship to a phone.
+        """
+        t = layers.Add()([layers.Conv2D(ch, 1, use_bias=False)(skip),
+                          layers.Conv2D(ch, 1, use_bias=False)(gate)])
+        a = layers.Activation("relu")(t)
+        a = layers.Conv2D(1, 1)(a)
+        a = layers.Activation("sigmoid")(a)
+        return layers.Multiply()([skip, a])                    # broadcasts (H,W,1) over (H,W,C)
+
+    def aspp(x, ch=128):
+        """Atrous spatial pyramid pooling.
+
+        Rates are 1, 2 and 3, not DeepLab's usual 6, 12 and 18. The bottleneck here is 7x7,
+        because MobileNetV2 at 224 has stride 32, and a 3x3 kernel at rate 6 spans 13 pixels:
+        every tap would fall outside a 7x7 map and the branch would see padding. The rates are
+        scaled to the feature map that exists rather than copied from a paper that pools at
+        output stride 16.
+        """
+        hw = x.shape[1]
+        outs = [cbr(x, ch, 1)]
+        for r in (1, 2, 3):
+            outs.append(cbr(x, ch, 3, d=r))
+        p = layers.GlobalAveragePooling2D(keepdims=True)(x)    # image-level context
+        p = cbr(p, ch, 1)
+        p = layers.UpSampling2D(size=(hw, hw), interpolation="bilinear")(p)
+        return cbr(layers.Concatenate()(outs + [p]), ch, 1)
+
     def build_model():
         inp = keras.Input((IMG, IMG, 3), name="image")
         enc = keras.applications.MobileNetV2(input_tensor=inp, include_top=False, weights="imagenet")
         enc.trainable = False
-        x = enc.get_layer("out_relu").output
-        for name, ch in zip(SKIPS, [192, 96, 48, 24]):
-            x = layers.UpSampling2D(2, interpolation="bilinear")(x)
-            x = layers.Concatenate()([x, enc.get_layer(name).output])
-            x = layers.Conv2D(ch, 3, padding="same", use_bias=False)(x)
-            x = layers.BatchNormalization()(x)
-            x = layers.Activation("relu")(x)
-        logit = layers.Conv2D(NC, 1, name="logit")(x)                 # 112x112xNC
-        up = layers.UpSampling2D(2, interpolation="bilinear")(logit)
+
+        if a.arch == "deeplab":
+            x = aspp(enc.get_layer("out_relu").output)                 # 7x7
+            x = layers.UpSampling2D(8, interpolation="bilinear")(x)    # -> 56x56
+            low = cbr(enc.get_layer("block_3_expand_relu").output, 48, 1)   # 56x56, stride 4
+            x = layers.Concatenate()([x, low])
+            x = cbr(x, 128, 3)
+            x = cbr(x, 128, 3)
+            logit = layers.Conv2D(NC, 1, name="logit")(x)              # 56x56xNC
+            up = layers.UpSampling2D(4, interpolation="bilinear")(logit)
+        else:
+            x = enc.get_layer("out_relu").output
+            for name, ch in zip(SKIPS, [192, 96, 48, 24]):
+                x = layers.UpSampling2D(2, interpolation="bilinear")(x)
+                skip = enc.get_layer(name).output
+                if a.arch == "attention":
+                    skip = attn_gate(skip, x, max(ch // 2, 8))
+                x = layers.Concatenate()([x, skip])
+                x = cbr(x, ch, 3)
+            logit = layers.Conv2D(NC, 1, name="logit")(x)              # 112x112xNC
+            up = layers.UpSampling2D(2, interpolation="bilinear")(logit)
+
         # No Lambda layer anywhere: TensorFlow.js cannot deserialise one, and a Lambda used
         # merely to rename an output silently breaks the browser build.
         out = layers.Activation("softmax", name="tissue")(up)
-        return keras.Model(inp, out, name="tissue_unet_mobilenetv2"), enc
+        return keras.Model(inp, out, name=f"tissue_{a.arch}_mobilenetv2"), enc
 
     # Tissue classes are heavily imbalanced — necrosis and epithelium are a few percent of
     # pixels — so an unweighted loss learns "granulation everywhere" and scores well on
@@ -452,12 +507,30 @@ def main():
         dice = tf.reduce_sum(per_ch * dice_ch, -1) / tf.reduce_sum(dice_ch)
         return tf.reduce_mean(ce) + (1.0 - tf.reduce_mean(dice))
 
+    # WHICH CHANNELS THE MONITORED METRIC SCORES, and this is not cosmetic.
+    #
+    # This averaged over all NC channels. For a class with no pixels in the data and none
+    # predicted, num/den is 1e-6/1e-6 = 1.0, so DFUTissue's three absent classes each scored a
+    # perfect 1.0 and three sixths of the monitored metric was a constant. Worse, the moment
+    # the model emitted a single pixel of an absent class that channel fell to about 0 and the
+    # metric dropped by 1/6 = 0.167 -- an order of magnitude more than any real change in
+    # granulation or slough. Early stopping with restore_best_weights was therefore selecting
+    # epochs on whether a class the data cannot teach happened to stay silent, which is the
+    # likeliest cause of the collapsed folds: every recipe tried had exactly one fold fall
+    # over, and the fold moved around between recipes.
+    #
+    # Score the tissue classes that actually exist in the data, and nothing else.
+    score_ch = tf.constant([1.0 if (i > 0 and c in present) else 0.0
+                            for i, c in enumerate(CLASSES)], dtype=tf.float32)
+    print("metric channels:", [c for i, c in enumerate(CLASSES) if i > 0 and c in present],
+          flush=True)
+
     def macro_dice(y_true, y_pred):
         yp = tf.one_hot(tf.argmax(y_pred, -1), NC)
         yt = tf.reshape(y_true, [-1, NC]); yp = tf.reshape(yp, [-1, NC])
         num = 2.0 * tf.reduce_sum(yt * yp, 0) + 1e-6
         den = tf.reduce_sum(yt, 0) + tf.reduce_sum(yp, 0) + 1e-6
-        return tf.reduce_mean(num / den)
+        return tf.reduce_sum((num / den) * score_ch) / tf.reduce_sum(score_ch)
 
     model, enc = build_model()
     print(f"{model.count_params():,} parameters", flush=True)
@@ -523,8 +596,9 @@ def main():
                "per_class": per, "macro_dice_tissue": macro,
                "classes_present": present, "classes_missing": missing,
                "macro_scored_over": scored,
+               "arch": a.arch,
                "data": a.dataset, "palette": a.palette,
-               "recipe": {"zoom_aug": bool(a.zoom), "dice_foreground_only": bool(a.dice_fg),
+               "recipe": {"arch": a.arch, "zoom_aug": bool(a.zoom), "dice_foreground_only": bool(a.dice_fg),
                           "extra_roots": a.extra_root,
                           "folds": a.folds or None, "fold": a.fold if a.folds else None},
                "held_out_names": [os.path.basename(n) for n in (heldNames or [])],

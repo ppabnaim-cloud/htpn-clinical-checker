@@ -1668,7 +1668,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-08 &middot; v10.3</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-08 &middot; v10.4</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3166,11 +3166,16 @@ function autoFindings(){
    have seen, so they are one-tap confirmations rather than claims. Marking them as findings
    the app had made would be inventing output.
 
-   The verdict is the models' — transfer-learned against locally trained — not a tally of the
-   six signs. That matters: slough is present in nearly every chronic ulcer and is not itself a
-   sign of infection, so letting the findings list drive the verdict would return "infected"
-   for almost every photograph and put an antibiotic under it. The three confirmed signs do
-   escalate, because pus, abscess and wet gangrene are cardinal.                              */
+   The verdict is the IWGDF/IDSA criteria count, and the models sit beside it as evidence.
+
+   It used to be the models' alone, on the reasoning that slough is present in nearly every
+   chronic ulcer and is not itself a sign of infection, so a tally of the findings list would
+   return "infected" for almost every photograph and put an antibiotic under it. That reasoning
+   is sound and is kept — by counting the five IWGDF criteria, which do not include slough or
+   necrosis, rather than counting the rows on screen. What it did not justify was the other
+   direction: letting a probability of 0.15 print NO SIGNS OF INFECTION above a list that said
+   erythema was present on a bed three-quarters necrotic. A model may escalate here. It may not
+   clear.                                                                                     */
 
 const PUB_TAP = [['pus','Pus'], ['abscess','Abscess'], ['wet_gangrene','Wet gangrene']];
 /* Read by renderAbx so the regimen appears with the verdict rather than waiting on the
@@ -3328,18 +3333,54 @@ function renderPublic(){
 
   const est = infEstimates();
   const mp = cautiousInfection();
-  /* An answer the clinician has given wins over the head; where there is no answer the head
-     stands in. Only a positive escalates — "absent" does not pull the verdict down, because
-     the verdict is the severity model's, not a tally of these three. */
-  const confirmed = PUB_TAP.filter(([k]) =>
-    pubSigns[k] === true || (pubSigns[k] === undefined && featPred[k] && featPred[k].p >= 0.5))
-    .map(r => r[1]);
 
-  /* Three states, not two. A model that declined to classify has not said "no infection", and
-     rendering an abstention as a negative is the one error here that costs a limb rather than
-     a clinic visit. It is called what it is instead. */
-  const infected = (mp !== null && mp >= 0.5) || confirmed.length > 0;
-  const unknown  = !infected && mp === null;
+  /* THE VERDICT IS A COUNT OF CRITERIA, NOT A MODEL OUTPUT.
+     ─────────────────────────────────────────────────────
+     This read `infected = mp >= 0.5 || confirmed.length`, where mp is the transfer-learned
+     probability and `confirmed` covers only the three dropdowns. The rows above — slough,
+     necrosis, peri-wound erythema — were in a different array and never entered it. So the
+     panel could print "Peri-wound erythema: Present" and then headline NO SIGNS OF INFECTION
+     underneath, on a wound bed 76 % necrotic, because a head trained on a few dozen local
+     cases had returned 0.15. A headline that contradicts the list directly above it is worse
+     than no headline: it tells a tired clinician to stop reading.
+
+     Two rules now hold.
+
+     The model may ESCALATE, never DE-ESCALATE. An uncalibrated probability is evidence that
+     something is wrong; it is not evidence that nothing is. So mp >= 0.5 still raises the
+     alarm, and mp < 0.5 no longer silences anything.
+
+     The headline is the IWGDF/IDSA count. Infection is defined as two or more of five local
+     criteria — swelling or induration, erythema beyond 0.5 cm, tenderness or pain, local
+     warmth, purulent discharge — so that is what gets counted and named.
+
+     Which also settles what slough and necrosis mean here: they are NOT infection criteria,
+     they are tissue viability, and the old code was right to keep them out of the infection
+     call and wrong to let them vanish. They get their own line below.
+
+     Three of the five need hands and are asked once, on Grading, rather than twice here —
+     so this tab can raise infection but can never clear it, and says so rather than implying
+     it has looked. */
+  const CRIT_BEDSIDE = ['local warmth', 'swelling or induration', 'tenderness or pain'];
+  const critPos = [], panelUnknown = [];
+
+  const eryKnown = dA !== null;
+  if (!eryKnown) panelUnknown.push('erythema beyond 0.5 cm');
+  else if (dA >= 3) critPos.push('peri-wound erythema');
+
+  const tapAns = k => pubSigns[k] !== undefined ? pubSigns[k]
+                 : (featPred[k] && featPred[k].p >= 0.5 ? true : undefined);
+  const pusAns = tapAns('pus');
+  if (pusAns === undefined) panelUnknown.push('purulent discharge');
+  else if (pusAns) critPos.push('purulent discharge');
+
+  // Not among the five, but each is severe infection on its own and must escalate by itself.
+  const severe = [];
+  if (tapAns('abscess') === true) severe.push('abscess');
+  if (tapAns('wet_gangrene') === true) severe.push('wet gangrene');
+
+  const infected = critPos.length >= 2 || severe.length > 0 || (mp !== null && mp >= 0.5);
+  const awaiting = !infected && panelUnknown.length > 0;
   pubInfected = infected;
 
   /* Both models side by side, which is the comparison this study exists to make. */
@@ -3347,14 +3388,53 @@ function renderPublic(){
     ? est.map(r => `${r[0]} ${r[1].toFixed(2)}`).join(' &middot; ')
     : noWound ? 'No wound was outlined — re-take the photograph'
     : (DISEASE === 'pi' ? 'No pressure injury model has been trained yet' : 'The model declined to classify this image');
-  const basis = confirmed.length ? confirmed.join(', ') + ' &middot; ' + models : models;
+
+  const nPos = critPos.length + severe.length;
+  const modelOnly = !severe.length && critPos.length < 2 && mp !== null && mp >= 0.5;
+  const parts = [];
+  /* The first clause has to say WHY the headline reads as it does, or the panel contradicts
+     itself again in miniature: "LIKELY INFECTION" over "0 of 5 criteria seen here" is the
+     same failure as before with the sign reversed, and a reader cannot tell whether the
+     criteria were counted or ignored. When the model is what raised it, the line says so and
+     gives the number, so the escalation can be judged rather than taken on trust. */
+  if (severe.length)
+    parts.push(`${severe.join(' and ')} — severe infection on its own`);
+  else if (critPos.length >= 2)
+    parts.push(`${critPos.join(' and ')} — ${critPos.length} of 5 criteria, at the threshold`);
+  else if (modelOnly)
+    parts.push(`flagged by the model, not by the criteria — ${critPos.length} of 5 seen`
+      + (critPos.length ? ` (${critPos.join(', ')})` : ''));
+  else if (critPos.length)
+    parts.push(`${critPos.join(' and ')} — ${critPos.length} of 5 criteria, below the threshold of 2`);
+  else
+    parts.push('0 of 5 criteria seen here');
+  if (panelUnknown.length) parts.push(`${panelUnknown.join(' and ')} not assessed`);
+  parts.push(`${CRIT_BEDSIDE.join(', ')} need your examination — record the call under <b>Grading</b>`);
+  parts.push(models);
+
+  /* Never a bare negative while a row above says Present, and never the words "no signs":
+     this tab assesses two of the five criteria, so the most it can honestly report is that
+     the threshold is not met by what it can see. */
+  const head = infected ? 'LIKELY INFECTION'
+             : awaiting ? 'AWAITING YOUR EXAMINATION'
+             : 'NOT ENOUGH TO CALL INFECTION';
+  const tone = infected ? 'inf' : (awaiting || nPos > 0) ? 'unk' : 'noinf';
+
+  /* Tissue viability, stated separately so an infection verdict cannot swallow it. A bed
+     three-quarters necrotic needs review whatever the infection call turns out to be. */
+  const nec = t ? pc(t.frac.necro) : 0, slo = t ? pc(t.frac.slough) : 0;
+  const viab = (nec >= 5 || slo >= 5)
+    ? `<p class="note" style="margin:6px 0 0">Tissue viability: ${[nec >= 5 ? `necrosis ${nec} %` : null,
+        slo >= 5 ? `slough ${slo} %` : null].filter(Boolean).join(' and ')} of the wound bed.
+        Not an infection criterion, and needs review on its own account.</p>`
+    : '';
 
   el.innerHTML = `${reframe}<div class="sx">${seen.join('')}${taps}</div>
     ${tiss}
-    <div class="verdict ${infected ? 'inf' : unknown ? 'unk' : 'noinf'}">
-      <b>${infected ? 'LIKELY INFECTION' : unknown ? 'AWAITING YOUR EXAMINATION' : 'NO SIGNS OF INFECTION'}</b>
-      <span>${basis}${infected ? ' &middot; clinical review today' : ''}</span>
-    </div>`;
+    <div class="verdict ${tone}">
+      <b>${head}</b>
+      <span>${parts.join(' &middot; ')}${infected ? ' &middot; clinical review today' : ''}</span>
+    </div>${viab}`;
   el.querySelectorAll('select.tapsel').forEach(sel => sel.onchange = () => {
     const k = sel.dataset.s;
     if (sel.value === 'y') pubSigns[k] = true;

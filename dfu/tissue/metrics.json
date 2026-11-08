@@ -7,12 +7,13 @@
   3
  ],
  "input_range": "[-1,1]",
- "output": "224x224x5 softmax",
+ "output": "224x224x6 softmax",
  "classes": [
   "background",
   "gran",
   "slough",
   "necro",
+  "pus",
   "pale"
  ],
  "train_images": 83,
@@ -22,21 +23,26 @@
  "split": "by case",
  "per_class": {
   "background": {
-   "dice": 0.978225710149091,
-   "iou": 0.9573794524540519,
-   "true_pixel_share": 0.906926665755588
+   "dice": 0.9551938277261565,
+   "iou": 0.9142306516502856,
+   "true_pixel_share": 0.9089424274173955
   },
   "gran": {
-   "dice": 0.7737141769561028,
-   "iou": 0.6309411414669891,
-   "true_pixel_share": 0.06068068968658892
+   "dice": 0.6639098637152303,
+   "iou": 0.4969049959169274,
+   "true_pixel_share": 0.05783261965500486
   },
   "slough": {
-   "dice": 0.5644852021597265,
-   "iou": 0.3932284104691866,
-   "true_pixel_share": 0.032392644557823126
+   "dice": 0.5322248650565796,
+   "iou": 0.36260654127861064,
+   "true_pixel_share": 0.03322495292759961
   },
   "necro": {
+   "dice": 0.0,
+   "iou": 0.0,
+   "true_pixel_share": 0.0
+  },
+  "pus": {
    "dice": 0.0,
    "iou": 0.0,
    "true_pixel_share": 0.0
@@ -47,7 +53,7 @@
    "true_pixel_share": 0.0
   }
  },
- "macro_dice_tissue": 0.6690996895579147,
+ "macro_dice_tissue": 0.5980673643859049,
  "classes_present": [
   "background",
   "gran",
@@ -55,32 +61,55 @@
  ],
  "classes_missing": [
   "necro",
+  "pus",
   "pale"
  ],
  "macro_scored_over": [
   "gran",
   "slough"
  ],
+ "arch": "unet",
  "data": "DFUTissue (uwm-bigdata/DFUTissueSegNet), 110 annotated images, AZH Wound Center",
  "palette": "ml/palettes/dfutissue.json",
- "minutes": 3.3,
- "held_out_test": {
-  "_note": "CORRECTED. Measured by running the DEPLOYED model on DFUTissue's 16-image Test split at three input geometries. Read the two caveats before using any of it.",
-  "images": 16,
-  "split": "DFUTissue Test",
-  "at_native_crop_scale": {
-   "gran": 0.783,
-   "slough": 0.307
+ "recipe": {
+  "arch": "unet",
+  "zoom_aug": false,
+  "dice_foreground_only": false,
+  "extra_roots": [],
+  "folds": null,
+  "fold": null
+ },
+ "held_out_names": [],
+ "minutes": 3.9,
+ "cross_validated": {
+  "_note": "The headline figures. 3-fold by case over all 104 usable images, so every image is scored exactly once on a model that never saw it. The per_class block above is a single 21-image validation split of this one training run and moves a lot: the fold-to-fold spread here is wide enough that any single split is close to anecdote.",
+  "folds": 3,
+  "images": 104,
+  "this_recipe": {
+   "gran": 0.711,
+   "slough": 0.495
   },
-  "served_through_roi_crop": {
-   "gran": 0.697,
-   "slough": 0.171
+  "architectures_tried": {
+   "unet": {
+    "gran": 0.711,
+    "slough": 0.495
+   },
+   "attention_unet": {
+    "gran": 0.713,
+    "slough": 0.483
+   },
+   "deeplabv3plus": {
+    "gran": 0.695,
+    "slough": 0.45
+   }
   },
-  "whole_frame_as_served_before_v10_2": {
-   "gran": 0.126,
-   "slough": 0.023
+  "architecture_note": "Attention U-Net ties (macro 0.598 against 0.603) and DeepLabV3+ is worse (0.572) at 26 % more parameters, so neither was deployed. The dataset's own authors report a far larger architecture gap, but their winner is a ~45M-parameter ViT backbone; at sizes that fit a browser the decoder does not decide this.",
+  "previous_model": {
+   "gran": 0.695,
+   "slough": 0.438,
+   "macro": 0.567
   },
-  "caveat_not_held_out": "This split was NOT held out from this model. The fields above record 104 cases split at random, but DFUTissue ships 94 TrainVal and 16 Test and the trainer globbed both, so roughly 13 of these 16 images were trained on. Every absolute figure here is optimistic. The comparison BETWEEN the three geometries stands, because all three used the same model and the same images.",
-  "caveat_five_images": "Only 5 of the 16 contain any slough, and the split is unusually granulation-rich (15.6 % of pixels against 5.4 % in TrainVal). An earlier note here said the card's slough figure of 0.564 was overstated because this split gave 0.307. That rested on 5 images and is withdrawn. Cross-validated figures replace it."
- }
+  "improvement_note": "The gain over the previous model is not a new architecture. The monitored metric averaged over classes absent from the data, each scoring a constant 1.0, so early stopping was selecting epochs on whether an untrainable class stayed silent. Fixing it took slough from 0.438 to 0.495 and removed the collapsed folds: the previous recipe produced one wrecked fold in every configuration tried."
+ },
+ "supersedes": "The model shipped before 2026-11-08 reported gran 0.774 / slough 0.564. Those came from a split that pooled DFUTissue's TrainVal and Test directories and dealt them at random, so roughly 13 of the 16 official test images were trained on and the figures were optimistic. Not comparable with these."
 }

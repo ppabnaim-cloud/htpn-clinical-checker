@@ -1668,7 +1668,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-08 &middot; v10.0</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-08 &middot; v10.1</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1998,11 +1998,14 @@ function useImage(img, name){
   pubSigns = {}; cmpSev = null; featPred = {};
   $('imgName').textContent = name;
   const c = $('imgCanvas'), ctx = c.getContext('2d');
-  /* Letterbox, never centre-crop. A centre crop of a 4:3 camera frame discards a quarter of its
-     width and of a 9:16 phone frame nearly half its height, which silently threw away wound —
-     a gangrenous toe at the edge of a landscape photograph disappeared entirely. Padding is black
-     because FUSeg's own images are zero-padded to square, so the segmentation model was trained
-     with exactly this kind of border. */
+  /* The DISPLAY letterboxes, so the clinician sees the whole photograph: a centre crop of a 4:3
+     camera frame hides a quarter of its width and of a 9:16 phone frame nearly half its height,
+     and a gangrenous toe at the edge would simply not be on screen. Padding is black because
+     FUSeg's own images are zero-padded to square.
+
+     Inference is a separate question and is answered separately: segment() crops, because that
+     is the geometry the model was trained on, and warps its mask back into this frame. See the
+     measurements there. Display geometry and model geometry are no longer the same decision. */
   const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
   const sc = Math.min(c.width / w, c.height / h);
   const dw = Math.round(w * sc), dh = Math.round(h * sc);
@@ -2046,10 +2049,68 @@ document.querySelectorAll('.sample').forEach(b => b.onclick = () => {
 
 /* ═══════════════════════════ segmentation ═══════════════════════════ */
 async function segment(){
+  /* Serve the model the geometry it was TRAINED on, not the one the screen shows.
+
+     The viewer letterboxes the photograph into a square, and this function used to hand that
+     letterboxed square straight to the segmenter. train_segmentation.py trains on a centre
+     crop, so every inference was a scale the model had never seen: a 4:3 frame arrives shrunk
+     to 75 % of its training size and a 9:16 phone frame to 56 %, which pushes the ulcer well
+     below the 1.3 % median it learnt on and is why outlines came back as fragments.
+
+     Measured on the 195 FUSeg validation photographs that carry an expert mask, scoring both
+     ways in this same display frame:
+
+                        Dice    recall  precision
+       letterbox        0.677   0.709   0.711
+       centre crop      0.745   0.782   0.771
+       both, unioned    0.726   0.813   0.708
+
+     Better on precision as well as recall, so it is not a trade. The union of the two recovers
+     more wound still, but adds enough false positive to lose on Dice, and a per-image oracle
+     reaches only 0.760 — the crop already takes most of what is available.
+
+     The letterbox was introduced here to protect a wound at the edge of the frame, which a
+     centre crop can cut off. That fear turned out to be the wrong way round. A centre crop
+     removes expert-marked wound on 8 of the 195, and on exactly those 8 the crop STILL wins,
+     0.667 against 0.567: shrinking the whole frame costs more of the wound than cropping it
+     does. No mask reached the edge of the crop on any of the 195, so an edge-detection
+     fallback had nothing to fire on and is not worth its complexity.
+
+     The DISPLAY still letterboxes, because a clinician should see the whole photograph. The
+     mask is warped back into that frame below, so the overlay, the ROI box, the tissue map and
+     the area maths all keep working in the coordinates they already use. */
   if (!segModel) return null;
-  const x = tf.tidy(() => tf.browser.fromPixels($('imgCanvas')).resizeBilinear([SEG, SEG]).toFloat().div(127.5).sub(1).expandDims(0));
+  if (!currentImg || !fit) return null;
+
+  const w = fit.srcW, h = fit.srcH, side = Math.min(w, h);
+  const cx0 = (w - side) / 2, cy0 = (h - side) / 2;
+
+  const c = document.createElement('canvas'); c.width = c.height = SEG;
+  const cc = c.getContext('2d');
+  cc.fillStyle = '#000'; cc.fillRect(0, 0, SEG, SEG);
+  cc.drawImage(currentImg, cx0, cy0, side, side, 0, 0, SEG, SEG);
+
+  const x = tf.tidy(() => tf.browser.fromPixels(c).toFloat().div(127.5).sub(1).expandDims(0));
   const p = segModel.predict(x); x.dispose();
-  const prob = await p.data(); p.dispose();
+  const crop = await p.data(); p.dispose();
+
+  // crop coordinates -> letterbox coordinates, which is what every caller expects
+  const prob = new Float32Array(SEG * SEG);
+  const sc = Math.min(SEG / w, SEG / h);
+  const ox = (SEG - w * sc) / 2, oy = (SEG - h * sc) / 2;
+  for (let Y = 0; Y < SEG; Y++){
+    const py = (Y - oy) / sc;
+    if (py < 0 || py >= h) continue;
+    const v = Math.floor((py - cy0) * SEG / side);
+    if (v < 0 || v >= SEG) continue;
+    for (let X = 0; X < SEG; X++){
+      const px = (X - ox) / sc;
+      if (px < 0 || px >= w) continue;
+      const u = Math.floor((px - cx0) * SEG / side);
+      if (u < 0 || u >= SEG) continue;
+      prob[Y * SEG + X] = crop[v * SEG + u];
+    }
+  }
   return largestBlob(prob);
 }
 function largestBlob(prob, thresh = 0.5){

@@ -330,6 +330,10 @@ ol.guide b{color:var(--navy)}
 .verdict.noinf{background:var(--cloud);color:var(--text);border:1px solid var(--line)}
 .verdict.noinf span{color:var(--muted)}
 .verdict.unk{background:#B4530A;color:#fff}
+.est{display:block;font-size:12.5px;line-height:1.5;color:var(--muted);margin:7px 2px 0}
+.est b{color:var(--text);font-size:14px}
+.support{font-size:12.5px;line-height:1.5;color:var(--muted);margin:7px 2px 0;
+  border-left:3px solid var(--line);padding-left:9px}
 .note.teal{border-color:var(--teal)}
 .note.rose{border-color:var(--rose)}
 .log-list{list-style:none;margin-top:8px}
@@ -1668,7 +1672,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-08 &middot; v10.4</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-08 &middot; v10.5</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3383,11 +3387,19 @@ function renderPublic(){
   const awaiting = !infected && panelUnknown.length > 0;
   pubInfected = infected;
 
-  /* Both models side by side, which is the comparison this study exists to make. */
+  /* Both models side by side, which is the comparison this study exists to make, and as a
+     percentage because that is what a clinician reads without translating.
+
+     "The model declined to classify this image" was the fallback and it was the wrong thing
+     to print under a verdict: a reader takes it as a statement about the WOUND when it is a
+     statement about the MODEL. What matters to the person holding the phone is that nothing
+     was estimated and their examination is the only evidence there is, so that is what it
+     says now. */
   const models = est.length
-    ? est.map(r => `${r[0]} ${r[1].toFixed(2)}`).join(' &middot; ')
-    : noWound ? 'No wound was outlined — re-take the photograph'
-    : (DISEASE === 'pi' ? 'No pressure injury model has been trained yet' : 'The model declined to classify this image');
+    ? est.map(r => `${r[0]} ${Math.round(r[1] * 100)} %`).join(' &middot; ')
+    : noWound ? 'No wound was outlined, so nothing could be estimated — re-take the photograph'
+    : (DISEASE === 'pi' ? 'No pressure injury model has been trained yet, so your examination is the only evidence here'
+                        : 'No estimate for this photograph — your examination is the only evidence here');
 
   const nPos = critPos.length + severe.length;
   const modelOnly = !severe.length && critPos.length < 2 && mp !== null && mp >= 0.5;
@@ -3410,7 +3422,6 @@ function renderPublic(){
     parts.push('0 of 5 criteria seen here');
   if (panelUnknown.length) parts.push(`${panelUnknown.join(' and ')} not assessed`);
   parts.push(`${CRIT_BEDSIDE.join(', ')} need your examination — record the call under <b>Grading</b>`);
-  parts.push(models);
 
   /* Never a bare negative while a row above says Present, and never the words "no signs":
      this tab assesses two of the five criteria, so the most it can honestly report is that
@@ -3429,12 +3440,29 @@ function renderPublic(){
         Not an infection criterion, and needs review on its own account.</p>`
     : '';
 
+  /* The model's own number, given as a percentage and named as an estimate rather than a
+     finding, with what it rests on. It sits BELOW the criteria line, not above it: the
+     criteria are checkable at the bedside and the estimate is not, so the order is the order
+     of evidence. It is never allowed to be the whole message — a percentage alone reads as
+     a risk score, and this one is not calibrated: it is a head trained on a few dozen cases,
+     and 0.08 on a wound with erythema present is exactly how it fails. */
+  const pctLine = est.length
+    ? `<span class="est">${est.length > 1 ? 'Model estimates' : est[0][0] + ' estimate'}:
+       <b>${est.map(r => `${Math.round(r[1]*100)} %`).join(' / ')}</b> likelihood of infection${
+       est.length > 1 ? ' (' + est.map(r => r[0]).join(', then ') + ')' : ''}. An estimate from
+       training data, not a finding on this patient, and not calibrated — read it beside the
+       criteria above, not instead of them.</span>`
+    : `<span class="est">${models}</span>`;
+
   el.innerHTML = `${reframe}<div class="sx">${seen.join('')}${taps}</div>
     ${tiss}
     <div class="verdict ${tone}">
       <b>${head}</b>
       <span>${parts.join(' &middot; ')}${infected ? ' &middot; clinical review today' : ''}</span>
-    </div>${viab}`;
+    </div>
+    ${pctLine}
+    <p class="support">The wound and the patient still need to be seen and the diagnosis
+    confirmed by a clinician. This app supports that decision; it does not make it.</p>${viab}`;
   el.querySelectorAll('select.tapsel').forEach(sel => sel.onchange = () => {
     const k = sel.dataset.s;
     if (sel.value === 'y') pubSigns[k] = true;

@@ -63,5 +63,23 @@
  ],
  "data": "DFUTissue (uwm-bigdata/DFUTissueSegNet), 110 annotated images, AZH Wound Center",
  "palette": "ml/palettes/dfutissue.json",
- "minutes": 3.3
+ "minutes": 3.3,
+ "held_out_test": {
+  "_note": "Measured separately from training, on the 16-image DFUTissue Test split, by running the DEPLOYED model at the geometry the app serves it. The fields above come from the trainer's own 21-image validation split and are left untouched.",
+  "images": 16,
+  "split": "DFUTissue Test",
+  "at_native_crop_scale": {
+   "gran": 0.783,
+   "slough": 0.307
+  },
+  "served_through_roi_crop": {
+   "gran": 0.697,
+   "slough": 0.171
+  },
+  "whole_frame_as_served_before_v10_2": {
+   "gran": 0.126,
+   "slough": 0.023
+  },
+  "caveat": "Granulation reproduces the validation figure (0.774 -> 0.783). Slough does not: 0.564 on validation against 0.307 here, so the slough number above overstates what the model does on unseen images. Treat slough as the weak class."
+ }
 }

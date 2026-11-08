@@ -1668,7 +1668,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-08 &middot; v10.2</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-08 &middot; v10.3</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -2243,7 +2243,7 @@ function showWound(seg){
   if (!seg || !seg.found){
     $('wArea').textContent = 'none found'; $('wDiam').textContent = '—'; $('wConf').textContent = '—';
     $('howMeasure').textContent = 'No wound was segmented, so the whole photograph was classified instead and the figures above are blank rather than zero.';
-    $('whatMeasure').textContent = 'Re-shoot closer, with the ulcer filling about a third of the frame, because the model was trained on wounds occupying roughly 2 % of the image and finds almost nothing below that.';
+    $('whatMeasure').textContent = 'Re-shoot with the whole foot in view and the ulcer near the middle of the frame. The segmenter reads the centre square of the photograph and was trained on wounds filling a couple of per cent of it, so a tight close-up is further from what it knows, not closer.';
     return;
   }
   const k = VIEW / SEG;
@@ -3743,11 +3743,22 @@ async function tissueMap(seg){
      end is indicative. The shape of the curve is the finding.
 
      So feed it the wound crop instead. roiBox() squares the wound off and adds ROI_MARGIN on
-     each side, which puts the tissue at roughly 16 % of the crop — almost exactly the 13.8 %
-     it trained on — and cropCanvas() takes that from the ORIGINAL photograph rather than the
-     448 px view, so the texture that distinguishes slough from granulation survives. The class
-     map is then projected back onto this function's grid, so everything downstream keeps the
-     coordinates it already uses. */
+     each side, and cropCanvas() takes that from the ORIGINAL photograph rather than the 448 px
+     view, so the texture that distinguishes slough from granulation survives. The class map is
+     then projected back onto this function's grid, so everything downstream keeps the
+     coordinates it already uses.
+
+     That crop puts the wound at about 10.6 % of the model's input, measured, not the 16 % a
+     circle inscribed in its bounding box would suggest: roiBox() squares off the LONGEST axis,
+     so an elongated wound ends up small inside its own square.
+
+     ROI_MARGIN was not retuned to close that gap, and that is deliberate. Sweeping the crop
+     size over the same 16 crops gave mean Dice 0.434 at margin 0.6, 0.448 at 0.4, and 0.454
+     for a rule sizing the crop to put the wound at the 13.8 % it trained on — a spread of
+     0.02 across 16 images, which is choosing a rule by fitting the test set. The two classes
+     also pull opposite ways: granulation is best on the tightest crop tried (0.697 at 10.6 %)
+     and slough on wider ones (0.244 at 15.9 %), so no single size suits both. One crop
+     geometry, shared with the classifier heads, is worth more than 0.02. */
   if (tissueModel){
     try {
       const box = roiBox(seg);

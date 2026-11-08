@@ -1668,7 +1668,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-08 &middot; v10.1</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-08 &middot; v10.2</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3716,10 +3716,56 @@ async function tissueMap(seg){
   const covered = new Set((tissueMetrics && tissueMetrics.classes_present) || []);
   const uncovered = new Set(TISSUE.map(t => t.id)
     .filter(id => id !== 'other' && covered.size && !covered.has(id)));
+  /* Ask the model at the scale it was trained at.
+
+     This ran on $('imgCanvas') — the whole letterboxed photograph. DFUTissue, which trained
+     it, is a set of square crops in which the labelled tissue averages 13.8 % of the frame.
+     An ulcer in a phone photograph is nearer 1.5 %, so the model was being asked to work an
+     order of magnitude outside its range on every single image.
+
+     Measured on its own 16 held-out DFUTissue crops, presented at a range of scales with the
+     surround filled by mirroring each crop outward so the model sees skin rather than a black
+     border:
+
+       tissue % of frame    Dice gran   Dice slough
+       13.8  (as trained)     0.783        0.307
+        4.9                   0.652        0.176
+        2.8                   0.211        0.058
+        1.7  (as the app fed it)
+                              0.126        0.023
+
+     At its training scale it reproduces the 0.774 granulation Dice on its own model card, and
+     it falls off a cliff below about 5 %. That is the "sometimes awesome, sometimes terrible"
+     tissue map: the difference was how close the photograph was taken.
+
+     The caveat on those figures: mirroring is a simulation of standing further back, and
+     DFUTissue ships no wide originals to check it against, so the absolute Dice at the small
+     end is indicative. The shape of the curve is the finding.
+
+     So feed it the wound crop instead. roiBox() squares the wound off and adds ROI_MARGIN on
+     each side, which puts the tissue at roughly 16 % of the crop — almost exactly the 13.8 %
+     it trained on — and cropCanvas() takes that from the ORIGINAL photograph rather than the
+     448 px view, so the texture that distinguishes slough from granulation survives. The class
+     map is then projected back onto this function's grid, so everything downstream keeps the
+     coordinates it already uses. */
   if (tissueModel){
     try {
-      const t = tf.tidy(() => tissueModel.predict(preprocess($('imgCanvas'), '[-1,1]')).argMax(-1).squeeze());
-      cls = await t.data(); t.dispose();
+      const box = roiBox(seg);
+      const t = tf.tidy(() => tissueModel.predict(preprocess(cropCanvas(box), '[-1,1]')).argMax(-1).squeeze());
+      const roi = await t.data(); t.dispose();
+      // ROI coordinates -> this grid. Cells outside the crop stay 0, the background class;
+      // only cells inside the wound mask are ever read, and those are inside the crop.
+      cls = new Uint8Array(N * N);
+      const q = IMG / box.s;
+      for (let y = 0; y < N; y++){
+        const v = ((y * k + k/2 - box.t) * q) | 0;
+        if (v < 0 || v >= IMG) continue;
+        for (let x = 0; x < N; x++){
+          const u = ((x * k + k/2 - box.l) * q) | 0;
+          if (u < 0 || u >= IMG) continue;
+          cls[y * N + x] = roi[v * IMG + u];
+        }
+      }
     } catch(e){ cls = null; console.warn('tissue model failed, falling back to the colour rule', e); }
   }
 

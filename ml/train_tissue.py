@@ -56,7 +56,7 @@ Usage:
 Licensing: WoundTissue, DFUTissue and the Toledo set each carry their own terms. Check them
 before use and record which you trained on — the exported metrics.json has a "data" field for it.
 """
-import os, glob, json, argparse, time, collections
+import os, glob, json, argparse, time, collections, random
 os.environ.setdefault("TF_USE_LEGACY_KERAS", "1")
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 import numpy as np
@@ -195,18 +195,45 @@ def load_pair(img_path, mask_path, pal, indexed=False):
 
 
 def build_arrays(root, pal, limit=0, indexed=False):
+    """Return the names alongside the arrays.
+
+    This used to return X and Y alone, and the caller recovered the names with
+    find_pairs(root)[:len(X)]. That is wrong whenever a pair is dropped below: every name
+    after the first drop belongs to a different image than the row it is paired with, so the
+    split-by-case grouping was being computed from misaligned names. It happens to be
+    harmless on DFUTissue, where each file is its own case, and would quietly leak a wound
+    across the split on any dataset where it is not."""
     pairs = find_pairs(root)
     if limit:
         pairs = pairs[:limit]
-    X, Y = [], []
+    X, Y, kept = [], [], []
     for p, mp in pairs:
         x, y = load_pair(p, mp, pal, indexed)
         if (y > 0).sum() < 50:                            # nothing but background
             continue
-        X.append(x); Y.append(y)
+        X.append(x); Y.append(y); kept.append(p)
     if not X:
         raise SystemExit("no usable pairs — check --root and --palette")
-    return np.stack(X), np.stack(Y)
+    return np.stack(X), np.stack(Y), kept
+
+
+def case_of(name):
+    return os.path.basename(name).split("_")[0]
+
+
+def split_by_fold(X, Y, names, fold, folds, seed=0):
+    """Hold out one of `folds` case-level folds.
+
+    Why this exists: DFUTissue's own Test split contains just 5 images with any slough, so a
+    slough Dice measured on it rests on 5 images and moves with the noise. Rotating every case
+    through the held-out fold scores each image exactly once, on a model that never saw it,
+    and puts all 72 slough-bearing images behind the number instead of 5."""
+    rng = random.Random(seed)
+    cases = sorted({case_of(n) for n in names})
+    rng.shuffle(cases)
+    held = {c for i, c in enumerate(cases) if i % folds == fold}
+    m = np.array([case_of(n) in held for n in names])
+    return X[~m], Y[~m], X[m], Y[m], len(cases), int(m.sum()), [n for n, k in zip(names, m) if k]
 
 
 def split_by_case(X, Y, names, val_frac=0.2, seed=0):
@@ -231,6 +258,19 @@ def main():
     ap.add_argument("--epochs_ft", type=int, default=10)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--inspect", action="store_true")
+    ap.add_argument("--folds", type=int, default=0,
+                    help="cross-validate: hold out case-level fold --fold of --folds")
+    ap.add_argument("--fold", type=int, default=0)
+    ap.add_argument("--zoom", action="store_true",
+                    help="scale augmentation. The model is sharply scale-sensitive and the app "
+                         "cannot guarantee the framing it was trained on, so train across scales.")
+    ap.add_argument("--dice-fg", action="store_true",
+                    help="exclude background from the soft-Dice term, so it is about tissue")
+    ap.add_argument("--extra-root", action="append", default=[],
+                    help="another dataset to ADD to training only; repeatable. Its pairs never "
+                         "enter the held-out fold, so the headline stays on the main set.")
+    ap.add_argument("--extra-palette", action="append", default=[])
+    ap.add_argument("--pred-out", help="write per-image held-out predictions here as .npz")
     a = ap.parse_args()
 
     if a.inspect:
@@ -247,10 +287,22 @@ def main():
     t0 = time.time()
 
     pal, indexed = load_palette(a.palette)
-    pairs = find_pairs(a.root)[: a.limit or None]
-    X, Y = build_arrays(a.root, pal, a.limit, indexed)
-    names = [p for p, _ in pairs][: len(X)]
-    Xtr, Ytr, Xva, Yva, ncase, nval = split_by_case(X, Y, names)
+    X, Y, names = build_arrays(a.root, pal, a.limit, indexed)
+    heldNames = None
+    if a.folds:
+        Xtr, Ytr, Xva, Yva, ncase, nval, heldNames = split_by_fold(X, Y, names, a.fold, a.folds)
+        print(f"fold {a.fold} of {a.folds}", flush=True)
+    else:
+        Xtr, Ytr, Xva, Yva, ncase, nval = split_by_case(X, Y, names)
+
+    # Extra datasets go into TRAINING ONLY. Mixing them into the held-out fold would change
+    # what the headline number is measured on, so improvements would not be comparable.
+    for i, er in enumerate(a.extra_root):
+        ep = a.extra_palette[i] if i < len(a.extra_palette) else a.palette
+        epal, eidx = load_palette(ep)
+        Xe, Ye, ne = build_arrays(er, epal, 0, eidx)
+        print(f"adding {len(Xe)} training images from {er}", flush=True)
+        Xtr = np.concatenate([Xtr, Xe]); Ytr = np.concatenate([Ytr, Ye])
     share = {c: float((Ytr == i).mean()) for i, c in enumerate(CLASSES)}
     # Which classes the training data actually contained. A class absent here is one the model
     # can never predict, and the app must keep using the colour rule for it rather than
@@ -278,7 +330,46 @@ def main():
         x = tf.image.random_contrast(x, 0.75, 1.25)
         x = tf.image.random_saturation(x, 0.7, 1.3)
         x = tf.image.random_hue(x, 0.02)
-        return tf.clip_by_value(x, 0.0, 255.0), y     # y untouched by the photometric ops
+        x = tf.clip_by_value(x, 0.0, 255.0)          # y untouched by the photometric ops
+        return x, y
+
+    ZMIN, ZMAX = 0.55, 1.40
+
+    def zoom(x, y):
+        """Scale augmentation.
+
+        The model turned out to be sharply scale-sensitive: trained on crops where the tissue
+        fills about 14 % of the frame, its granulation Dice falls from 0.78 to 0.13 when the
+        same wound is shown at 1.7 %. The app cannot promise a framing, so teach the model the
+        range instead of relying on the crop to hit one number.
+
+        Shrinking pads by MIRRORING rather than with black. A black border is not something a
+        camera produces, and a model given one learns it as a cue; mirroring extends the skin
+        outward, and because the label is mirrored with it every pixel keeps a true class.
+        """
+        sc = tf.random.uniform([], ZMIN, ZMAX)
+        d = tf.maximum(tf.cast(tf.round(float(IMG) * sc), tf.int32), 32)
+        xi = tf.image.resize(x, [d, d], method="bilinear")
+        yi = tf.image.resize(y, [d, d], method="nearest")
+
+        def crop_in():
+            lim = tf.maximum(d - IMG, 0) + 1
+            oy = tf.random.uniform([], 0, lim, dtype=tf.int32)
+            ox = tf.random.uniform([], 0, lim, dtype=tf.int32)
+            return (tf.image.crop_to_bounding_box(xi, oy, ox, IMG, IMG),
+                    tf.image.crop_to_bounding_box(yi, oy, ox, IMG, IMG))
+
+        def pad_out():
+            lo = (IMG - d) // 2
+            hi = IMG - d - lo
+            pads = [[lo, hi], [lo, hi], [0, 0]]
+            return (tf.pad(xi, pads, mode="SYMMETRIC"),
+                    tf.pad(yi, pads, mode="SYMMETRIC"))
+
+        xo, yo = tf.cond(d >= IMG, crop_in, pad_out)
+        xo = tf.ensure_shape(xo, [IMG, IMG, 3])
+        yo = tf.ensure_shape(yo, [IMG, IMG, 1])
+        return xo, tf.cast(tf.round(yo), tf.int32)
 
     def make_ds(Xa, Ya, train, batch=8):
         ds = tf.data.Dataset.from_tensor_slices((Xa, Ya))
@@ -289,6 +380,10 @@ def main():
                     num_parallel_calls=tf.data.AUTOTUNE)
         if train:
             ds = ds.shuffle(512, seed=0).map(augment, num_parallel_calls=tf.data.AUTOTUNE)
+            if a.zoom:
+                # after the flips, before the one-hot: zoom needs the index map, not the one-hot
+                ds = ds.map(lambda x, y: zoom(x, tf.cast(y, tf.float32)),
+                            num_parallel_calls=tf.data.AUTOTUNE)
         ds = ds.map(lambda x, y: (x / 127.5 - 1.0,
                                   tf.one_hot(tf.squeeze(tf.cast(y, tf.int32), -1), NC)),
                     num_parallel_calls=tf.data.AUTOTUNE)
@@ -328,13 +423,23 @@ def main():
     print("class weights:", dict(zip(CLASSES, [round(float(v), 2) for v in w])), flush=True)
     wt = tf.constant(w)
 
+    # Which channels the soft-Dice term is averaged over. Background is 90 % of pixels and
+    # is the easy class, so including it means the Dice term is mostly a report on background
+    # and contributes almost no gradient to the thin classes the term was added for. With
+    # --dice-fg it is averaged over the tissue classes present in the data instead.
+    dice_ch = tf.constant([1.0 if (c in present and (not a.dice_fg or i > 0)) else 0.0
+                           for i, c in enumerate(CLASSES)], dtype=tf.float32)
+    print("dice channels:", dict(zip(CLASSES, [float(v) for v in dice_ch.numpy()])), flush=True)
+
     def loss_fn(y_true, y_pred):
         ce = -tf.reduce_sum(y_true * tf.math.log(y_pred + 1e-7) * wt, axis=-1)
         yt = tf.reshape(y_true, [tf.shape(y_true)[0], -1, NC])
         yp = tf.reshape(y_pred, [tf.shape(y_pred)[0], -1, NC])
         num = 2.0 * tf.reduce_sum(yt * yp, 1) + 1.0
         den = tf.reduce_sum(yt, 1) + tf.reduce_sum(yp, 1) + 1.0
-        return tf.reduce_mean(ce) + (1.0 - tf.reduce_mean(num / den))
+        per_ch = num / den                                     # [batch, NC]
+        dice = tf.reduce_sum(per_ch * dice_ch, -1) / tf.reduce_sum(dice_ch)
+        return tf.reduce_mean(ce) + (1.0 - tf.reduce_mean(dice))
 
     def macro_dice(y_true, y_pred):
         yp = tf.one_hot(tf.argmax(y_pred, -1), NC)
@@ -408,6 +513,10 @@ def main():
                "classes_present": present, "classes_missing": missing,
                "macro_scored_over": scored,
                "data": a.dataset, "palette": a.palette,
+               "recipe": {"zoom_aug": bool(a.zoom), "dice_foreground_only": bool(a.dice_fg),
+                          "extra_roots": a.extra_root,
+                          "folds": a.folds or None, "fold": a.fold if a.folds else None},
+               "held_out_names": [os.path.basename(n) for n in (heldNames or [])],
                "minutes": round((time.time() - t0) / 60, 1)},
               open(os.path.join(a.out, "metrics.json"), "w"), indent=1)
     print("exported to", a.out, f"in {(time.time()-t0)/60:.1f} min")

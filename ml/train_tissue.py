@@ -281,6 +281,10 @@ def main():
                     help="another dataset to ADD to training only; repeatable. Its pairs never "
                          "enter the held-out fold, so the headline stays on the main set.")
     ap.add_argument("--extra-palette", action="append", default=[])
+    ap.add_argument("--extra-limit", type=int, default=0,
+                    help="cap how many extra images are added. Pseudo-labels can outnumber the "
+                         "real ones eight to one, and a student trained on that mostly learns to "
+                         "imitate its teacher rather than the data.")
     ap.add_argument("--arch", default="unet", choices=["unet", "attention", "deeplab"],
                     help="decoder. unet is the shipped one; attention adds gates on the skips; "
                          "deeplab replaces the decoder with ASPP + the DeepLabV3+ head.")
@@ -314,7 +318,7 @@ def main():
     for i, er in enumerate(a.extra_root):
         ep = a.extra_palette[i] if i < len(a.extra_palette) else a.palette
         epal, eidx = load_palette(ep)
-        Xe, Ye, ne = build_arrays(er, epal, 0, eidx)
+        Xe, Ye, ne = build_arrays(er, epal, a.extra_limit, eidx)
         print(f"adding {len(Xe)} training images from {er}", flush=True)
         Xtr = np.concatenate([Xtr, Xe]); Ytr = np.concatenate([Ytr, Ye])
     share = {c: float((Ytr == i).mean()) for i, c in enumerate(CLASSES)}

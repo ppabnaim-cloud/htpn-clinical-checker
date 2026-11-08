@@ -325,7 +325,25 @@ def main():
     # Which classes the training data actually contained. A class absent here is one the model
     # can never predict, and the app must keep using the colour rule for it rather than
     # silently reporting it as never present. DFUTissue has no necrosis label at all.
-    present = [c for i, c in enumerate(CLASSES) if (Ytr == i).sum() > 0]
+    # A SINGLE PIXEL USED TO DECLARE A CLASS TRAINABLE, and that is not an academic point.
+    #
+    # Semi-supervised training put 17 necrosis pixels out of 29.6 million into the training
+    # set -- 0.000057 %, spread over 12 images, hallucinated by a teacher that had itself
+    # never seen a necrosis label. `(Ytr == i).sum() > 0` duly reported necrosis as present.
+    #
+    # Two things follow, and the second is the serious one. The macro metric then averages
+    # over a class the evaluation data does not contain, which scores 0 and drops the headline
+    # by a third for no reason to do with the model. And classes_present is written into
+    # metrics.json, where the app reads it to decide which classes it may trust the model for:
+    # necrosis listed there switches OFF the colour-rule fallback and makes the model the
+    # authority on the one finding where being wrong costs a foot, on the strength of 17
+    # pixels it invented.
+    #
+    # A class counts as present when the data actually teaches it. Real classes here are
+    # percent-scale -- granulation 6 %, slough 2.7 % -- so a tenth of a percent is far below
+    # anything genuine and four orders of magnitude above this.
+    MIN_SHARE = 0.001
+    present = [c for i, c in enumerate(CLASSES) if float((Ytr == i).mean()) >= MIN_SHARE]
     missing = [c for c in CLASSES if c not in present]
     if missing:
         print(f"WARNING: no training pixels for {missing}. The model cannot predict "

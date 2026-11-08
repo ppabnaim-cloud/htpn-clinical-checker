@@ -924,8 +924,9 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
       <!-- Offering "draw it yourself" to someone who no longer has that button would be worse
            than saying nothing. The advice is now what a clinician can actually act on. -->
       <p class="note hidden" id="segUnsure" style="margin:8px 0 0">The app is unsure where this
-      wound begins and ends. The tissue percentages are measured inside that outline, so treat
-      them as unreliable here and go by what you see on the wound itself.</p>
+      wound begins and ends, and what it has outlined may be only part of it. Check it against
+      the wound and redraw it with <b>Draw the wound area myself</b> if it is wrong &mdash; the
+      tissue percentages and the classification are both read from inside that outline.</p>
       <div class="measure tech">
         <div class="mrow"><span>Share of the frame</span><b id="wArea">—</b></div>
         <div class="mrow"><span>Longest dimension</span><b id="wDiam">—</b></div>
@@ -2204,8 +2205,18 @@ function showWound(seg){
     $('sizeHint').textContent = 'Tap \u201cSet scale with the ruler\u201d, enter a known length, then tap its two ends on the photograph.';
   }
   /* A confident outline can still be the wrong outline, so the number is not shown to a
-     clinician \u2014 but when the model is unsure, saying so is worth more than silence. */
-  const unsure = seg.conf < 0.6;
+     clinician \u2014 but when the outline cannot be trusted, saying so beats silence.
+
+     seg.conf alone was the wrong test, and it is why a badly under-segmented wound passed
+     without a word. It is the model's MEAN CONFIDENCE INSIDE THE MASK IT FOUND: a model that
+     finds one small blob can be entirely confident about that blob, so a high number says
+     nothing about whether the mask covers the wound. What does say so is the size of what was
+     found. Below 150 of the 224x224 cells there are too few pixels to measure anything \u2014
+     the same test the tissue rows already use \u2014 and below 0.3 % of the photograph is well
+     under the 1.3 % median ulcer of the training set, small enough that "a fragment of the
+     wound" is the likeliest explanation. */
+  const tiny = (lastTissue && lastTissue.sparse) || inFrame < 0.003;
+  const unsure = seg.conf < 0.6 || tiny;
   if ($('segUnsure')) $('segUnsure').classList.toggle('hidden', !unsure);
   $('howMeasure').textContent = pxPerCm
     ? 'Area and longest dimension are in centimetres using the ruler scale you set on this photograph, and confidence is the segmentation model’s mean probability across the outlined pixels.'
@@ -2240,8 +2251,12 @@ async function runInference(reuseSeg){
      reason only in the console. */
   if (!active){ $('statusText').textContent = 'Still loading the model \u2014 this will run by itself in a moment.'; return; }
   lastBox = manualBox ? manualBox : ((active.wantsRoi && lastSeg && lastSeg.found) ? roiBox(lastSeg) : null);
-  drawSegOverlay(lastSeg, lastBox); showWound(lastSeg);
+  drawSegOverlay(lastSeg, lastBox);
+  /* The tissue map first, then showWound: the "is this outline trustworthy" test reads
+     lastTissue.sparse, and running it before the map was measured would have judged this
+     image on the previous one's numbers. */
   lastTissue = await tissueMap(lastSeg); renderTissue(lastTissue);
+  showWound(lastSeg);
   showCrop(lastBox);
   /* The old test was `DISEASE === 'pi' && active.kind === 'demo'`, which let a locally trained
      head run on any wound type. A Wagner head then printed a Wagner grade for a sacral pressure
@@ -2527,8 +2542,15 @@ function renderLayerPick(){
   const el = $('layerPick'); if (!el) return;
   el.innerHTML = LAYERS.map(([id, label]) => {
     /* A layer with nothing in it is offered but says so, rather than looking like a layer the
-       app failed to draw. */
-    const f = lastTissue && lastTissue.frac ? lastTissue.frac[id] : null;
+       app failed to draw.
+
+       The sparse test is the one every other reader of lastTissue.frac already applies, and
+       leaving it out here was the bug: when the outline covers fewer than 150 of the model's
+       cells the percentages rest on too few pixels to be stable, and the rest of the screen
+       says so — while these chips went on printing a confident "Slough 18 %" beside it. A
+       sparse map now shows the layer names with no figure at all, which is what is known. */
+    const usable = lastTissue && !lastTissue.sparse && lastTissue.frac;
+    const f = usable ? lastTissue.frac[id] : null;
     const pct = (id === 'all' || id === 'ery' || f === null || f === undefined)
       ? '' : ` ${Math.round(f*100)}%`;
     const empty = id !== 'all' && id !== 'ery' && f !== null && f !== undefined && f < 0.005;

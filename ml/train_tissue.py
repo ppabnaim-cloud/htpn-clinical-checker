@@ -68,6 +68,15 @@ IMG = 224
 # with pus drops in beside one without it.
 CLASSES = ["background", "gran", "slough", "necro", "pus", "pale"]
 NC = len(CLASSES)
+
+# A label value meaning "no opinion". tf.one_hot of an index outside [0, NC) is all zeros, so
+# the cross-entropy at such a pixel is exactly zero and it teaches nothing. That is what makes
+# confidence-filtered pseudo-labels usable: the parts of a teacher's guess that are not
+# trustworthy can be dropped per pixel instead of per image. The soft-Dice term still counts
+# the model's prediction at an ignored pixel in its denominator, which costs a little and is
+# not worth masking given the term is a tie-break on top of the weighted CE.
+IGNORE = 255
+IGNORE_NAME = "ignore"
 SKIPS = ["block_13_expand_relu", "block_6_expand_relu", "block_3_expand_relu", "block_1_expand_relu"]
 
 IMG_EXT = ("*.png", "*.jpg", "*.jpeg", "*.bmp")
@@ -157,15 +166,17 @@ def load_palette(path):
     for k, v in raw.items():
         if k.startswith("_"):
             continue
-        if v not in CLASSES:
-            raise SystemExit(f"palette maps {k} to {v!r}, which is not one of {CLASSES}")
+        if v != IGNORE_NAME and v not in CLASSES:
+            raise SystemExit(f"palette maps {k} to {v!r}, which is not one of "
+                             f"{CLASSES + [IGNORE_NAME]}")
         key = k.replace(" ", "")
         isidx = "," not in key
         if indexed is None:
             indexed = isidx
         elif indexed != isidx:
             raise SystemExit("palette mixes index keys and r,g,b keys; use one or the other")
-        pal[int(key) if isidx else tuple(int(x) for x in key.split(","))] = CLASSES.index(v)
+        ci = IGNORE if v == IGNORE_NAME else CLASSES.index(v)
+        pal[int(key) if isidx else tuple(int(x) for x in key.split(","))] = ci
     if not pal:
         raise SystemExit(f"{path} has no mapping entries (keys starting with _ are notes)")
     return pal, bool(indexed)
@@ -209,7 +220,7 @@ def build_arrays(root, pal, limit=0, indexed=False):
     X, Y, kept = [], [], []
     for p, mp in pairs:
         x, y = load_pair(p, mp, pal, indexed)
-        if (y > 0).sum() < 50:                            # nothing but background
+        if ((y > 0) & (y < NC)).sum() < 50:               # nothing but background or ignore
             continue
         X.append(x); Y.append(y); kept.append(p)
     if not X:

@@ -84,7 +84,7 @@ await p.evaluate(() => {
     const el = document.createElement('div'); el.id = id; el.innerHTML = html
     el.style.opacity = '0'; document.body.appendChild(el)
   }
-  document.getElementById('wvmark').textContent = 'WOUND VISION v10.5 · ON-DEVICE'
+  document.getElementById('wvmark').textContent = 'WOUND VISION v10.7 · ON-DEVICE'
   document.getElementById('wvmark').style.opacity = '1'
 })
 
@@ -162,7 +162,7 @@ const settle = (ms = 60000) => p.waitForFunction(
 /* ═══════════════════════ 0 · title ═══════════════════════ */
 await full('Wound Vision',
   'A browser-based clinical decision-support prototype for the diabetic foot ulcer.<br>' +
-  'Hospital Tengku Permaisuri Norashikin · DrPH preliminary groundwork · build v10.5',
+  'Hospital Tengku Permaisuri Norashikin · DrPH preliminary groundwork · build v10.7',
   [['four models', 'all inference on the device; no image leaves the browser'],
    ['segmentation', 'MobileNetV2-UNet, FUSeg 2021'],
    ['tissue', 'MobileNetV2-UNet, multi-class, DFUTissue'],
@@ -232,21 +232,57 @@ await full('The tissue model is asked at the scale it was trained at',
   'Scale, not architecture. Attention U-Net ties this model and DeepLabV3+ is worse for 26 % more ' +
   'parameters; at a size that fits a browser the decoder is not what decides it.', 10500)
 
-/* ═══════════════════════ 5 · provenance ═══════════════════════ */
-await cap(6, 'Every row says where its answer came from',
+/* ═══════════════════════ 5 · what is and is not a sign ═══════════════════════ */
+await cap(6, 'Slough and necrosis are not signs of infection',
+  'The panel separates tissue viability from the IWGDF/IDSA criteria · slough is in most chronic ' +
+  'ulcers, and dry necrosis is ischaemic &mdash; it is WET gangrene, infected necrosis, that signals infection')
+await show('#pubResult', 7500)
+await cap(7, 'Every row says where its answer came from',
   'Classes the training set never contained stay with a CIELAB colour rule, and the row says so · ' +
   'DFUTissue carries no necrosis label, so the model is never allowed to report its absence as a finding')
+await show('#pubResult', 6000)
+
+/* ═══════════════════════ 5b · the metric criterion ═══════════════════════ */
+await cap(8, 'The criterion is a distance, so the app refuses to guess it',
+  'IWGDF/IDSA: erythema extending more than 0.5 cm from the margin · with no ruler scale the ' +
+  'distance has no units, so the row reads "Set a scale" and the criteria count treats it as unassessed')
 await show('#pubResult', 7000)
 
+// set the scale through the real ruler, then watch the criterion become answerable
+await show('#scaleBtn', 1200)
+await p.fill('#scaleCm', '2').catch(() => {})
+await p.locator('#scaleBtn').click().catch(() => {})
+await beat(900)
+{
+  const box = await p.locator('#viewer').boundingBox()
+  if (box){
+    await p.mouse.click(box.x + box.width * 0.18, box.y + box.height * 0.86); await beat(700)
+    await p.mouse.click(box.x + box.width * 0.52, box.y + box.height * 0.86); await beat(2600)
+  }
+}
+await cap(9, 'Measured as an extent, not an average',
+  'Distance transform from the wound, then the above-threshold region CONTIGUOUS with the margin &mdash; ' +
+  'a red patch that does not touch the wound is not erythema extending from it · red counts, amber is detached')
+await show('#pubResult', 8500)
+
 /* ═══════════════════════ 6 · the verdict ═══════════════════════ */
-await cap(7, 'The headline is a criteria count, not a model output',
+await cap(10, 'The headline is a criteria count, not a model output',
   'IWGDF/IDSA 2023: infection is &ge;2 of five local criteria · a model may ESCALATE, never ' +
   'DE-ESCALATE · the words "no signs of infection" do not exist in the app')
 await show('#pubResult .verdict, #pubResult', 8000)
-await cap(8, 'The estimate sits below the criteria, carrying its own caveat',
+await cap(11, 'The estimate sits below the criteria, carrying its own caveat',
   'Order on screen is the order of the evidence: checkable at the bedside first, uncheckable ' +
   'estimate second · shown as an estimate from training data, not a finding, and not calibrated')
 await show('#pubResult', 7000)
+
+await full('Why the peri-wound measure was rebuilt',
+  'The sign is defined as a distance. The first implementation could not express it, in two separate ways.',
+  [['the old band', 'a proportional annulus of about 3 cells, roughly 0.15 cm at an ordinary ruler scale &mdash; it never reached 0.5 cm'],
+   ['the old summary', 'a MEAN over the ring, which an unaffected majority drags below threshold while a real patch sits inside it: one image averaged +1.9 a* with 139 of 288 cells individually above +3'],
+   ['now', 'distance transform, 2.5 cm band, contiguity with the margin, and the extent reported in centimetres'],
+   ['censoring', 'redness still above threshold at the edge of the band reads "at least" that distance, because a censored value read as a measurement is worse than no value']],
+  'The band reaches 2.5 cm and not 1.2 because IWGDF severity turns on 2 cm; a shorter band censors the ' +
+  'measurement exactly at the clinically interesting cut.', 11000)
 
 /* ═══════════════════════ 7 · the ROI result ═══════════════════════ */
 await full('The prototype&rsquo;s strongest internal result',
@@ -262,7 +298,7 @@ await full('The prototype&rsquo;s strongest internal result',
 
 /* ═══════════════════════ 8 · grading ═══════════════════════ */
 await p.locator('#tabGrading').click(); await beat(1500)
-await cap(9, 'Wagner and Texas are computed, not predicted',
+await cap(12, 'Wagner and Texas are computed, not predicted',
   'Pure functions of the examination answers, from the published definitions · depth separates ' +
   'Texas 1/2/3 and ischaemia sets stage C or D, and no photograph shows either')
 await show('#askFind', 6000)
@@ -271,7 +307,7 @@ for (const [i, v] of [[0, 'yes'], [1, 'tendon'], [2, 'pos'], [5, 'yes']]) {
   if (await qs.nth(i).count()) { await qs.nth(i).selectOption(v).catch(() => {}); await beat(1500) }
 }
 await show('#gradeCard', 6500)
-await cap(10, 'The antibiotic is entered by the study team, not written into the app',
+await cap(13, 'The antibiotic is entered by the study team, not written into the app',
   'Malaysian National Antimicrobial Guideline 2024 · displayed with source, edition and who entered it · ' +
   'gated behind allergy and renal function, because empirical choice follows local MRSA and ESBL prevalence')
 await show('#abxBox', 8000)
@@ -291,7 +327,7 @@ if (await p.locator('#passInput').count()) {
   }, null, { timeout: 15000 }).catch(() => {})
   await beat(700)
 }
-await cap(11, 'Where the labels come from',
+await cap(14, 'Where the labels come from',
   'Per-image labelling by named grader · sign-level infection labels rather than one binary · ' +
   'an untouched image is EXCLUDED from training, so silence is never read as a negative')
 await show('#poolInput, .uploadrow', 5500)
@@ -317,7 +353,7 @@ await full('What the grading session has to deliver',
 
 /* ═══════════════════════ 10 · dashboard ═══════════════════════ */
 await p.locator('#tabData').click(); await beat(1500)
-await cap(12, 'What the study team can already see',
+await cap(15, 'What the study team can already see',
   'Per-class counts, grader agreement and the case log · split by case prefix, so several ' +
   'photographs of one ulcer can never straddle a train/test split')
 await show('#logCard', 7000)

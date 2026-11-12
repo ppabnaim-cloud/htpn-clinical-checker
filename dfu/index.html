@@ -4198,14 +4198,16 @@ function renderTissue(t){
 
 /* The two sentences shown under the viewer for this mode, written from THIS image's numbers. */
 function tissueText(t){
-  const how = 'Each pixel inside the outline is assigned to the closest wound-bed appearance by its colour in CIE Lab — this is a colour rule, not a trained model, so it describes what the surface looks like and never whether the wound is infected; peri-wound redness is measured against the patient’s own skin further out, not against an absolute threshold.';
+  const how = 'Each pixel inside the outline is assigned to the closest wound-bed appearance by its colour in CIE Lab — this is a colour rule, not a trained model, so it describes what the surface looks like and never whether the wound is infected; peri-wound redness is measured against the patient’s own skin beyond the search band, not against an absolute threshold, and reported as the distance it reaches from the margin because that is what the criterion asks.';
   if (!t) return { how, what: 'Nothing is measured here because no wound was outlined.' };
   const ranked = TISSUE.filter(x => x.id !== 'other' && t.frac[x.id] >= 0.05)
                        .sort((a, b) => t.frac[b.id] - t.frac[a.id])
                        .map(x => `${(t.frac[x.id]*100).toFixed(0)} % ${x.name.toLowerCase()}`);
-  const ery = t.dA === null ? ' Peri-wound redness could not be measured, because too little of the skin around this wound is visible and unobstructed to compare against skin further out.'
-    : ` The skin immediately around the wound reads ${Math.abs(t.dA).toFixed(1)} a* units ${t.dA >= 0 ? 'redder' : 'less red'} than skin further out`
-      + `${t.dA >= 3 ? ', a difference worth examining directly' : ', which is within the range ordinary lighting and curvature produce'}.`;
+  const ery = t.eryState === 'unmeasurable'
+      ? ' Peri-wound redness could not be measured, because too little of the skin around this wound is visible and unobstructed to compare against skin further out.'
+    : t.eryState === 'needs-scale'
+      ? ` Redness contiguous with the margin reaches ${t.extentCells} of the model\u2019s cells, which cannot be turned into centimetres until a ruler scale is set \u2014 and the criterion is a distance of more than ${ERY_CM} cm, so it stays unanswered rather than absent.`
+      : ` Redness contiguous with the margin reaches ${t.extentCensored ? 'at least ' : ''}${t.extentCm.toFixed(2)} cm from it, against the ${ERY_CM} cm the criterion asks for${t.extentCensored ? ', and is still above threshold at the edge of the band, so the true extent is greater' : ''}.`;
   const what = (ranked.length ? `This wound bed reads as ${ranked.join(', ')}.` : 'No single appearance covers more than a twentieth of this wound bed.')
     + (t.sparse ? ` The outline covers only ${t.total} of the model\u2019s ${SEG}\u00d7${SEG} cells, so those percentages rest on too few pixels to be stable \u2014 re-shoot closer before reading them.` : '')
     + ery
@@ -4296,6 +4298,15 @@ $('viewer').addEventListener('click', e => {
     pxPerCm = d / cm; picking = false; $('viewer').classList.remove('picking');
     $('scaleBtn').textContent = 'Reset scale';
     showWound(lastSeg); toast(`Scale set: ${pxPerCm.toFixed(0)} px per cm`);
+    /* The peri-wound measurement is in centimetres now, so it DEPENDS on this scale: without
+       one the criterion reads "Set a scale", and before this line it went on reading that
+       after the scale had been set, until the next inference. Re-measure and re-render. */
+    (async () => {
+      if (!lastSeg || !lastSeg.found) return;
+      lastTissue = await tissueMap(lastSeg);
+      renderTissue(lastTissue); showWound(lastSeg); renderLayerPick(); renderPublic(); renderAbx();
+      if (curLayer !== 'all') setCam(3);
+    })();
   }
 });
 

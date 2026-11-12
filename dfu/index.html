@@ -1689,7 +1689,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-12 &middot; v10.8</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-12 &middot; v10.9</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3386,7 +3386,13 @@ function renderPublic(){
     const fp = featPred[k], ans = pubSigns[k];
     const src = fp
       ? `${fp.name} · p ${fp.p.toFixed(2)}${fp.n ? ` · ${fp.n} case${fp.n === 1 ? '' : 's'}` : ''}`
-      : 'your examination supplies this \u00b7 ongoing local data training and validation';
+      /* "Ongoing" was wrong here and right one line above. The colour-rule rows do have a
+         model and data behind them, so training and validation genuinely are under way. These
+         three have no detector and no labels yet: the grading session produces the first ones.
+         Saying "ongoing" would claim work that has not started, and this branch is only
+         reached WHEN NO HEAD EXISTS -- the moment one is trained, the line above replaces it
+         with the head's name and probability, so the wording corrects itself. */
+      : 'your examination supplies this \u00b7 local data training planned';
     /* Abscess is predicted from swelling, erythema and induration, not seen, so its row does
        not get to say "present" — the word would claim a sighting the model cannot make. */
     const word = k === 'abscess' ? ['likely', 'unlikely'] : ['present', 'absent'];

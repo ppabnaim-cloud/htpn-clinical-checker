@@ -63,5 +63,10 @@
  ],
  "data": "DFUTissue (uwm-bigdata/DFUTissueSegNet), 110 annotated images, AZH Wound Center",
  "palette": "ml/palettes/dfutissue.json",
- "minutes": 3.3
+ "minutes": 3.3,
+ "_SUPERSEDED": {
+  "warning": "DO NOT QUOTE THE FIGURES IN THIS FILE. They are from a training run whose split pooled DFUTissue's TrainVal and Test directories and dealt them at random, so roughly 13 of the 16 official test images were trained on. gran 0.774 and slough 0.564 are therefore optimistic.",
+  "use_instead": "dfu/tissue/metrics.json, cross_validated block: 3-fold by case over all 104 usable images, granulation 0.711, slough 0.495.",
+  "superseded_on": "2026-11-12"
+ }
 }

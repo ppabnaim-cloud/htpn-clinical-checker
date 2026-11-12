@@ -218,6 +218,37 @@ no loss, and the ratio must be capped.
 Leave-one-fold-out selection of a per-class probability multiplier chose 1.0 on every fold. If a
 class is imprecise rather than under-claimed, no threshold recovers it.
 
+### 3.9 A change that adds a required input must check that a user can supply it
+
+The one in this list that reached production.
+
+The peri-wound redness measure was rebuilt to match the guideline, which defines the sign as
+erythema reaching **more than 0.5 cm** from the wound margin. The old measure could not express
+that: its band was a proportional annulus about 0.15 cm wide at an ordinary scale, and it
+reported a mean, which an unaffected majority drags below threshold while a real patch sits
+inside it. The replacement measures a distance properly. It was cross-checked at two scales on
+seven photographs, it reported censoring at the band edge, and it was right.
+
+It was also unusable. A distance in centimetres needs a ruler scale, and the control that sets
+one was gated to the study team. So the shipped behaviour was: the row reads "Set a scale", and
+the button that would set it is invisible. One of the five diagnostic criteria had become
+permanently unanswerable in ordinary use, and the app was instructing clinicians to press
+something they could not see. That went out and was merged.
+
+Every check passed, because every check set the scale **directly in the page** and none asked
+whether a person could. The measurement was correct and the product was broken, and those are
+different properties.
+
+It surfaced by accident: the walkthrough recorder stalled for 72 seconds between two chapters,
+which was the browser automation waiting out actionability timeouts on controls that were not
+visible. A tool driving the interface the way a person does found in one run what reasoning and
+unit checks had missed twice.
+
+**Rule.** When a change introduces a new required input, trace where it comes from before
+declaring the change done: who supplies it, through which control, and is that control
+reachable by the person who now needs it. Then exercise that path end to end in the interface.
+A new dependency is a new failure mode even when the thing depending on it is correct.
+
 ---
 
 ## 4. The study design behind the labels
@@ -252,6 +283,10 @@ Working practices that produced the results above. Worth stating in the new chat
   code are the source. A number quoted from the conversation is a number that has drifted.
 - **Verify through the shipped path, not the test harness.** A harness that calls the model
   directly can pass while the application is broken. Confirm the deployed code reproduces it.
+- **Set nothing in the page that a user would have to set themselves.** A check that assigns
+  the input directly is testing the maths, not the product. If the feature needs a scale, a
+  selection or a permission, the check performs the action a clinician would and fails if the
+  control is unreachable. This is the error that reached production here; see 3.9.
 - **Suspect the test before the code, and the code before the model.** Several apparent bugs
   here were faults in the measurement: a test reading the page mid-render, a filename list
   invented rather than listed, a metric averaging over absent classes.

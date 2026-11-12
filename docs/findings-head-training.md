@@ -7,17 +7,26 @@ Deep Learning Healthcare Project, Hospital Tengku Permaisuri Norashikin
 
 ## What a findings head is, and why it exists
 
-The Assess tab lists six signs of infection. Three of them it works out for itself; three it
-has to ask for.
+The Findings tab lists six rows, and they are **not** six signs of infection, which is what
+this guide used to call them. Slough is present in most chronic ulcers and is not an IWGDF
+criterion; dry necrosis and eschar are tissue death, usually ischaemic, and it is wet gangrene
+that signals infection. The panel groups them accordingly, and so should the labelling sheet.
 
-| Sign | Today | With a head trained |
-|---|---|---|
-| Slough | Colour rule — unvalidated | *unchanged* |
-| Necrosis | Colour rule — unvalidated | *unchanged* |
-| Peri-wound erythema | Colour rule — unvalidated | *unchanged* |
-| **Pus** | Asked | Model flags it, you confirm — *present / absent* |
-| **Wet gangrene** | Asked | Model flags it, you confirm — *present / absent* |
-| **Abscess** | Asked | Model flags it, you confirm — *likely / unlikely* |
+| Row | Group | Today | With a head trained |
+|---|---|---|---|
+| Slough | Tissue viability | Tissue model | *unchanged* |
+| Necrosis or eschar | Tissue viability | Colour rule — unvalidated | *unchanged* |
+| Peri-wound erythema beyond 0.5 cm | Infection criterion | Colour rule, measured as an extent — unvalidated | *unchanged* |
+| **Pus** | Infection criterion | Asked | Model flags it, you confirm — *present / absent* |
+| **Wet gangrene** | Severe, escalates alone | Asked | Model flags it, you confirm — *present / absent* |
+| **Abscess** | Severe, escalates alone | Asked | Model flags it, you confirm — *likely / unlikely* |
+
+Erythema and pus are two of the five IWGDF/IDSA local criteria. The other three — warmth,
+swelling or induration, and tenderness — need hands and are asked under Grading.
+
+**Before labelling anything, read `docs/case-definitions.md`.** Most disagreement between
+graders is definitional rather than perceptual, and the erythema definition in particular
+changed when the app moved to measuring an extent.
 
 The three it asks for have no detector **yet**. That is a statement about labels, not about
 what is learnable, and the two are easy to conflate.

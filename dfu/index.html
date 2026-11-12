@@ -1676,7 +1676,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-12 &middot; v10.6</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-12 &middot; v10.7</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3326,25 +3326,36 @@ function renderPublic(){
   const dA = t && t.dA !== null ? t.dA : null;
   /* Not tsrc: the ring is measured against the patient's own skin on either path, and no
      tissue model has a peri-wound class. */
-  seen.push(row('Peri-wound erythema', RULE_SRC,
-    dA === null ? 'Not assessed' : (dA >= ERY_DA ? 'Present' : 'Not seen'),
-    dA === null ? 'u' : (dA >= ERY_DA ? 'y' : 'n')));
+  /* The row now answers the criterion as written -- does erythema extend more than 0.5 cm
+     from the margin -- and has a fourth state for the case the criterion cannot be reached
+     without a ruler scale. */
+  const eryState = t ? t.eryState : 'unmeasurable';
+  const eryWord = { present: 'Present', absent: 'Not seen',
+                    'needs-scale': 'Set a scale', unmeasurable: 'Not assessed' }[eryState];
+  const eryCls  = { present: 'y', absent: 'n', 'needs-scale': 'u', unmeasurable: 'u' }[eryState];
+  seen.push(row(`Peri-wound erythema beyond ${ERY_CM} cm`, RULE_SRC, eryWord, eryCls));
 
   /* How much of the ring the measurement actually rests on. On deeply pigmented or shadowed
      skin most ring cells fail skinLike, and a figure drawn from a small remnant should not be
      read with the same confidence as one drawn from a whole ring. */
-  const ringNote = (t && t.ringTotal)
-    ? `<p class="sxnote">Peri-wound redness is measured against the patient&rsquo;s own skin further
-       out, and reads ${t.dA === null ? 'nothing usable' : (t.dA >= 0 ? '+' : '') + t.dA.toFixed(1) +
-       ' a* units'} against a threshold of +${ERY_DA}, averaged over the whole ring.
-       ${t.ringAbove ? `${t.ringAbove} of ${t.ringN} usable cells are individually above it, which is
-         what the layer shades red` + (t.dA !== null && t.dA < ERY_DA
-           ? ' \u2014 so the redness here is patchy rather than absent, and a focal patch is worth looking at directly even though the average does not reach the threshold.'
-           : '.') : 'No individual cell reaches it.'}
-       ${t.ringN} of ${t.ringTotal} cells in the ring were usable${t.ringN < t.ringTotal * 0.5 ?
-       ' \u2014 under half, so this rests on a small and probably lighter part of the ring, which is ' +
-       'the known weakness of a colour rule on deeply pigmented or shadowed skin' : ''}.</p>`
-    : '';
+  const ringNote = (t && t.ringTotal) ? `<p class="sxnote">Measured against the patient&rsquo;s own
+     skin beyond the search band, not against an absolute red, so it means the same on any skin
+     tone. ${t.eryState === 'needs-scale'
+       ? `Contiguous redness reaches ${t.extentCells} cell${t.extentCells === 1 ? '' : 's'} from the
+          margin, which cannot be turned into centimetres until a ruler scale is set on this
+          photograph &mdash; and the criterion is a distance, so until then it is unanswered
+          rather than absent.`
+       : t.eryState === 'unmeasurable'
+       ? 'Too little usable skin around this wound to compare against skin further out.'
+       : `Contiguous redness reaches <b>${t.extentCensored ? 'at least ' : ''}${t.extentCm.toFixed(2)} cm</b>
+          from the margin against a threshold of ${ERY_CM} cm${t.extentCensored
+            ? ', and is still above threshold at the edge of the measured band, so the true extent is greater than this'
+            : ''}.`}
+     ${t.ringAbove} of ${t.ringN} usable cells sit at or above +${ERY_DA} a*; the layer shades the
+     part contiguous with the ulcer red and the rest slate. ${t.ringN} of ${t.ringTotal} cells in
+     the band were usable${t.ringN < t.ringTotal * 0.5 ? ' &mdash; under half, so this rests on a ' +
+     'small and probably lighter part of the band, which is the known weakness of a colour rule ' +
+     'on deeply pigmented or shadowed skin' : ''}.</p>` : '';
 
   /* The three the camera cannot settle. A dropdown rather than a one-way button: "Confirm"
      could only ever add a finding, so there was no way to record having looked and found
@@ -3403,9 +3414,9 @@ function renderPublic(){
   const CRIT_BEDSIDE = ['local warmth', 'swelling or induration', 'tenderness or pain'];
   const critPos = [], panelUnknown = [];
 
-  const eryKnown = dA !== null;
-  if (!eryKnown) panelUnknown.push('erythema beyond 0.5 cm');
-  else if (dA >= ERY_DA) critPos.push('peri-wound erythema');
+  if (eryState === 'present') critPos.push('peri-wound erythema beyond ' + ERY_CM + ' cm');
+  else if (eryState === 'needs-scale') panelUnknown.push('erythema extent, which needs a ruler scale');
+  else if (eryState === 'unmeasurable') panelUnknown.push('erythema extent');
 
   const tapAns = k => pubSigns[k] !== undefined ? pubSigns[k]
                  : (featPred[k] && featPred[k].p >= 0.5 ? true : undefined);
@@ -3822,6 +3833,8 @@ function srgbToLab(r, g, b){
    Named once because it is read in three places -- the findings row, the criteria count and
    the layer -- and when the layer had its own threshold the screen contradicted itself. */
 const ERY_DA = 3;
+/* IWGDF/IDSA: erythema extending MORE THAN 0.5 cm from the ulcer margin. */
+const ERY_CM = 0.5;
 
 function tissueOf(L, a, bb){
   const C = Math.hypot(a, bb);                       // chroma: how colourful, regardless of hue
@@ -3940,9 +3953,50 @@ async function tissueMap(seg){
   // ERY: two annuli. ring = skin immediately around the wound, ref = the patient's own skin
   // further out, used as the baseline. Redness is then a difference in a*, not an absolute value,
   // so the measure does not change meaning with skin tone.
+  /* THE BAND IS NOW METRIC, BECAUSE THE CRITERION IS.
+     ─────────────────────────────────────────────────
+     IWGDF/IDSA define the sign as erythema extending MORE THAN 0.5 cm from the ulcer margin.
+     That is a statement about distance, and the old measure could not express it twice over:
+     the ring was a proportional annulus of max(3, 0.18*sqrt(area/pi)) cells, about 3 cells on
+     a typical wound and therefore roughly 0.15 cm wide at an ordinary ruler scale, so it did
+     not reach 0.5 cm at all; and it was summarised as a MEAN, which an unaffected majority
+     can drag below threshold while a genuine 1 cm patch sits inside it.
+
+     So: search out to 1.2 cm where a scale has been set, take the reference from skin beyond
+     that, and measure how far contiguous above-threshold skin actually reaches from the
+     margin. Without a scale the distance cannot be put in centimetres and the criterion is
+     reported as needing one, rather than answered from a proportional stand-in. */
+  const CELL_VIEW = VIEW / N;                       // view pixels per mask cell
+  const cmToCells = cm => pxPerCm ? Math.round(cm * pxPerCm / CELL_VIEW) : null;
   const r1 = Math.max(3, Math.round(0.18 * Math.sqrt(seg.sizePx / Math.PI)));
-  const d1 = dilate(m, N, r1), d2 = dilate(m, N, r1 * 2);
+  /* The band reaches 2.5 cm, not 1.2. IWGDF severity turns on erythema of 2 cm or less against
+     more than 2 cm, so a band that stops at 1.2 cm censors the measurement exactly where the
+     clinically interesting cut lies -- the first version reported 1.2 cm on two demo images
+     simply because that was the edge of what it looked at. Capped at 56 cells so a large wound
+     in a tight frame cannot push the reference band off the photograph. */
+  const searchCells = Math.max(4, Math.min(56, cmToCells(2.5) || Math.max(2 * r1, 8)));
+  const d1 = dilate(m, N, searchCells), d2 = dilate(m, N, searchCells + 6);
   let ringA = 0, ringN = 0, refA = 0, refN = 0;
+
+  /* Chebyshev distance from the wound, in cells, by two sweeps. Needed because "how far does
+     it extend" is a question about distance and the annulus masks only answer "inside or
+     outside". 0 means inside the wound. */
+  const INF = 1e6, dist = new Int32Array(N * N).fill(INF);
+  for (let i = 0; i < N * N; i++) if (m[i]) dist[i] = 0;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
+    const i = y*N + x; let v = dist[i];
+    if (y > 0){ v = Math.min(v, dist[i-N] + 1); if (x > 0) v = Math.min(v, dist[i-N-1] + 1);
+                if (x < N-1) v = Math.min(v, dist[i-N+1] + 1); }
+    if (x > 0) v = Math.min(v, dist[i-1] + 1);
+    dist[i] = v;
+  }
+  for (let y = N-1; y >= 0; y--) for (let x = N-1; x >= 0; x--){
+    const i = y*N + x; let v = dist[i];
+    if (y < N-1){ v = Math.min(v, dist[i+N] + 1); if (x > 0) v = Math.min(v, dist[i+N-1] + 1);
+                  if (x < N-1) v = Math.min(v, dist[i+N+1] + 1); }
+    if (x < N-1) v = Math.min(v, dist[i+1] + 1);
+    dist[i] = v;
+  }
 
   const count = {}; TISSUE.forEach(t => count[t.id] = 0);
   let total = 0;
@@ -3999,14 +4053,48 @@ async function tissueMap(seg){
      Tissue overlay and no way to ask "where is the slough". */
   const dA = (ringN >= 50 && refN >= 50) ? (ringA/ringN - refA/refN) : null;
   const refMean = refN ? refA/refN : null;
-  /* How many ring cells individually clear the threshold, as against the ring MEAN clearing
-     it. The two can disagree sharply -- a mean of +1.9 with half the ring above +3 -- and the
-     layer draws per cell while the row reports the mean, so the count has to be on screen or
-     the screen contradicts itself again. */
+
+  /* Which cells are above threshold, then how far the part of them CONTIGUOUS WITH THE ULCER
+     MARGIN reaches. Contiguity matters: a red patch that does not touch the wound is not
+     erythema extending from it, and counting it would turn a bruise or a sock mark into a
+     criterion. Breadth-first from the cells that touch the margin, eight-connected. */
+  const above = new Uint8Array(N * N);
   if (refMean !== null) for (let i = 0; i < N*N; i++)
-    if (!isNaN(ringVal[i]) && ringVal[i] - refMean >= ERY_DA) ringAbove++;
+    if (!isNaN(ringVal[i]) && ringVal[i] - refMean >= ERY_DA){ above[i] = 1; ringAbove++; }
+
+  const conn = new Uint8Array(N * N);
+  let extentCells = 0;
+  if (ringAbove){
+    /* Seeded at two cells rather than one. The cells immediately on the margin are frequently
+       wound rather than skin and so fail skinLike, which leaves a one-cell gap; seeding only
+       at dist 1 then orphans a whole genuine patch and reports an extent of zero. */
+    const q = [];
+    for (let i = 0; i < N*N; i++) if (above[i] && dist[i] <= 2){ conn[i] = 1; q.push(i); }
+    for (let h = 0; h < q.length; h++){
+      const i = q[h], x = i % N, y = (i - x) / N;
+      if (dist[i] > extentCells) extentCells = dist[i];
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++){
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+        const j = ny*N + nx;
+        if (above[j] && !conn[j]){ conn[j] = 1; q.push(j); }
+      }
+    }
+  }
+  const extentCm = pxPerCm ? extentCells * CELL_VIEW / pxPerCm : null;
+  /* Redness reaching the edge of the band is a lower bound, not a measurement, and must be
+     reported as one or a censored value gets read as a result. */
+  const extentCensored = extentCells >= searchCells;
+
+  /* Three states, because "cannot be measured" is not "absent". Without a ruler scale the
+     distance has no units and the criterion cannot be answered at all; saying so sends the
+     clinician to the one action that would answer it. */
+  const eryState = (ringN < 50 || refN < 50) ? 'unmeasurable'
+                 : extentCm === null ? 'needs-scale'
+                 : extentCm > ERY_CM ? 'present' : 'absent';
   return { frac: TISSUE.reduce((f, t) => (f[t.id] = total ? count[t.id]/total : 0, f), {}),
            total, dA, ringN, refN, ringTotal, ringAbove, sparse: total < 150,
+           eryState, extentCells, extentCm, extentCensored, eryConn: conn, searchCells,
            grid, ringVal, refMean, N,
            src: cls ? (fellBack ? 'mixed' : 'model') : 'rule',
            covered: cls ? [...covered] : [] };
@@ -4073,8 +4161,13 @@ function paintTissueLayer(layer){
            is thin, the redness figure rests on very little. */
         const d = t.refMean === null ? 0 : v - t.refMean;
         hit = true;
-        tint = d >= ERY_DA
+        /* Red is reserved for what the criterion counts: above threshold AND contiguous with
+           the ulcer margin. Above threshold but detached is amber, because it is real redness
+           that does not extend from this wound, and hiding it would be its own kind of lie.
+           Everything else measured is slate. */
+        tint = (d >= ERY_DA && t.eryConn && t.eryConn[i])
           ? [ERY_RGB[0], ERY_RGB[1], ERY_RGB[2], Math.min(180, 70 + (d - ERY_DA) * 16)]
+          : d >= ERY_DA ? [196, 142, 54, 85]
           : [124, 142, 160, 60];
       }
     } else {

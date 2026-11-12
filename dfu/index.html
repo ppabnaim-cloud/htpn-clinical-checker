@@ -330,6 +330,10 @@ ol.guide b{color:var(--navy)}
 .verdict.noinf{background:var(--cloud);color:var(--text);border:1px solid var(--line)}
 .verdict.noinf span{color:var(--muted)}
 .verdict.unk{background:#B4530A;color:#fff}
+.sxh{margin:14px 2px 2px;font-size:13px;font-weight:650;letter-spacing:.02em;text-transform:uppercase;color:var(--text)}
+.sxh:first-child{margin-top:0}
+.sxsub{margin:0 2px 7px;font-size:12.5px;line-height:1.45;color:var(--muted)}
+.sxnote{margin:7px 2px 0;font-size:12.5px;line-height:1.45;color:var(--muted)}
 .est{display:block;font-size:12.5px;line-height:1.5;color:var(--muted);margin:7px 2px 0}
 .est b{color:var(--text);font-size:14px}
 .support{font-size:12.5px;line-height:1.5;color:var(--muted);margin:7px 2px 0;
@@ -1040,7 +1044,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
        different question asked at a different moment, so they are a different tab. -->
   <section class="card hidden" id="decide">
     <div class="step"><span class="n">2b</span>
-      <h3>Signs of infection</h3>
+      <h3>Findings from the photograph</h3>
       <span class="hint">on-device</span></div>
     <div id="pubResult"></div>
     <p class="small nextstep" id="toGrading">Wagner, Texas and the antibiotic are under
@@ -1672,7 +1676,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-08 &middot; v10.5</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-12 &middot; v10.6</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3302,14 +3306,45 @@ function renderPublic(){
   const colour = (label, id, present) => row(label, tsrc(id),
     present === null ? 'Not assessed' : (present ? 'Present' : 'Not seen'),
     present === null ? 'u' : (present ? 'y' : 'n'));
-  seen.push(colour('Slough',   'slough', t ? pc(t.frac.slough) >= 5 : null));
-  seen.push(colour('Necrosis', 'necro',  t ? pc(t.frac.necro)  >= 5 : null));
+  /* NOT "signs of infection", which is what this panel used to call them.
+
+     Slough is present in most chronic ulcers and is not among the IWGDF/IDSA criteria.
+     Necrosis is not either: dry necrosis and eschar are tissue death, usually ischaemic, and
+     it is WET gangrene -- infected necrosis -- that signals infection, which is already its
+     own row below. Grouping all six under one infection heading invited the reading that a
+     sloughy wound is an infected wound.
+
+     The row is "Necrosis or eschar" and not "Dry necrosis", though the latter was suggested,
+     because the detector is a single line, L < 30, and dark is dark: dry eschar, wet
+     gangrene, deep shadow and an underexposed photograph all land in it. Claiming dryness
+     would assert the one distinction the method cannot make, and it is the distinction that
+     decides management -- dry means ischaemia and revascularisation, wet means drainage and
+     antibiotics. */
+  const tissueRows = [];
+  tissueRows.push(colour('Slough', 'slough', t ? pc(t.frac.slough) >= 5 : null));
+  tissueRows.push(colour('Necrosis or eschar', 'necro', t ? pc(t.frac.necro) >= 5 : null));
   const dA = t && t.dA !== null ? t.dA : null;
   /* Not tsrc: the ring is measured against the patient's own skin on either path, and no
      tissue model has a peri-wound class. */
   seen.push(row('Peri-wound erythema', RULE_SRC,
-    dA === null ? 'Not assessed' : (dA >= 3 ? 'Present' : 'Not seen'),
-    dA === null ? 'u' : (dA >= 3 ? 'y' : 'n')));
+    dA === null ? 'Not assessed' : (dA >= ERY_DA ? 'Present' : 'Not seen'),
+    dA === null ? 'u' : (dA >= ERY_DA ? 'y' : 'n')));
+
+  /* How much of the ring the measurement actually rests on. On deeply pigmented or shadowed
+     skin most ring cells fail skinLike, and a figure drawn from a small remnant should not be
+     read with the same confidence as one drawn from a whole ring. */
+  const ringNote = (t && t.ringTotal)
+    ? `<p class="sxnote">Peri-wound redness is measured against the patient&rsquo;s own skin further
+       out, and reads ${t.dA === null ? 'nothing usable' : (t.dA >= 0 ? '+' : '') + t.dA.toFixed(1) +
+       ' a* units'} against a threshold of +${ERY_DA}, averaged over the whole ring.
+       ${t.ringAbove ? `${t.ringAbove} of ${t.ringN} usable cells are individually above it, which is
+         what the layer shades red` + (t.dA !== null && t.dA < ERY_DA
+           ? ' \u2014 so the redness here is patchy rather than absent, and a focal patch is worth looking at directly even though the average does not reach the threshold.'
+           : '.') : 'No individual cell reaches it.'}
+       ${t.ringN} of ${t.ringTotal} cells in the ring were usable${t.ringN < t.ringTotal * 0.5 ?
+       ' \u2014 under half, so this rests on a small and probably lighter part of the ring, which is ' +
+       'the known weakness of a colour rule on deeply pigmented or shadowed skin' : ''}.</p>`
+    : '';
 
   /* The three the camera cannot settle. A dropdown rather than a one-way button: "Confirm"
      could only ever add a finding, so there was no way to record having looked and found
@@ -3370,7 +3405,7 @@ function renderPublic(){
 
   const eryKnown = dA !== null;
   if (!eryKnown) panelUnknown.push('erythema beyond 0.5 cm');
-  else if (dA >= 3) critPos.push('peri-wound erythema');
+  else if (dA >= ERY_DA) critPos.push('peri-wound erythema');
 
   const tapAns = k => pubSigns[k] !== undefined ? pubSigns[k]
                  : (featPred[k] && featPred[k].p >= 0.5 ? true : undefined);
@@ -3454,7 +3489,16 @@ function renderPublic(){
        criteria above, not instead of them.</span>`
     : `<span class="est">${models}</span>`;
 
-  el.innerHTML = `${reframe}<div class="sx">${seen.join('')}${taps}</div>
+  el.innerHTML = `${reframe}
+    <h4 class="sxh">Tissue in the wound bed</h4>
+    <p class="sxsub">What the camera measures inside the outline. Tissue viability, not infection.</p>
+    <div class="sx">${tissueRows.join('')}</div>
+    <h4 class="sxh">Signs of infection</h4>
+    <p class="sxsub">IWGDF/IDSA. Peri-wound erythema and pus are two of the five local criteria;
+      abscess and wet gangrene are severe on their own. Warmth, swelling or induration and
+      tenderness need your hands and are asked under <b>Grading</b>.</p>
+    <div class="sx">${seen.join('')}${taps}</div>
+    ${ringNote}
     ${tiss}
     <div class="verdict ${tone}">
       <b>${head}</b>
@@ -3774,6 +3818,11 @@ function srgbToLab(r, g, b){
 
 /* Assign one wound-bed pixel. Order matters: darkness is checked before hue, because a very dark
    pixel has an unstable hue angle, and pallor is checked last so it cannot swallow weak granulation. */
+/* The peri-wound redness threshold, in CIE a* units above the patient's own skin further out.
+   Named once because it is read in three places -- the findings row, the criteria count and
+   the layer -- and when the layer had its own threshold the screen contradicted itself. */
+const ERY_DA = 3;
+
 function tissueOf(L, a, bb){
   const C = Math.hypot(a, bb);                       // chroma: how colourful, regardless of hue
   let h = Math.atan2(bb, a) * 180 / Math.PI; if (h < 0) h += 360;
@@ -3897,6 +3946,11 @@ async function tissueMap(seg){
 
   const count = {}; TISSUE.forEach(t => count[t.id] = 0);
   let total = 0;
+  /* How many ring cells there were, against how many survived skinLike. On deeply pigmented
+     or shadowed skin most of the ring fails L >= 25 or C >= 8 and is silently dropped, and
+     what survives is the lighter, more chromatic and therefore redder part of it. The ratio
+     is the only warning the reader gets that the redness figure rests on a biased subset. */
+  let ringTotal = 0, ringAbove = 0;
   const grid = new Int8Array(N*N).fill(-1);
   const ringVal = new Float32Array(N*N).fill(NaN);
 
@@ -3909,7 +3963,7 @@ async function tissueMap(seg){
     const px = (((y*k + k/2) | 0) * VIEW + ((x*k + k/2) | 0)) * 4;
     const [L, A, B] = srgbToLab(src[px], src[px+1], src[px+2]);
 
-    if (inRing){ if (skinLike(L, A, B)){ ringA += A; ringN++; ringVal[i] = A; } continue; }
+    if (inRing){ ringTotal++; if (skinLike(L, A, B)){ ringA += A; ringN++; ringVal[i] = A; } continue; }
     if (inRef){  if (skinLike(L, A, B)){ refA  += A; refN++;  } continue; }
 
     /* Per class, not per image. A tissue model trained on a set with no necrosis label — which
@@ -3945,8 +3999,14 @@ async function tissueMap(seg){
      Tissue overlay and no way to ask "where is the slough". */
   const dA = (ringN >= 50 && refN >= 50) ? (ringA/ringN - refA/refN) : null;
   const refMean = refN ? refA/refN : null;
+  /* How many ring cells individually clear the threshold, as against the ring MEAN clearing
+     it. The two can disagree sharply -- a mean of +1.9 with half the ring above +3 -- and the
+     layer draws per cell while the row reports the mean, so the count has to be on screen or
+     the screen contradicts itself again. */
+  if (refMean !== null) for (let i = 0; i < N*N; i++)
+    if (!isNaN(ringVal[i]) && ringVal[i] - refMean >= ERY_DA) ringAbove++;
   return { frac: TISSUE.reduce((f, t) => (f[t.id] = total ? count[t.id]/total : 0, f), {}),
-           total, dA, ringN, refN, sparse: total < 150,
+           total, dA, ringN, refN, ringTotal, ringAbove, sparse: total < 150,
            grid, ringVal, refMean, N,
            src: cls ? (fellBack ? 'mixed' : 'model') : 'rule',
            covered: cls ? [...covered] : [] };
@@ -4000,9 +4060,22 @@ function paintTissueLayer(layer){
       const v = t.ringVal[i];
       if (!isNaN(v)){
         /* Each peri-wound cell against the patient's own skin further out, never against an
-           absolute red, so the layer means the same thing on any skin tone. */
+           absolute red, so the layer means the same thing on any skin tone.
+
+           THE THRESHOLD HERE IS THE ROW'S THRESHOLD. It used to paint any cell with d > 0, at
+           a minimum opacity of 30, while the row called the finding present only at a ring
+           MEAN of +3. Half of any ring is above its own average by definition, so the picture
+           showed red across the ring while the row said "Not seen" — reported from the ward,
+           and the same fault as a headline contradicting the findings above it.
+
+           Cells that were measured and did not reach the threshold are drawn in a neutral
+           slate instead of being hidden, because the ring itself is worth seeing: where it
+           is thin, the redness figure rests on very little. */
         const d = t.refMean === null ? 0 : v - t.refMean;
-        if (d > 0){ hit = true; tint = [ERY_RGB[0], ERY_RGB[1], ERY_RGB[2], Math.min(170, 30 + d * 16)]; }
+        hit = true;
+        tint = d >= ERY_DA
+          ? [ERY_RGB[0], ERY_RGB[1], ERY_RGB[2], Math.min(180, 70 + (d - ERY_DA) * 16)]
+          : [124, 142, 160, 60];
       }
     } else {
       const gi = t.grid[i];

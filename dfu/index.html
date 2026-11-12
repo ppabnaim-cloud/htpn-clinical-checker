@@ -330,6 +330,7 @@ ol.guide b{color:var(--navy)}
 .verdict.noinf{background:var(--cloud);color:var(--text);border:1px solid var(--line)}
 .verdict.noinf span{color:var(--muted)}
 .verdict.unk{background:#B4530A;color:#fff}
+.scalewhy{margin:4px 2px 0;color:var(--muted);line-height:1.45}
 .sxh{margin:14px 2px 2px;font-size:13px;font-weight:650;letter-spacing:.02em;text-transform:uppercase;color:var(--text)}
 .sxh:first-child{margin-top:0}
 .sxsub{margin:0 2px 7px;font-size:12.5px;line-height:1.45;color:var(--muted)}
@@ -966,9 +967,13 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
            also puts the wound area in centimetres, so it belongs in the clinical view. -->
       <div class="scalebar">
         <button class="btn btn-ghost btn-sm" id="scaleBtn">Set scale with the ruler</button>
-        <input id="scaleCm" type="number" step="0.1" min="0.1" value="1" title="real length in cm">
-        <span class="small">cm — then tap the two ends of that length on the photograph</span>
+        <input id="scaleCm" type="number" step="0.1" min="0.2" max="30" value="1" title="the true length, in cm, of the thing you are about to tap">
+        <span class="small">cm &mdash; the <b>true length</b> of something visible in the photograph, then tap its two ends</span>
       </div>
+      <p class="small scalewhy">A photograph has no size of its own: the same wound can be 2 cm
+        or 20 cm depending on how close the camera was. Put a ruler or any object of known
+        length in the picture, tell the app how long it really is, and tap its two ends. Sizes
+        in centimetres, and the 0.5 cm erythema criterion, need this.</p>
       <div class="readout tech" id="measureRead">
         <p><b>How to read this:</b> <span id="howMeasure"></span></p>
         <p><b>What this shows:</b> <span id="whatMeasure"></span></p>
@@ -1684,7 +1689,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-12 &middot; v10.7</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-12 &middot; v10.8</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -2628,8 +2633,18 @@ function renderLayerPick(){
        sparse map now shows the layer names with no figure at all, which is what is known. */
     const usable = lastTissue && !lastTissue.sparse && lastTissue.frac;
     const f = usable ? lastTissue.frac[id] : null;
-    const pct = (id === 'all' || id === 'ery' || f === null || f === undefined)
-      ? '' : ` ${Math.round(f*100)}%`;
+    /* The peri-wound chip used to carry no figure, sitting in a row of percentages, and was
+       duly read as "0 %". It is not a share of the wound bed at all -- it is outside the
+       wound -- so it carries the one number that means something for it, the distance the
+       redness reaches, which is also what its row is judged on. */
+    let pct = (id === 'all' || f === null || f === undefined) ? '' : ` ${Math.round(f*100)}%`;
+    if (id === 'ery'){
+      const t = lastTissue;
+      pct = !t ? ''
+          : t.eryState === 'needs-scale' ? ' \u2014 set a scale'
+          : t.eryState === 'unmeasurable' ? ''
+          : ` ${t.extentCensored ? '\u2265' : ''}${t.extentCm.toFixed(2)} cm`;
+    }
     const empty = id !== 'all' && id !== 'ery' && f !== null && f !== undefined && f < 0.005;
     return `<button class="lchip${curLayer === id ? ' on' : ''}${empty ? ' none' : ''}" data-l="${id}">${label}${pct}</button>`;
   }).join('');
@@ -3298,13 +3313,15 @@ function renderPublic(){
   /* Whichever path produced the classification is what the row names. Saying "colour rule"
      under a trained segmenter would understate it; saying "model" under the rule would be a
      lie, and that one matters more. */
-  const RULE_SRC = 'colour estimate \u00b7 validation in progress';
+  const RULE_SRC = 'colour estimate \u00b7 ongoing local data training and validation';
   /* "Dice 0.67" is a segmentation metric. What a clinician needs from this line is which of
      the two produced the row; the figure is instrumentation and belongs with the rest of it
      in Assess (full). */
   const MODEL_SRC = (detailFull() && tissueMetrics && tissueMetrics.macro_dice_tissue)
-    ? `tissue model \u00b7 Dice ${tissueMetrics.macro_dice_tissue.toFixed(2)}`
-    : 'tissue model';
+    ? `tissue model, DFUTissue \u00b7 Dice ${tissueMetrics.macro_dice_tissue.toFixed(2)}`
+    /* "tissue model" alone told a clinician nothing about where the answer came from. Naming
+       the training set is the shortest honest version; the full card is in Study team. */
+    : 'tissue model, trained on DFUTissue \u00b7 ongoing local data training and validation';
   /* Per class. With a model trained on a set that had no necrosis label, the slough row is
      the model's and the necrosis row is still the rule's, and one provenance line for both
      would be wrong about one of them. */
@@ -3346,24 +3363,21 @@ function renderPublic(){
   /* How much of the ring the measurement actually rests on. On deeply pigmented or shadowed
      skin most ring cells fail skinLike, and a figure drawn from a small remnant should not be
      read with the same confidence as one drawn from a whole ring. */
-  const ringNote = (t && t.ringTotal) ? `<p class="sxnote">Measured against the patient&rsquo;s own
-     skin beyond the search band, not against an absolute red, so it means the same on any skin
-     tone. ${t.eryState === 'needs-scale'
-       ? `Contiguous redness reaches ${t.extentCells} cell${t.extentCells === 1 ? '' : 's'} from the
-          margin, which cannot be turned into centimetres until a ruler scale is set on this
-          photograph &mdash; and the criterion is a distance, so until then it is unanswered
-          rather than absent.`
-       : t.eryState === 'unmeasurable'
-       ? 'Too little usable skin around this wound to compare against skin further out.'
-       : `Contiguous redness reaches <b>${t.extentCensored ? 'at least ' : ''}${t.extentCm.toFixed(2)} cm</b>
-          from the margin against a threshold of ${ERY_CM} cm${t.extentCensored
-            ? ', and is still above threshold at the edge of the measured band, so the true extent is greater than this'
-            : ''}.`}
-     ${t.ringAbove} of ${t.ringN} usable cells sit at or above +${ERY_DA} a*; the layer shades the
-     part contiguous with the ulcer red and the rest slate. ${t.ringN} of ${t.ringTotal} cells in
-     the band were usable${t.ringN < t.ringTotal * 0.5 ? ' &mdash; under half, so this rests on a ' +
-     'small and probably lighter part of the band, which is the known weakness of a colour rule ' +
-     'on deeply pigmented or shadowed skin' : ''}.</p>` : '';
+  /* One clinical line, always. The cell counts, the band geometry and the skin-tone caveat are
+     instrumentation: true, and useful to the study team, but three sentences of it under a
+     finding is more than a clinician reading at a bedside needs. They move behind the
+     technical-detail switch with the rest of the instrumentation. */
+  const ringNote = !(t && t.ringTotal) ? '' : `<p class="sxnote">${
+      t.eryState === 'needs-scale'
+        ? 'Redness around the wound was measured, but the criterion is a distance and this photograph has no scale yet. Set one above to answer it.'
+      : t.eryState === 'unmeasurable'
+        ? 'Too little usable skin around this wound to compare against skin further out.'
+        : `Redness continuous with the wound edge reaches <b>${t.extentCensored ? 'at least ' : ''}${t.extentCm.toFixed(2)} cm</b> from it. The criterion is more than ${ERY_CM} cm.`
+    }${detailFull() ? ` <span class="small">Measured as CIE a* against the patient&rsquo;s own skin
+      beyond the band, so it means the same on any skin tone. ${t.ringAbove} of ${t.ringN} usable
+      cells sit at or above +${ERY_DA} a*; the layer shades the part continuous with the ulcer red
+      and the rest slate. ${t.ringN} of ${t.ringTotal} cells in the band were usable${
+      t.ringN < t.ringTotal * 0.5 ? ' \u2014 under half, so this rests on a small and probably lighter part of the band, the known weakness of a colour rule on deeply pigmented or shadowed skin' : ''}.</span>` : ''}</p>`;
 
   /* The three the camera cannot settle. A dropdown rather than a one-way button: "Confirm"
      could only ever add a finding, so there was no way to record having looked and found
@@ -3372,7 +3386,7 @@ function renderPublic(){
     const fp = featPred[k], ans = pubSigns[k];
     const src = fp
       ? `${fp.name} · p ${fp.p.toFixed(2)}${fp.n ? ` · ${fp.n} case${fp.n === 1 ? '' : 's'}` : ''}`
-      : 'your examination supplies this';
+      : 'your examination supplies this \u00b7 ongoing local data training and validation';
     /* Abscess is predicted from swelling, erythema and induration, not seen, so its row does
        not get to say "present" — the word would claim a sighting the model cannot make. */
     const word = k === 'abscess' ? ['likely', 'unlikely'] : ['present', 'absent'];
@@ -3510,12 +3524,16 @@ function renderPublic(){
 
   el.innerHTML = `${reframe}
     <h4 class="sxh">Tissue in the wound bed</h4>
-    <p class="sxsub">What the camera measures inside the outline. Tissue viability, not infection.</p>
+    <p class="sxsub">What the camera measures inside the outline. These describe the state of the
+      tissue; the infection criteria are listed below.</p>
     <div class="sx">${tissueRows.join('')}</div>
     <h4 class="sxh">Signs of infection</h4>
-    <p class="sxsub">IWGDF/IDSA. Peri-wound erythema and pus are two of the five local criteria;
-      abscess and wet gangrene are severe on their own. Warmth, swelling or induration and
-      tenderness need your hands and are asked under <b>Grading</b>.</p>
+    <p class="sxsub">Infection is defined by the <b>IWGDF/IDSA guideline on diabetes-related foot
+      infection</b> as two or more of five local criteria: peri-wound erythema beyond 0.5 cm,
+      purulent discharge, local warmth, swelling or induration, and tenderness or pain. The
+      first two are below. The other three require clinical examination and are asked under
+      <b>Grading</b>. Abscess and wet gangrene are not among the five but are severe on their
+      own.</p>
     <div class="sx">${seen.join('')}${taps}</div>
     ${ringNote}
     ${tiss}
@@ -4303,6 +4321,16 @@ $('viewer').addEventListener('click', e => {
     const d = Math.hypot(pickPts[0][0] - pickPts[1][0], pickPts[0][1] - pickPts[1][1]);
     const cm = parseFloat($('scaleCm').value) || 1;
     if (d < 5) { toast('Those points are too close together'); pickPts = []; return; }
+    /* The number typed above is the TRUE length of what was just tapped, and nothing checks
+       that it is. Tap a 10 cm ruler while the field still reads 1 and every measurement comes
+       out ten times too large, silently: a 0.44 cm rim of redness becomes 4.4 cm and the
+       criterion flips. There is no way to verify the number, but there is a way to notice an
+       implausible consequence, so the implied wound size is checked against the range a foot
+       ulcer can actually occupy and the clinician is told rather than left to find out. */
+    const impliedCm = lastSeg && lastSeg.found
+      ? lastSeg.diamPx * (VIEW / SEG) / (d / cm) : null;
+    if (impliedCm !== null && (impliedCm > 30 || impliedCm < 0.2))
+      toast(`That scale makes this wound ${impliedCm.toFixed(1)} cm across \u2014 check the length you typed`);
     pxPerCm = d / cm; picking = false; $('viewer').classList.remove('picking');
     $('scaleBtn').textContent = 'Reset scale';
     showWound(lastSeg); toast(`Scale set: ${pxPerCm.toFixed(0)} px per cm`);

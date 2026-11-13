@@ -1729,7 +1729,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.4</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.5</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1745,7 +1745,6 @@ let CALIB = {};                // Platt coefficients, loaded from the model fold
    "likelihood of infection" stayed on screen for months while the label underneath it meant
    "slough or necrosis above a colour threshold". */
 let CARDS = {};                // classifier cards by registry name, for provenance on screen
-let CALIB_CARD = null;         // the calibration file whole, for the same reason
 /* Platt scaling on the logit: p_cal = sigmoid(scale*logit(p_raw) + shift). Applied to the severity
    head only. Over 20 disjoint half-splits it lifted that head's calibration slope from 0.78 to 0.97
    at no accuracy cost, whereas on the infection head it cost accuracy (0.835 -> 0.809) for no gain,
@@ -1983,8 +1982,7 @@ async function loadModel(){
     let m = null;
     try { m = await (await fetch('model-roi/metrics.json')).json(); } catch(e){ /* metrics are optional */ }
     if (m) CARDS['Wound-crop model'] = m;
-    try { const cj = await (await fetch('model-roi/calibration.json')).json();
-          CALIB = cj.calibration || {}; CALIB_CARD = cj; } catch(e){ CALIB = {}; }
+    try { CALIB = (await (await fetch('model-roi/calibration.json')).json()).calibration || {}; } catch(e){ CALIB = {}; }
     const roi = twoHeadEntry(roiModel, 'Wound-crop model', true, m && m.validation_on_weak_labels);
     registry[roi.name] = roi; preferred = roi;
   } catch(e){ console.warn('wound-crop model unavailable', e); }
@@ -3609,14 +3607,13 @@ function renderPublic(){
              : 'NOT ENOUGH TO CALL INFECTION';
   const tone = infected ? 'inf' : (awaiting || nPos > 0) ? 'unk' : 'noinf';
 
-  /* Tissue viability, stated separately so an infection verdict cannot swallow it. A bed
-     three-quarters necrotic needs review whatever the infection call turns out to be. */
-  const nec = t ? pc(t.frac.necro) : 0, slo = t ? pc(t.frac.slough) : 0;
-  const viab = (nec >= 5 || slo >= 5)
-    ? `<p class="note" style="margin:6px 0 0">Tissue viability: ${[nec >= 5 ? `necrosis ${nec} %` : null,
-        slo >= 5 ? `slough ${slo} %` : null].filter(Boolean).join(' and ')} of the wound bed.
-        Not an infection criterion, and needs review on its own account.</p>`
-    : '';
+  /* The tissue-viability line repeated, below the verdict, what the "Tissue in the wound bed"
+     rows already state at the top of this same panel, percentages and all. It was added so an
+     infection verdict could not swallow the tissue findings. That concern was right, and it is
+     now met by position rather than repetition: those rows sit ABOVE the verdict, so there is
+     nothing left to swallow. Saying it twice was the double-counting this panel has already
+     been fixed for twice over. */
+  const viab = '';
 
   /* ── what the number is, in the number's own words ──────────────────────────────────
      This read "Transfer-learned estimate: 76 % likelihood of infection". It is not a
@@ -3648,19 +3645,15 @@ function renderPublic(){
   const prov = card
     ? `<details class="labmore prov"><summary>What is this estimate, and what was it trained on?</summary>
         <table class="provt">
-          ${provRow('Model', (card.display_name || (active && active.name) || 'classifier') + ' — ' + (card.backbone || 'MobileNetV2'))}
-          ${provRow('Transferred from', card.transfer || 'ImageNet: 1.28 million general photographs, no wounds. Only the head on top was trained on wound images.')}
-          ${provRow('Fine-tuned on', (card.dataset || 'FUSeg 2021') + (card.train_images ? ' — ' + card.train_images + ' training, ' + (card.val_images || '?') + ' validation images' : ''))}
-          ${lr ? provRow('The label means', lr.infection_suspected_if, true) : ''}
-          ${lr ? provRow('… and "none" means', lr.infection_none_if) : ''}
-          ${lr ? provRow('In between', lr.between_thresholds) : ''}
-          ${lr ? provRow('Label came from', lr.derived_from) : ''}
-          ${lr ? provRow('NOT from', lr.NOT_derived_from, true) : ''}
-          ${lr ? provRow('Left out of the label', lr.erythema_dropped_in_v2) : ''}
-          ${infM ? provRow('Measured', 'AUC ' + (+infM.auc).toFixed(3) + ', accuracy ' + (+infM.accuracy).toFixed(3) + ' on ' + infM.n + ' validation images — scored against the same colour proxy, never against culture or a clinician’s diagnosis') : ''}
-          ${CALIB_CARD && CALIB_CARD.tta_note ? provRow('Calibration', CALIB_CARD.tta_note + ' ' + (CALIB_CARD.caveat || '')) : ''}
-          ${lr ? provRow('Consequence', lr.consequence, true) : ''}
-          ${provRow('The 5 criteria come from', card.criteria_guideline)}
+          ${provRow('Model', (card.display_name || (active && active.name) || 'classifier')
+            + ' — ' + (card.backbone || 'MobileNetV2') + '. ' + (card.transfer || ''))}
+          ${provRow('Trained on', (card.dataset || 'FUSeg 2021')
+            + (card.train_images ? ' — ' + card.train_images + ' training, ' + (card.val_images || '?') + ' validation images' : ''))}
+          ${lr ? provRow('Its label means', lr.infection_suspected_if
+            + '. Not from ' + (lr.NOT_derived_from || 'a clinical diagnosis'), true) : ''}
+          ${infM ? provRow('Measured', 'AUC ' + (+infM.auc).toFixed(3) + ', accuracy ' + (+infM.accuracy).toFixed(3)
+            + ' on ' + infM.n + ' validation images — against that same colour proxy, never against culture or a clinician’s diagnosis') : ''}
+          ${lr ? provRow('So', lr.consequence, true) : ''}
         </table>
        </details>`
     : '';
@@ -3727,8 +3720,8 @@ function renderPublic(){
       <span>${parts.join(' &middot; ')}${infected ? ' &middot; clinical review today' : ''}</span>
     </div>
     ${pctLine}
-    <p class="support">The wound and the patient still need to be seen and the diagnosis
-    confirmed by a clinician. This app supports that decision; it does not make it.</p>${viab}`;
+    <p class="support">Decision support. The patient still needs to be seen, and the diagnosis
+    is the clinician’s.</p>${viab}`;
   el.querySelectorAll('select.tapsel').forEach(sel => sel.onchange = () => {
     const k = sel.dataset.s;
     if (sel.value === 'y') pubSigns[k] = true;

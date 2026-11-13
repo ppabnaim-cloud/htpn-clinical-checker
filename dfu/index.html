@@ -2753,6 +2753,25 @@ const OUTCOMES = ['Healed','Improving','Static','Deteriorated','Not yet known'];
 
 const ASK = {
   dfu: [
+    /* FIRST, and req:[] on purpose. An empty req keeps it off the Grading screen, where a
+       clinician is being helped rather than studied, and renderLabExam() still shows it in
+       step B, where the grading session happens. So it is asked exactly once, of the graders,
+       in the one place the app deliberately shows no output of its own.
+
+       This is the only field in the whole log that cannot be recovered afterwards. Everything
+       else can be filled in on a later pass — a culture comes back in three days, an outcome in
+       six weeks, and the app's own prediction is joined on by docs/batch-predict.mjs whenever
+       you like. An unaided call cannot: once a grader has seen the app's answer for an image,
+       their unaided judgement of THAT image is gone for good. Ask it first, before the other
+       questions walk them through the criteria, because what it is meant to capture is the
+       clinical gestalt rather than the result of the checklist.
+
+       Its pair, post_app_call, is a column with no question behind it. Filling it needs a
+       second reading session, with the predictions joined and visible, and that session can
+       happen any time. Only this half is urgent. */
+    { req:[], id:'pre_app_call', q:'Your own call on this wound, before any app output?',
+      why:'Answer from the photograph alone, first, before working through the questions below \u2014 it records what you would have concluded unaided. It drives nothing in the app and changes no grade. It exists so the study can later ask whether showing the app made clinicians more right or less, which is the question that decides whether this tool should be used at all. Once you have seen the app\u2019s assessment for an image, this answer can never be recovered for it.',
+      opts:[['infected','Infected'],['not_infected','Not infected'],['unsure','Not sure']] },
     { req:['wagner','texas'], id:'ulcer', q:'Is there a break in the skin?', why:'Wagner 0 and Texas grade 0 are intact or fully epithelialised skin.',
       opts:[['yes','Ulcer present'],['no','Intact or healed']] },
     { req:['wagner','texas','abx'], id:'depth', q:'How deep does it probe?', why:'Separates Texas grade 1, 2 and 3, and Wagner 1 from 2. The joint is asked separately because Wagner counts it as grade 2 and Texas as grade 3.',
@@ -4130,7 +4149,7 @@ function srgbToLab(r, g, b){
    case log could not record which version produced a row — and a log that cannot say which
    version produced a row cannot be pooled across a retrain, which is the whole point of
    keeping one. Rendered into the footer at start-up, written into every case row. */
-const BUILD = '2026-11-13 \u00b7 v11.10';
+const BUILD = '2026-11-13 \u00b7 v11.11';
 /* Rendered rather than typed into the markup, so the footer and the case log can never
    disagree about which version is running. */
 try { const bs = document.getElementById('buildStamp');
@@ -5383,7 +5402,7 @@ function renderLog(){
    into the present/absent verdict that ery_state already carries. ery_censored marks a reading
    that hit the edge of the search band, which is a lower bound and must not be averaged as if
    it were a point estimate. */
-const LOG_COLS = ['id','when','case_id','image','disease','skin_type','device','protocol','grader','revised','revision_log','app_build','model','model_sha','ai_label','p_severe','p_infection','probs','wound_area_frac','roi_source','roi_source_px','tissue','ery_cm','ery_censored','ery_state',
+const LOG_COLS = ['id','when','case_id','image','disease','skin_type','device','protocol','grader','revised','revision_log','app_build','model','model_sha','ai_label','p_severe','p_infection','probs','wound_area_frac','roi_source','roi_source_px','tissue','ery_cm','ery_censored','ery_state','pre_app_call','post_app_call',
                   'gt_grade','gt_stage','gt_wagner','probe_to_bone','specimen_date','organisms','sensitivity_notes','culture_positive',
                   'npiap_stage','blanching','deepest_structure','body_site','pi_date','outcome','pi_notes',
                   'rater2','rater2_wagner','rater2_npiap'];
@@ -5799,7 +5818,7 @@ const markExported = () => { try { localStorage.setItem(LOG_KEY + '_exported', S
 
 $('exportCsv').onclick = () => {
   const log = loadLog(); if (!log.length) return toast('Nothing to export');
-  const cols = ['id','when','image','disease','app_build','model','model_sha','ai_label','p_severe','p_infection','probs','wound_area_frac','roi_source','roi_source_px','tissue','ery_cm','ery_censored','ery_state',
+  const cols = ['id','when','image','disease','app_build','model','model_sha','ai_label','p_severe','p_infection','probs','wound_area_frac','roi_source','roi_source_px','tissue','ery_cm','ery_censored','ery_state','pre_app_call','post_app_call',
                 'gt_grade','gt_stage','gt_wagner','probe_to_bone','specimen_date','organisms','sensitivity_notes','culture_positive',
                 'npiap_stage','blanching','deepest_structure','body_site','pi_date','outcome','pi_notes'];
   const esc = v => '"' + String(Array.isArray(v) ? v.join('; ') : (v && typeof v === 'object' ? JSON.stringify(v) : (v ?? ''))).replace(/"/g, '""') + '"';
@@ -6290,6 +6309,10 @@ function labelToCase(it, key){
     gt_grade: r.grade || '', gt_stage: r.stage || '', gt_wagner: it.wagner || '',
     /* Site, probe-to-bone, blanching, the deepest structure and the outcome all come from the
        examination now, so they are read from there rather than from a second copy. */
+    /* post_app_call is written empty here and filled by a second reading session. Writing it
+       as '' rather than omitting it keeps the column present in every export, so an analyst
+       can see that it is unanswered rather than wonder whether it exists. */
+    pre_app_call: ex.pre_app_call || '', post_app_call: '',
     probe_to_bone: ex.ptb || '', body_site: ex.site || '', outcome: ex.outcome || '',
     blanching: ex.blanch || '', deepest_structure: ex.deepest || '',
     cs_sent: r.cs_sent || '', specimen_date: r.spec_date || '',

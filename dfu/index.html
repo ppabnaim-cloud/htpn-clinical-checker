@@ -1729,7 +1729,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.6</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.7</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3414,7 +3414,20 @@ function renderPublic(){
   const eryWord = { present: 'Present', absent: 'Not seen',
                     'needs-scale': 'Set a scale', unmeasurable: 'Not assessed' }[eryState];
   const eryCls  = { present: 'y', absent: 'n', 'needs-scale': 'u', unmeasurable: 'u' }[eryState];
-  seen.push(row(`Peri-wound erythema beyond ${ERY_CM} cm`, RULE_SRC, eryWord, eryCls));
+  /* The explanation belongs ON the row, not under the table. A row reading "Set a scale" and
+     a paragraph three rows below saying why were the same thought split across two places,
+     and the reader had to join them up. The row's own provenance line is where a reader looks
+     when a value surprises them, so that is where the sentence goes. */
+  const eryWhy = {
+    'needs-scale': 'the criterion is a distance, and this photograph has no scale yet — set one above',
+    unmeasurable: 'too little usable skin around this wound to compare against skin further out',
+    present: t && t.extentCm !== null
+      ? `redness continuous with the wound edge reaches ${t.extentCensored ? 'at least ' : ''}${t.extentCm.toFixed(2)} cm` : '',
+    absent: t && t.extentCm !== null
+      ? `redness reaches ${t.extentCm.toFixed(2)} cm, under the ${ERY_CM} cm criterion` : ''
+  }[eryState] || '';
+  seen.push(row(`Peri-wound erythema beyond ${ERY_CM} cm`,
+                eryWhy ? RULE_SRC + ' \u00b7 ' + eryWhy : RULE_SRC, eryWord, eryCls));
 
   /* How much of the ring the measurement actually rests on. On deeply pigmented or shadowed
      skin most ring cells fail skinLike, and a figure drawn from a small remnant should not be
@@ -3423,17 +3436,15 @@ function renderPublic(){
      instrumentation: true, and useful to the study team, but three sentences of it under a
      finding is more than a clinician reading at a bedside needs. They move behind the
      technical-detail switch with the rest of the instrumentation. */
-  const ringNote = !(t && t.ringTotal) ? '' : `<p class="sxnote">${
-      t.eryState === 'needs-scale'
-        ? 'Redness around the wound was measured, but the criterion is a distance and this photograph has no scale yet. Set one above to answer it.'
-      : t.eryState === 'unmeasurable'
-        ? 'Too little usable skin around this wound to compare against skin further out.'
-        : `Redness continuous with the wound edge reaches <b>${t.extentCensored ? 'at least ' : ''}${t.extentCm.toFixed(2)} cm</b> from it. The criterion is more than ${ERY_CM} cm.`
-    }${detailFull() ? ` <span class="small">Measured as CIE a* against the patient&rsquo;s own skin
+  /* What is left here is instrumentation only, and it was already behind the technical-detail
+     switch. The clinical sentence moved onto the row above, so outside study mode this now
+     renders nothing at all. */
+  const ringNote = !(t && t.ringTotal && detailFull()) ? '' : `<p class="sxnote">${
+      `<span class="small">Measured as CIE a* against the patient&rsquo;s own skin
       beyond the band, so it means the same on any skin tone. ${t.ringAbove} of ${t.ringN} usable
       cells sit at or above +${ERY_DA} a*; the layer shades the part continuous with the ulcer red
       and the rest slate. ${t.ringN} of ${t.ringTotal} cells in the band were usable${
-      t.ringN < t.ringTotal * 0.5 ? ' \u2014 under half, so this rests on a small and probably lighter part of the band, the known weakness of a colour rule on deeply pigmented or shadowed skin' : ''}.</span>` : ''}</p>`;
+      t.ringN < t.ringTotal * 0.5 ? ' \u2014 under half, so this rests on a small and probably lighter part of the band, the known weakness of a colour rule on deeply pigmented or shadowed skin' : ''}.</span>`}</p>`;
 
   /* The three the camera cannot settle. A dropdown rather than a one-way button: "Confirm"
      could only ever add a finding, so there was no way to record having looked and found
@@ -3463,15 +3474,10 @@ function renderPublic(){
       </select></div>`;
   }).join('');
 
-  /* The percentages were printed here AND on the layer buttons beside the photograph, which
-     is where a reader actually uses them: tapping Slough 17 % paints the slough. Printing the
-     same three numbers again as text added nothing a reader could act on. The buttons keep the
-     numbers; this line keeps what the buttons cannot say, which is WHICH method produced
-     them. */
-  const tiss = t ? `<p class="tis"><span>Wound bed labelled ${
-      t.src === 'model' ? 'by the tissue model'
-    : t.src === 'mixed' ? 'by the tissue model, with the colour rule for what it was not trained on'
-    : 'by the colour rule'}. Percentages are on the layer buttons.</span></p>` : '';
+  /* Gone entirely. The percentages are on the layer buttons, where tapping one paints it, and
+     every tissue row above already carries its own provenance line naming the tissue model or
+     the colour rule. This line was the third place the same two facts appeared. */
+  const tiss = '';
 
   const est = infEstimates();
   const mp = cautiousInfection();
@@ -3657,11 +3663,10 @@ function renderPublic(){
             + ' — ' + (card.backbone || 'MobileNetV2') + '. ' + (card.transfer || ''))}
           ${provRow('Trained on', (card.dataset || 'FUSeg 2021')
             + (card.train_images ? ' — ' + card.train_images + ' training, ' + (card.val_images || '?') + ' validation images' : ''))}
-          ${lr ? provRow('Its label means', lr.infection_suspected_if
-            + '. Not from ' + (lr.NOT_derived_from || 'a clinical diagnosis'), true) : ''}
-          ${infM ? provRow('Measured', 'AUC ' + (+infM.auc).toFixed(3) + ', accuracy ' + (+infM.accuracy).toFixed(3)
-            + ' on ' + infM.n + ' validation images — against that same colour proxy, never against culture or a clinician’s diagnosis') : ''}
-          ${lr ? provRow('So', lr.consequence, true) : ''}
+          ${provRow('What it actually measures',
+            'How much slough and necrosis are in the wound bed — not whether the wound is '
+            + 'infected. It was never trained against a culture result or a clinician’s diagnosis, '
+            + 'so it is not independent evidence of infection.', true)}
         </table>
        </details>`
     : '';

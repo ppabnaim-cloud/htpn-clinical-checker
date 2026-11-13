@@ -78,7 +78,10 @@ const REQUIRED = [
   'no detector is trained yet',
   'clinical examination',
   'either is severe',
-  '1,000 everyday object classes'
+  '1,000 everyday object classes',
+  /* v11.7: the provenance table lost its instrumentation rows. This sentence is what
+     remains of the caveat, so it is now the thing worth guarding. */
+  'not whether the wound is infected'
 ]
 
 /* Phrases a user must NEVER see. Each one is here because it was shipped and was wrong.

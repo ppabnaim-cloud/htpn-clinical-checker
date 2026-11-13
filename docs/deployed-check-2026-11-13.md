@@ -114,7 +114,7 @@ This is correct abstention, not a failure. The infection head returned `[0.558, 
 
 To confirm the `Image-pattern estimate` wording renders live rather than merely existing in the file, all seven DFU samples were run, each waited on until `lastPred` refreshed:
 
-| Sample | Max infection probability | `.est` rendered |
+| Sample | Confidence (max of the two class probabilities) | `.est` rendered |
 |---|---|---|
 | A — small leg ulcer | 0.516 | Abstained |
 | B — sloughy heel ulcer | 0.838 | `Image-pattern estimate: 84 %` |
@@ -123,6 +123,14 @@ To confirm the `Image-pattern estimate` wording renders live rather than merely 
 | E — plantar eschar ulcer | 0.921 | `Image-pattern estimate: 8 %` |
 | F — landscape off-centre | 0.793 | `Image-pattern estimate: 79 %` |
 | G — portrait phone | 0.738 | `Image-pattern estimate: 74 %` |
+
+**On that column, corrected after review.** It was originally headed "max infection
+probability", which it is not. `abstains = p => Math.max(p[0], p[1]) < ABSTAIN_AT` tests the
+larger of the two class probabilities — the head's *confidence* — not the infection
+probability. For most rows the two coincide because "infection suspected" is the larger class,
+which is why 0.838 renders as 84 %. Sample E is the row that exposes the difference: its 0.921
+is confidence in "no infection", so the infection probability is 0.079 and the panel correctly
+prints 8 %. The figures in the table are right; only the heading was wrong.
 
 Five of seven render the new wording in full, each followed by `Trained on a colour proxy — slough fraction > 0.10 OR necrosis fraction > 0.15 of the wound bed — not on a clinical diagnosis or a culture result… and is not independent evidence of infection`, with the `<details class="prov">` provenance table attached. The two abstentions are the two samples below the 0.70 threshold. The behaviour is consistent with the stated design.
 

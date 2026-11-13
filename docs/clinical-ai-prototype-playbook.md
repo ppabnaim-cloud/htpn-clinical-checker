@@ -133,6 +133,23 @@ These were all adopted after something went wrong. They transfer unchanged to an
 11. **Report negative results.** Most things tried here did not work, and knowing that is what
     stopped the same ideas being retried.
 
+### Checking your own work
+
+**Assert on rendered output, not on source.** We asserted that retired wording no longer
+appeared in the app by searching the shipped file. It reported hits: in comments that recorded
+why the wording had changed. The app was right and the check was wrong, which is the worse way
+round — a safety check that raises false alarms gets ignored, and then it is not a check.
+
+Drive the real interface, visit the states a user can reach, and read the rendered text. Say
+in the check itself what it cannot cover: a rendered-text check only proves absence in the
+states it visits, and that limit is narrowed by visiting more states, never removed. Keep a
+weaker static scan alongside for the states you miss, mark it advisory, and when the two
+disagree believe the one that looked at what a user sees.
+
+Then **make the check fail on purpose before you trust it.** Inject the fault it is supposed
+to catch into a throwaway copy and confirm it goes red and exits non-zero. A green check that
+has never been seen to go red is not evidence.
+
 ### Claims
 
 12. **State what would refute the claim.** It is what separates a claim from an assertion, and

@@ -356,7 +356,7 @@ ol.guide b{color:var(--navy)}
 .critrow .c em{display:block;font-style:normal;font-size:11px;color:var(--muted);line-height:1.45;margin-top:2px}
 .critrow .can{flex-shrink:0;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px;margin-top:1px;white-space:nowrap}
 .critrow .can.yes{background:rgba(28,184,160,.14);color:#0f766e}
-.critrow .can.partly{background:rgba(250,178,25,.2);color:#7a5200}
+.critrow .can.notyet{background:rgba(250,178,25,.2);color:#7a5200}
 .critrow .can.no{background:var(--cloud);color:var(--muted)}
 details.prov{margin-top:8px}
 details.prov>summary{font-size:12px}
@@ -1729,7 +1729,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.5</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.6</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3463,7 +3463,15 @@ function renderPublic(){
       </select></div>`;
   }).join('');
 
-  const tiss = t ? `<p class="tis">Granulation ${pc(t.frac.gran)}% &middot; Slough ${pc(t.frac.slough)}% &middot; Necrosis ${pc(t.frac.necro)}% &middot; <span>${t.src === 'model' ? 'by the tissue model' : t.src === 'mixed' ? 'tissue model, with the colour rule for what it was not trained on' : 'colour estimate'}</span></p>` : '';
+  /* The percentages were printed here AND on the layer buttons beside the photograph, which
+     is where a reader actually uses them: tapping Slough 17 % paints the slough. Printing the
+     same three numbers again as text added nothing a reader could act on. The buttons keep the
+     numbers; this line keeps what the buttons cannot say, which is WHICH method produced
+     them. */
+  const tiss = t ? `<p class="tis"><span>Wound bed labelled ${
+      t.src === 'model' ? 'by the tissue model'
+    : t.src === 'mixed' ? 'by the tissue model, with the colour rule for what it was not trained on'
+    : 'by the colour rule'}. Percentages are on the layer buttons.</span></p>` : '';
 
   const est = infEstimates();
   const mp = cautiousInfection();
@@ -3672,12 +3680,18 @@ function renderPublic(){
      It describes the METHOD'S CAPABILITY, which never changes, not this patient's findings,
      which are the rows below. Showing per-image status here as well would be the same evidence
      in a third place, and double-counting is the fault we have already fixed twice. */
-  const CAN_LBL = { yes:'Yes', partly:'Partly', no:'No' };
+  /* "Partly" answered a different question from the one in the header. The header asks
+     whether a photograph can reach the criterion; "partly" was really answering "has anyone
+     built the detector", and conflating the two hid the distinction that matters: criterion 2
+     is a limitation of THIS BUILD and a trained head would fix it, while 3 to 5 are
+     limitations of PHOTOGRAPHY and no model ever will. "Not yet" says the first and leaves
+     "No" meaning the second. */
+  const CAN_LBL = { yes:'Yes', notyet:'Not yet', no:'No' };
   const critRows = [
     ['1', `Peri-wound erythema beyond ${ERY_CM} cm`, 'yes',
      'measured from the photograph \u2014 needs a ruler scale'],
-    ['2', 'Purulent discharge', 'partly',
-     'no trained detector yet, so you answer it'],
+    ['2', 'Purulent discharge', 'notyet',
+     'a photograph can show it, but no detector is trained yet — so you answer it'],
   ].concat(CRIT_BEDSIDE.map((c, i) => [
     String(i + 3), c.charAt(0).toUpperCase() + c.slice(1), 'no',
     'clinical examination \u2014 asked under Grading'
@@ -3706,15 +3720,21 @@ function renderPublic(){
       tissue; the infection criteria are listed below.</p>
     <div class="sx">${tissueRows.join('')}</div>
     <h4 class="sxh">Signs of infection</h4>
-    <p class="sxsub">Infection is defined by the <b>IWGDF/IDSA guideline on diabetes-related foot
-      infection</b> as <b>two or more</b> of five local criteria. This screen can reach two of
-      them. The other three are physical findings and are in no photograph.</p>
-    ${critTable}
-    <p class="sxsub">Abscess and wet gangrene are not among the five, but either is severe
-      infection on its own.</p>
+    <!-- The findings come first and the framework after. The explanation used to stand between
+         the heading and the rows, so a clinician opening the app had to read a paragraph and a
+         five-row table before reaching anything about the patient in front of them. The rows
+         ARE the signs; the table explains why there are only two of them, which is a question
+         a reader has after seeing the rows, not before. -->
     <div class="sx">${seen.join('')}${taps}</div>
     ${ringNote}
     ${tiss}
+    <p class="sxsub" style="margin-top:12px">Infection is defined by the <b>IWGDF/IDSA guideline
+      on diabetes-related foot infection</b> as <b>two or more</b> of five local criteria. This
+      screen can reach two of them. The other three are physical findings and are in no
+      photograph.</p>
+    ${critTable}
+    <p class="sxsub">Abscess and wet gangrene are not among the five, but either is severe
+      infection on its own.</p>
     <div class="verdict ${tone}">
       <b>${head}</b>
       <span>${parts.join(' &middot; ')}${infected ? ' &middot; clinical review today' : ''}</span>

@@ -615,6 +615,9 @@ body.dark .verdict.ok{color:#7ee87e}body.dark .verdict.warn{color:#f5cd77}body.d
 .src-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .src-tabs button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;font-size:13px;font-weight:600;color:var(--muted)}
 .src-tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.gsub{margin:14px 0 2px}
+.gsub button i{font-style:normal;font-family:var(--mono);font-size:10.5px;opacity:.7;margin-left:5px}
+.gsub button.on i{opacity:.85}
 .class-list{display:flex;flex-direction:column;gap:8px}
 .class-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:var(--cloud);border-radius:10px;padding:8px 10px}
 .class-row input,.class-row select{padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:#fff;min-width:0;width:100%;font-size:13px}
@@ -1085,11 +1088,20 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
       <p id="hitlMsg"></p>
     </div>
 
+    <!-- Wagner, Texas and the antibiotic are three separate jobs that shared one list of
+         questions. Most clinicians use one scale, not both, so reaching a Wagner grade meant
+         answering four Texas-only questions first. Each is now its own tab, showing only the
+         questions its own definition reads. The answers are one object, so anything answered
+         under Wagner is already answered under Texas: the split removes duplicated asking,
+         not duplicated answering. The chosen tab is remembered, so a ward that uses Wagner
+         alone sets it once. -->
+    <div class="src-tabs gsub" id="gradeTabBar"></div>
+
     <!-- Antibiotic before grading. The order is the clinical one: what is this, what does it
          need now, and what is it called for the record. Wagner and Texas are documentation;
          the antibiotic decision is the one with a clock on it. -->
     <div id="abxBox"></div>
-    <span class="lab" style="margin-top:14px">Grading <em id="resultState"></em></span>
+    <span class="lab" id="ruleLab" style="margin-top:14px">Grading <em id="resultState"></em></span>
     <div class="ruleout" id="ruleOut"></div>
 
     <span class="lab" style="margin-top:16px">Your examination <em id="askLead">the app cannot answer these, and will not guess</em></span>
@@ -1689,7 +1701,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-12 &middot; v10.9</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.0</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3559,6 +3571,24 @@ function renderPublic(){
   });
 }
 
+/* ── grading sub-tabs ──────────────────────────────────────────────────────────
+   Each question already carries a `req` tag naming which definitions read it, so one scale's
+   question list is a filter over the existing spec rather than a second copy of it. That
+   matters: a duplicated list is a place for the two to drift apart, and a Wagner grade read
+   off a stale copy of the depth question would be wrong in a way nobody would see.
+
+   The tab is remembered across sessions. A ward that grades in Wagner opens on Wagner, and
+   the Texas questions it never uses are not in the way. */
+const GTABS = () => DISEASE === 'pi'
+  ? [['npiap','NPIAP stage'], ['abx','Antibiotic']]
+  : [['wagner','Wagner'], ['texas','Texas'], ['abx','Antibiotic']];
+let gradeTab = '';
+try { gradeTab = localStorage.getItem('wv_gradetab') || ''; } catch(e){}
+const gradeTabKey = () => {
+  const keys = GTABS().map(x => x[0]);
+  return keys.indexOf(gradeTab) >= 0 ? gradeTab : keys[0];
+};
+
 function renderDecide(){
   /* The grading pane is built by the same pass, so it is shown or held back here too. */
   const has = !!currentImg;
@@ -3594,12 +3624,7 @@ function renderDecide(){
      neither Wagner nor Texas — they are what separates a mild infection from a moderate or a
      severe one, which is the antibiotic — so they are named as that instead of sitting in the
      middle of a grading list looking like grading. */
-  const GRADE_REQ = DISEASE === 'pi' ? ['npiap'] : ['wagner','texas'];
-  const grades = f => (f.req || []).some(r => GRADE_REQ.includes(r));
-  const GROUPS = [
-    [DISEASE === 'pi' ? 'Staging \u2014 NPIAP' : 'Grading \u2014 Wagner and Texas', grades],
-    ['Antibiotic severity', f => !grades(f) && (f.req || []).includes('abx')]
-  ];
+  const gk = gradeTabKey();
   const sortSpec = list => list.slice().sort((x, y) => rank(x.id) - rank(y.id));
   const askRow = f =>
     `<div class="askrow${a[f.id] ? ' done' : ''}">
@@ -3610,13 +3635,43 @@ function renderDecide(){
        </select>
      </div>`;
   const spec = ASK[DISEASE].filter(f => (f.req || []).length);
-  $('askFind').innerHTML = GROUPS.map(([title, test]) => {
-    const rows = sortSpec(spec.filter(test));
-    if (!rows.length) return '';
-    const done = rows.filter(f => a[f.id] !== undefined).length;
-    return `<p class="small qgroup">${title}<span>${done} of ${rows.length}</span></p>`
-         + rows.map(askRow).join('');
-  }).join('');
+  const forTab = k => sortSpec(spec.filter(f => (f.req || []).includes(k)));
+
+  /* The tab bar carries each scale's own progress, so the cost of the tab you are not on is
+     visible without opening it — and so a clinician can see that switching to Texas does not
+     mean starting again. */
+  const bar = $('gradeTabBar');
+  if (bar){
+    bar.innerHTML = GTABS().map(([k, label]) => {
+      const rs = forTab(k), dn = rs.filter(f => a[f.id] !== undefined).length;
+      return `<button data-g="${k}"${k === gk ? ' class="on"' : ''}>${label}<i>${dn}/${rs.length}</i></button>`;
+    }).join('');
+    bar.querySelectorAll('button').forEach(b => b.onclick = () => {
+      gradeTab = b.dataset.g;
+      try { localStorage.setItem('wv_gradetab', gradeTab); } catch(e){}
+      renderDecide();
+    });
+  }
+
+  const rows = forTab(gk);
+  const done = rows.filter(f => a[f.id] !== undefined).length;
+  /* How many of this tab's answered questions were answered on another tab. Without this the
+     split looks like it created work; the number says the opposite. */
+  const keys  = GTABS().map(x => x[0]);
+  const carried = rows.filter(f => a[f.id] !== undefined &&
+                   (f.req || []).some(r => r !== gk && keys.indexOf(r) >= 0)).length;
+  const gLabel = (GTABS().find(t => t[0] === gk) || ['', ''])[1];
+  /* Naming the scale again here would be the third time on one screen — tab, rule card,
+     header. What is not obvious is why these particular questions and not the others, so the
+     header answers that instead. */
+  const title = gk === 'abx'   ? 'What the IWGDF severity needs'
+              : gk === 'npiap' ? 'What the NPIAP stage needs'
+              : gk === 'texas' ? 'What the Texas grade and stage need'
+              :                 'What the Wagner grade needs';
+  $('askFind').innerHTML =
+      `<p class="small qgroup">${title}<span>${done} of ${rows.length}`
+    + `${carried ? ' \u00b7 ' + carried + ' carried over' : ''}</span></p>`
+    + rows.map(askRow).join('');
   $('askFind').querySelectorAll('select').forEach(el => el.onchange = () => {
     const f = el.dataset.f;
     if (el.value) a[f] = el.value; else delete a[f];
@@ -3637,28 +3692,43 @@ function renderDecide(){
   renderPublic();          // sets pubInfected, which renderAbx reads
   renderAbx();
 
+  /* The antibiotic panel and the grading rule card are the two tabs' outputs, so each is
+     shown only on its own tab. Both stay in the DOM and keep being rendered: the regimen is
+     read by the quick view as well, and a hidden panel that stopped updating would be stale
+     the moment it reappeared. */
+  const isAbx = gk === 'abx';
+  if ($('abxBox'))  $('abxBox').classList.toggle('hidden', !isAbx);
+  if ($('ruleLab')) $('ruleLab').classList.toggle('hidden', isAbx);
+  if ($('ruleOut')) $('ruleOut').classList.toggle('hidden', isAbx);
+
+  /* Which rule this tab is for. `rules` stays whole above, because renderHitl is about the
+     screen as a whole — how much of the assessment the camera supplies against how much the
+     clinician does — and that does not change with the tab you are reading. */
+  const RIDX = { wagner:0, texas:1, npiap:0 };
+  const shownRules = isAbx ? [] : [rules[RIDX[gk]]].filter(Boolean);
+  const tabRule = shownRules.length ? shownRules[0][1]
+                : (DISEASE === 'pi' ? { need:[], label:null } : ruleInfection(a));
+  const tabNeed = [...new Set((tabRule.need || []).filter(Boolean))];
+
   /* The line that decides whether anyone answers anything. "Eleven questions" is a wall; "one
      answer away" is a prompt. It counts what is genuinely outstanding across the live rules and
      names the single next answer, so the ask is always the smallest true one. */
   const st = $('resultState'), lead = $('askLead');
   if (st){
-    const settled = rules.filter(([, r]) => r.label).length;
-    const outstanding = [...new Set(rules.flatMap(([, r]) => r.need).filter(Boolean))];
-    const abxNeed = DISEASE === 'pi' ? [] : [...new Set((ruleInfection(a).need || []).filter(Boolean))];
-    const allNeed = [...new Set(outstanding.concat(abxNeed))];
     if (!currentImg) st.textContent = '';
-    else if (!allNeed.length) st.textContent = 'complete';
-    else if (allNeed.length === 1) st.textContent = 'one answer away \u2014 ' + allNeed[0];
-    else st.textContent = `${settled} of ${rules.length} settled \u00b7 ${allNeed.length} answers outstanding`;
-    if (lead) lead.textContent = !allNeed.length
-      ? 'all answered \u2014 the classification above is yours, not the model\u2019s'
-      : (allNeed.length === 1
-          ? 'one answer completes the result above'
-          : (DISEASE === 'pi'
-              ? 'the first two answers decide whether a stage can be assigned at all'
-              : 'the first two answers settle the Texas grade and narrow Wagner to two values'));
+    else if (!tabNeed.length) st.textContent = 'complete';
+    else if (tabNeed.length === 1) st.textContent = 'one answer away \u2014 ' + tabNeed[0];
+    else st.textContent = tabNeed.length + ' answers outstanding';
   }
-  $('ruleOut').innerHTML = rules.map(([name, r]) => {
+  if (lead) lead.textContent = !tabNeed.length
+    ? (isAbx ? 'all answered \u2014 the severity above is yours, not the model\u2019s'
+             : 'all answered \u2014 the classification above is yours, not the model\u2019s')
+    : tabNeed.length === 1 ? 'one answer completes the result above'
+    : isAbx           ? 'these separate a mild infection from a moderate or a severe one'
+    : gk === 'texas'  ? 'depth settles the grade; infection and perfusion settle the stage'
+    : gk === 'npiap'  ? 'the first two answers decide whether a stage can be assigned at all'
+    :                   'depth, probing and gangrene settle every Wagner grade between them';
+  $('ruleOut').innerHTML = shownRules.map(([name, r]) => {
     const unresolved = [...new Set(r.need)].filter(Boolean);
     return `<div class="rule${r.label ? '' : ' part'}">
       <div class="big">${r.label || name}</div>

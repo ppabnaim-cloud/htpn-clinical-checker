@@ -173,6 +173,23 @@ const main = async () => {
   if (EXPECT) check(`build stamp is ${EXPECT}`, liveStamp.includes(EXPECT), liveStamp)
   else log('  (no --expect and no local build stamp to compare against — reporting only)')
 
+  /* VISIBLE, not merely written. The check above reads textContent, which a hidden element
+     still has. For most of this app's life the stamp carried `study-hide`, so a tester could
+     not read the version off the screen while this assertion passed anyway -- and the same
+     blind spot is what let the default --expect silently stop working. Assert what a person
+     can actually see. */
+  const stampSeen = await page.evaluate(`(() => {
+    const el = document.getElementById('buildStamp')
+    if (!el) return 'no element'
+    const cs = getComputedStyle(el)
+    if (cs.display === 'none' || cs.visibility === 'hidden') return 'hidden by css'
+    if (el.offsetParent === null) return 'not laid out'
+    const t = (el.textContent || '').trim()
+    if (!t) return 'empty'
+    return document.body.innerText.includes(t) ? 'ok' : 'not in rendered text'
+  })()`)
+  check('build stamp is visible to a tester', stampSeen === 'ok', stampSeen)
+
   // ── models must load, or nothing below means anything ───────────────────────────────────
   const loaded = await page.waitForFunction(
     () => typeof segModel !== 'undefined' && segModel, null, { timeout: 180000 }

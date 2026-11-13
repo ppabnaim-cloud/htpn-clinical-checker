@@ -1725,7 +1725,10 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp"></span>
+  <!-- No study-hide. A tester who hits something odd on a ward has to be able to say which
+       build they were on, and until now the version was hidden from exactly the people whose
+       reports depend on it. Faint monospace in the footer: out of the way, and readable. -->
+  <span id="buildStamp"></span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -4149,7 +4152,7 @@ function srgbToLab(r, g, b){
    case log could not record which version produced a row — and a log that cannot say which
    version produced a row cannot be pooled across a retrain, which is the whole point of
    keeping one. Rendered into the footer at start-up, written into every case row. */
-const BUILD = '2026-11-13 \u00b7 v11.11';
+const BUILD = '2026-11-13 \u00b7 v11.12';
 /* Rendered rather than typed into the markup, so the footer and the case log can never
    disagree about which version is running. */
 try { const bs = document.getElementById('buildStamp');

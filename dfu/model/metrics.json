@@ -25,5 +25,20 @@
    "accuracy": 0.7515923566878981
   }
  },
- "label_note": "Weak labels derived from FUSeg masks + colour features (demonstrator only)."
+ "label_note": "Weak labels: a colour proxy computed from the FUSeg masks, NOT a clinical diagnosis. Demonstrator only. See label_rule.",
+ "display_name": "Whole-photo model",
+ "dataset": "FUSeg 2021, Foot Ulcer Segmentation Challenge (AZH Wound and Vascular Center); Wang et al., Sci Rep 2020;10:21897",
+ "label_rule": {
+  "source": "ml/make_labels.py",
+  "derived_from": "FUSeg wound masks plus HSV colour thresholds",
+  "NOT_derived_from": "clinical diagnosis, tissue culture, or any clinician adjudication",
+  "infection_suspected_if": "slough fraction > 0.10 OR necrosis fraction > 0.15 of the wound bed",
+  "infection_none_if": "slough < 0.01 AND necrosis < 0.02",
+  "between_thresholds": "excluded; contributes no infection loss",
+  "slough_defined_as": "HSV hue 35-90, S > 0.25, V > 0.35, inside the wound mask",
+  "necrosis_defined_as": "V < 0.22 inside the wound mask",
+  "erythema_dropped_in_v2": "peri-wound redness was in the v1 rule and was removed: healthy granulation is also red, and it made the labels noisy (held-out AUC 0.72)",
+  "consequence": "the infection score is largely a restatement of the wound-bed slough and necrosis percentages, not independent evidence of infection"
+ },
+ "criteria_guideline": "IWGDF/IDSA Guideline on the diagnosis and treatment of diabetes-related foot infection, 2023"
 }

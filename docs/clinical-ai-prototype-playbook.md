@@ -89,39 +89,58 @@ These were all adopted after something went wrong. They transfer unchanged to an
    Against that, a false positive from a weak-label model spends antibiotics, sometimes an
    admission, and eventually the clinician's attention — alert fatigue is permanent, a slightly
    weaker prompt is not.
-2. **The headline may never contradict the evidence shown above it.** If a row says a sign is
+2. **Name what the number estimates, using the words of its own training label.** Ours said
+   "likelihood of infection". Its label was `slough > 0.10 or necrosis > 0.15` — a colour
+   proxy, and over two findings the same screen told clinicians were *not* infection criteria.
+   Nobody lied; the label rule lived in a training script and the display string lived in the
+   interface, and the two drifted for months without touching.
+
+   Two defences, and apply both. Put the label definition in the **model card** and have the
+   interface read it at render time, so the claim on screen cannot outlive the label it
+   describes. Then ask whether the output is **independent of what is already displayed**: a
+   score derived from measurements shown above it is the same evidence twice, and a panel that
+   presents it as a second opinion is inviting double-counting. Say so on screen when it is
+   not independent.
+
+   Watch the related trap in calibration language. "Uncalibrated" was the wrong criticism of
+   ours: it is well calibrated *to the proxy*. The useful question is never "is it calibrated"
+   but "calibrated against what", and the honest answer belongs next to the number.
+
+3. **The headline may never contradict the evidence shown above it.** If a row says a sign is
    present, no summary beneath it may say there are none. This is the single most dangerous
    defect class in this kind of interface, and it is easy to ship by accident, because the
    verdict and the findings are usually computed in different places.
-3. **State the conclusion as a count against named criteria**, not as a model output, whenever
+4. **State the conclusion as a count against named criteria**, not as a model output, whenever
    the guideline defines one. A clinician can check a count at the bedside. They cannot check a
    probability.
-4. **Every displayed finding carries its provenance** — which model, or which rule, or "your
+5. **Every displayed finding carries its provenance** — which model, or which rule, or "your
    examination supplies this". A number whose origin is not visible will be over-trusted.
-5. **An uncalibrated estimate, if shown at all, goes below the checkable evidence**, labelled as
-   an estimate from training data rather than a finding on this patient.
-6. **Treatment guidance is entered by the clinical team from the national guideline**, displayed
+6. **A model estimate, if shown at all, goes below the checkable evidence**, labelled as an
+   estimate from training data rather than a finding on this patient. "Uncalibrated" is rarely
+   the right word for it and was the wrong one here — see rule 2: say what it is calibrated
+   *against*.
+7. **Treatment guidance is entered by the clinical team from the national guideline**, displayed
    with source, edition and who entered it. Never hard-code a dose.
 
 ### Measurement
 
-7. **Split by patient, never by image.** Serial photographs of one lesion are not independent.
+8. **Split by patient, never by image.** Serial photographs of one lesion are not independent.
    Enforce it in the filename convention from day one, because it cannot be recovered later.
-8. **Cross-validate on small data.** A single split on ~100 images is anecdote. In this project
+9. **Cross-validate on small data.** A single split on ~100 images is anecdote. In this project
    fold-to-fold macro Dice ranged 0.45 to 0.68 on identical settings.
-9. **Weak labels must be named as weak everywhere** they appear: in the model card, in the
+10. **Weak labels must be named as weak everywhere** they appear: in the model card, in the
    interface, in the paper. Labels derived from other labels are demonstrators.
-10. **Report negative results.** Most things tried here did not work, and knowing that is what
+11. **Report negative results.** Most things tried here did not work, and knowing that is what
     stopped the same ideas being retried.
 
 ### Claims
 
-11. **State what would refute the claim.** It is what separates a claim from an assertion, and
+12. **State what would refute the claim.** It is what separates a claim from an assertion, and
     it pre-empts the reviewer who goes looking.
-12. **A second reference standard is a second axis, not a better truth.** Where the guideline
+13. **A second reference standard is a second axis, not a better truth.** Where the guideline
     defines the diagnosis clinically, a laboratory anchor is a different standard, and the
     disagreement between them is the finding of interest.
-13. **No clinical benefit claim without outcome data.** Keep the manuscript consistent with the
+14. **No clinical benefit claim without outcome data.** Keep the manuscript consistent with the
     app's own disclaimer.
 
 ---

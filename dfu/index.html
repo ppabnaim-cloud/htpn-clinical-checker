@@ -342,6 +342,14 @@ ol.guide b{color:var(--navy)}
 .sxnote{margin:7px 2px 0;font-size:12.5px;line-height:1.45;color:var(--muted)}
 .est{display:block;font-size:12.5px;line-height:1.5;color:var(--muted);margin:7px 2px 0}
 .est b{color:var(--text);font-size:14px}
+.est .why{display:block;margin-top:4px}
+details.prov{margin-top:8px}
+details.prov>summary{font-size:12px}
+table.provt{width:100%;border-collapse:collapse;margin-top:8px;font-size:11.5px;line-height:1.5}
+table.provt td{border-top:1px solid var(--rule);padding:6px 0;vertical-align:top;color:var(--text)}
+table.provt tr:first-child td{border-top:0}
+table.provt td:first-child{width:34%;padding-right:10px;color:var(--muted);font-weight:600}
+table.provt tr.flag td{color:#8a3a00;font-weight:600}
 .support{font-size:12.5px;line-height:1.5;color:var(--muted);margin:7px 2px 0;
   border-left:3px solid var(--line);padding-left:9px}
 .note.teal{border-color:var(--teal)}
@@ -1706,7 +1714,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.2</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.3</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1716,6 +1724,13 @@ const IMG = 224, EMB = 1280, SEG = 224, ROI_MARGIN = 0.6;   // ROI_MARGIN matche
 const TTA = true;              // average four flipped views; see dfu/model-roi/calibration.json
 const ABSTAIN_AT = 0.70;       // below this confidence a head declines rather than guesses
 let CALIB = {};                // Platt coefficients, loaded from the model folder
+/* The WHOLE classifier card, not just its metrics. The panel has to be able to say what the
+   number estimates -- dataset, label rule, thresholds -- and every one of those figures has
+   to come from the card rather than from a string in this file. Hardcoding them is how
+   "likelihood of infection" stayed on screen for months while the label underneath it meant
+   "slough or necrosis above a colour threshold". */
+let CARDS = {};                // classifier cards by registry name, for provenance on screen
+let CALIB_CARD = null;         // the calibration file whole, for the same reason
 /* Platt scaling on the logit: p_cal = sigmoid(scale*logit(p_raw) + shift). Applied to the severity
    head only. Over 20 disjoint half-splits it lifted that head's calibration slope from 0.78 to 0.97
    at no accuracy cost, whereas on the infection head it cost accuracy (0.835 -> 0.809) for no gain,
@@ -1939,7 +1954,8 @@ async function loadModel(){
   // 1 · whole-frame classifier (kept for comparison; this is the model whose Grad-CAM misses the wound)
   base = await tf.loadLayersModel('model/model.json');
   let baseMetrics = null;
-  try { baseMetrics = (await (await fetch('model/metrics.json')).json()).validation_on_weak_labels; } catch(e){ /* optional */ }
+  try { const bc = await (await fetch('model/metrics.json')).json();
+        baseMetrics = bc.validation_on_weak_labels; CARDS['Whole-photo model'] = bc; } catch(e){ /* optional */ }
   const demo = twoHeadEntry(base, 'Whole-photo model', false, baseMetrics);
   backbone = demo.conv;                       // the Train tab embeds whole photos with this backbone
   tf.tidy(() => backbone.predict(tf.zeros([1, IMG, IMG, 3])));
@@ -1951,7 +1967,9 @@ async function loadModel(){
     const roiModel = await tf.loadLayersModel('model-roi/model.json');
     let m = null;
     try { m = await (await fetch('model-roi/metrics.json')).json(); } catch(e){ /* metrics are optional */ }
-    try { CALIB = (await (await fetch('model-roi/calibration.json')).json()).calibration || {}; } catch(e){ CALIB = {}; }
+    if (m) CARDS['Wound-crop model'] = m;
+    try { const cj = await (await fetch('model-roi/calibration.json')).json();
+          CALIB = cj.calibration || {}; CALIB_CARD = cj; } catch(e){ CALIB = {}; }
     const roi = twoHeadEntry(roiModel, 'Wound-crop model', true, m && m.validation_on_weak_labels);
     registry[roi.name] = roi; preferred = roi;
   } catch(e){ console.warn('wound-crop model unavailable', e); }
@@ -3530,21 +3548,35 @@ function renderPublic(){
      same failure as before with the sign reversed, and a reader cannot tell whether the
      criteria were counted or ignored. When the model is what raised it, the line says so and
      gives the number, so the escalation can be judged rather than taken on trust. */
+  /* "0 of 5 criteria seen here" was the single most misleading string on the screen. It reads
+     as FIVE THINGS WERE CHECKED AND ALL WERE NEGATIVE. In fact this panel can reach only two
+     of the five -- erythema extent, which it measures, and purulent discharge, which it asks
+     for -- and the other three are physical findings no photograph contains. A clinician who
+     reads "0 of 5" and stops has been told something untrue by omission.
+
+     So the count is now stated over what was actually assessable, the guideline is named, and
+     the three that need hands are named as not assessed rather than left to be inferred from
+     a denominator. */
+  const ASSESSABLE = 2;                       // erythema extent, purulent discharge
+  const assessed = ASSESSABLE - panelUnknown.length;
   if (severe.length)
     parts.push(`${severe.join(' and ')} — severe infection on its own`);
   else if (critPos.length >= 2)
-    parts.push(`${critPos.join(' and ')} — ${critPos.length} of 5 criteria, at the threshold`);
+    parts.push(`${critPos.join(' and ')} — ${critPos.length} of the 5 IWGDF criteria, at the threshold of 2`);
   else if (critPos.length)
-    parts.push(`${critPos.join(' and ')} — ${critPos.length} of 5 criteria, below the threshold of 2`);
-  else
-    parts.push('0 of 5 criteria seen here');
-  if (panelUnknown.length) parts.push(`${panelUnknown.join(' and ')} not assessed`);
+    parts.push(`${critPos.join(' and ')} — 1 of the 5 IWGDF criteria, and 2 are needed`);
+  else if (assessed > 0)
+    parts.push(`no IWGDF criterion found in the ${assessed === 1 ? 'one' : 'two'} this screen can assess`);
+  /* With nothing assessed, a generic clause would only be repeated by the next one, which
+     names the same two. The prefix moves onto that clause instead. */
+  if (panelUnknown.length)
+    parts.push(`${assessed === 0 && !severe.length ? 'no IWGDF criterion assessed yet — ' : ''}${panelUnknown.join(' and ')} not assessed`);
   /* The model's flag, worded as what it is: a reason to finish the examination, not a finding
      and not a verdict. It comes AFTER the criteria line, never before it, so the checkable
      evidence is read first. */
   if (modelOnly)
-    parts.push(`the model rates this image ${Math.round(mp * 100)} % — an estimate from training data, not a finding, and not enough to call infection on its own, so examine before discounting it`);
-  parts.push(`${CRIT_BEDSIDE.join(', ')} need your examination — record the call under <b>Grading</b>`);
+    parts.push(`an image-pattern model scores this ${Math.round(mp * 100)} %, which is a colour-proxy estimate and not an infection finding — examine before discounting infection`);
+  parts.push(`the remaining 3 — ${CRIT_BEDSIDE.join(', ')} — require clinical examination and are not in any photograph; record the call under <b>Grading</b>`);
 
   /* Never a bare negative while a row above says Present, and never the words "no signs":
      this tab assesses two of the five criteria, so the most it can honestly report is that
@@ -3563,18 +3595,64 @@ function renderPublic(){
         Not an infection criterion, and needs review on its own account.</p>`
     : '';
 
-  /* The model's own number, given as a percentage and named as an estimate rather than a
-     finding, with what it rests on. It sits BELOW the criteria line, not above it: the
-     criteria are checkable at the bedside and the estimate is not, so the order is the order
-     of evidence. It is never allowed to be the whole message — a percentage alone reads as
-     a risk score, and this one is not calibrated: it is a head trained on a few dozen cases,
-     and 0.08 on a wound with erythema present is exactly how it fails. */
+  /* ── what the number is, in the number's own words ──────────────────────────────────
+     This read "Transfer-learned estimate: 76 % likelihood of infection". It is not a
+     likelihood of infection. ml/make_labels.py defines the training label as
+
+         suspected  if  slough > 0.10  OR  necrosis > 0.15  of the wound bed
+
+     — the two findings this very panel tells the clinician are NOT infection criteria. So the
+     head largely restates the slough and necrosis percentages printed directly above it, and
+     showing the two together invited the reader to count one measurement as two witnesses.
+     Peri-wound erythema, the one criterion it might legitimately have learned, was in the v1
+     rule and was removed because healthy granulation is also red.
+
+     "Not calibrated" was wrong too. The calibration file shows 4-view TTA brings the
+     reliability slope to 0.96, and that Platt scaling was fitted and deliberately not applied.
+     It is well calibrated — TO THE PROXY. That distinction is the point, so the line names it
+     rather than flattening it into "uncalibrated".
+
+     Every figure here is read from the model card and the calibration file. None is written
+     into this file, because a hardcoded figure is how the old wording outlived the label it
+     described. */
+  const he = v => String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const card = (active && CARDS[active.name]) || CARDS['Wound-crop model']
+            || CARDS['Whole-photo model'] || null;
+  const lr = card && card.label_rule;
+  const infM = card && card.validation_on_weak_labels && card.validation_on_weak_labels.infection;
+  const provRow = (k, v, flag) => v ? `<tr${flag ? ' class="flag"' : ''}><td>${he(k)}</td><td>${he(v)}</td></tr>` : '';
+  const prov = card
+    ? `<details class="labmore prov"><summary>What is this estimate, and what was it trained on?</summary>
+        <table class="provt">
+          ${provRow('Model', (card.display_name || (active && active.name) || 'classifier') + ' — ' + (card.backbone || 'MobileNetV2'))}
+          ${provRow('Transferred from', 'ImageNet: 1.28 million general photographs, no wounds. Only the head on top was trained on wound images.')}
+          ${provRow('Fine-tuned on', (card.dataset || 'FUSeg 2021') + (card.train_images ? ' — ' + card.train_images + ' training, ' + (card.val_images || '?') + ' validation images' : ''))}
+          ${lr ? provRow('The label means', lr.infection_suspected_if, true) : ''}
+          ${lr ? provRow('… and "none" means', lr.infection_none_if) : ''}
+          ${lr ? provRow('In between', lr.between_thresholds) : ''}
+          ${lr ? provRow('Label came from', lr.derived_from) : ''}
+          ${lr ? provRow('NOT from', lr.NOT_derived_from, true) : ''}
+          ${lr ? provRow('Left out of the label', lr.erythema_dropped_in_v2) : ''}
+          ${infM ? provRow('Measured', 'AUC ' + (+infM.auc).toFixed(3) + ', accuracy ' + (+infM.accuracy).toFixed(3) + ' on ' + infM.n + ' validation images — scored against the same colour proxy, never against culture or a clinician’s diagnosis') : ''}
+          ${CALIB_CARD && CALIB_CARD.tta_note ? provRow('Calibration', CALIB_CARD.tta_note + ' ' + (CALIB_CARD.caveat || '')) : ''}
+          ${lr ? provRow('Consequence', lr.consequence, true) : ''}
+          ${provRow('The 5 criteria come from', card.criteria_guideline)}
+        </table>
+       </details>`
+    : '';
+
+  /* The headline wording for the number. It names what the model estimates, not what a reader
+     would like it to estimate, and it says in the same breath that it is not independent of
+     the tissue percentages above — which is the specific misreading the old wording invited. */
   const pctLine = est.length
-    ? `<span class="est">${est.length > 1 ? 'Model estimates' : est[0][0] + ' estimate'}:
-       <b>${est.map(r => `${Math.round(r[1]*100)} %`).join(' / ')}</b> likelihood of infection${
-       est.length > 1 ? ' (' + est.map(r => r[0]).join(', then ') + ')' : ''}. An estimate from
-       training data, not a finding on this patient, and not calibrated — read it beside the
-       criteria above, not instead of them.</span>`
+    ? `<span class="est">${est.length > 1 ? 'Image-pattern estimates' : 'Image-pattern estimate'}:
+       <b>${est.map(r => `${Math.round(r[1]*100)} %`).join(' / ')}</b>${
+       est.length > 1 ? ' (' + est.map(r => r[0]).join(', then ') + ')' : ''}.
+       <span class="why">Trained on a colour proxy — ${he(lr ? lr.infection_suspected_if
+         : 'slough or necrosis above a threshold share of the wound bed')} — not on a clinical
+       diagnosis or a culture result. It therefore largely restates the tissue percentages
+       above and is <b>not independent evidence of infection</b>.</span></span>${prov}`
     : `<span class="est">${models}</span>`;
 
   el.innerHTML = `${reframe}

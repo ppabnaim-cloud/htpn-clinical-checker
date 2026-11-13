@@ -1995,8 +1995,16 @@ async function loadModel(){
     tf.tidy(() => segModel.predict(tf.zeros([1, SEG, SEG, 3])));
   } catch(e){ segModel = null; console.warn('segmentation model unavailable', e); }
   try { segMetrics = await (await fetch('seg/metrics.json')).json(); } catch(e){ segMetrics = null; }
-  /* Optional. No tissue model is shipped yet, so this 404s and the colour rule stays in
-     charge — which is why the failure is silent rather than loud. */
+  /* Optional, and the comment here was stale for a year: it said no tissue model was shipped,
+     so the fetch would 404 and the colour rule would stay in charge. One IS shipped — three
+     shards, about 11.9 MB under dfu/tissue/, cross-validated granulation 0.711 and slough
+     0.495 — and it has been the thing labelling the wound bed since. Caught by a live check
+     that read the deployment rather than this file.
+
+     The try/catch still matters and the failure is still deliberately silent: if the weights
+     fail to load the colour rule takes over and the rows say so in their provenance line,
+     which is better than a dead panel. But a reader of this function should not be told the
+     model does not exist. */
   try {
     tissueModel = await tf.loadLayersModel('tissue/model.json');
     tf.tidy(() => tissueModel.predict(tf.zeros([1, IMG, IMG, 3])));

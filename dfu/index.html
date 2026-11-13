@@ -354,10 +354,6 @@ ol.guide b{color:var(--navy)}
 .critrow .c{flex:1;min-width:0}
 .critrow .c b{display:block;font-size:12.5px;font-weight:600;color:var(--navy);line-height:1.4}
 .critrow .c em{display:block;font-style:normal;font-size:11px;color:var(--muted);line-height:1.45;margin-top:2px}
-.critrow .can{flex-shrink:0;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px;margin-top:1px;white-space:nowrap}
-.critrow .can.yes{background:rgba(28,184,160,.14);color:#0f766e}
-.critrow .can.notyet{background:rgba(250,178,25,.2);color:#7a5200}
-.critrow .can.no{background:var(--cloud);color:var(--muted)}
 details.prov{margin-top:8px}
 details.prov>summary{font-size:12px}
 table.provt{width:100%;border-collapse:collapse;margin-top:8px;font-size:11.5px;line-height:1.5}
@@ -1729,7 +1725,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.8</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.9</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3700,7 +3696,10 @@ function renderPublic(){
      is a limitation of THIS BUILD and a trained head would fix it, while 3 to 5 are
      limitations of PHOTOGRAPHY and no model ever will. "Not yet" says the first and leaves
      "No" meaning the second. */
-  const CAN_LBL = { yes:'Yes', notyet:'Not yet', no:'No' };
+  /* No chip column. Yes / Not yet / No restated in one word what each row's own sub-line
+     already says in full, and the one-word form was the lossy copy: "No" cannot carry the
+     difference between "no detector is trained yet" and "no photograph will ever show this",
+     which is the distinction the table exists to make. The sub-lines say it properly. */
   const critRows = [
     ['1', `Peri-wound erythema beyond ${ERY_CM} cm`, 'yes',
      'measured from the photograph \u2014 needs a ruler scale'],
@@ -3712,8 +3711,7 @@ function renderPublic(){
   ]));
   const critTable = `<div class="critt">${critRows.map(([n, crit, can, from]) =>
     `<div class="critrow"><span class="n">${n}</span>
-       <div class="c"><b>${crit}</b><em>${from}</em></div>
-       <span class="can ${can}">${CAN_LBL[can]}</span></div>`).join('')}</div>`;
+       <div class="c"><b>${crit}</b><em>${from}</em></div></div>`).join('')}</div>`;
 
   /* The headline wording for the number. It names what the model estimates, not what a reader
      would like it to estimate, and it says in the same breath that it is not independent of

@@ -56,9 +56,31 @@ const REPO = new URL('..', import.meta.url).pathname
    compares the deployment against the code in hand without anyone typing a version number
    and getting it wrong. */
 const localHtml = (() => { try { return readFileSync(`${REPO}/dfu/index.html`, 'utf8') } catch { return '' } })()
-const stampOf = html => (html.match(/id="buildStamp"[^>]*>([^<]+)</) || [, ''])[1]
-  .replace(/&middot;/g, '·').trim()
+/* Read the version from the BUILD constant, and fall back to the footer markup for builds
+   before v11.10.
+
+   This regressed once and silently, which is the only way it could have mattered. Until v11.10
+   the version was literal text inside the footer span, so a regex over the markup found it.
+   v11.10 emptied that span and had JavaScript write BUILD into it at start-up -- a good change
+   for the app, because the footer and the case log can no longer disagree, and an invisible
+   break for this file, because the markup regex stopped matching. EXPECT became undefined, the
+   run printed "(not specified)", and the build-stamp assertion quietly stopped existing. A
+   check that cannot fail is worse than no check, and this one had stopped being able to fail
+   without anything saying so. Caught by a live run that was given --expect explicitly and
+   happened to look at where the default came from. */
+const stampOf = html => {
+  const b = html.match(/const BUILD = '([^']+)'/)
+  if (b) return b[1]
+  return (html.match(/id="buildStamp"[^>]*>([^<]+)</) || [, ''])[1]
+    .replace(/&middot;/g, '·').trim()
+}
 const EXPECT = expectIx >= 0 ? args[expectIx + 1] : (stampOf(localHtml).match(/v[\d.]+/) || [])[0]
+if (expectIx < 0 && !EXPECT) {
+  console.error('\n  refusing to run: no --expect given and no version could be read from'
+    + ' dfu/index.html.\n  That is how the build-stamp check silently stopped checking once'
+    + ' before. Pass --expect vX.Y.\n')
+  process.exit(2)
+}
 
 /* Phrases a user MUST be able to see somewhere in the app. */
 const REQUIRED = [

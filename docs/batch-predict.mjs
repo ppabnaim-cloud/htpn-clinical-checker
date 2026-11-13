@@ -169,7 +169,14 @@ const main = async () => {
           frac_slough: t.frac ? t.frac.slough : null,
           frac_necro: t.frac ? t.frac.necro : null,
           ery_state: t.eryState || '',
-          ery_cm: (t.extentCm === null || t.extentCm === undefined) ? null : +t.extentCm.toFixed(3),
+          /* A distance is only reported when the app would report one. eryState is
+             'unmeasurable' when too few ring cells survived the skin test, and in that state
+             the app's row reads "Not assessed" -- but extentCm is still computed and non-null
+             underneath. Copying it into the CSV would hand an analyst a number the app itself
+             declines to show, and it would be averaged as a measurement. Blank means "the app
+             could not measure this", which is the truth. */
+          ery_cm: (t.eryState === 'unmeasurable' || t.extentCm === null || t.extentCm === undefined)
+                  ? null : +t.extentCm.toFixed(3),
           ery_censored: t.extentCensored === undefined ? null : !!t.extentCensored,
           px_per_cm: typeof pxPerCm === 'number' ? Math.round(pxPerCm) : null,
           criteria_count: m ? +m[1] : null,

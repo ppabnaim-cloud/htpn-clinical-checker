@@ -94,7 +94,12 @@ const main = async () => {
   const page = await browser.newPage({ viewport: { width: 560, height: 1400 } })
 
   const pageErrors = [], consoleErrors = [], badResponses = [], failedRequests = []
-  page.on('pageerror', e => pageErrors.push(e.message))
+  /* The stack, not just the message. The first live run failed on "Cannot read properties
+     of undefined (reading 'backend')" and the message alone said nothing about where it
+     came from or whether it mattered. A check that reports a fault it cannot locate sends
+     someone hunting. */
+  page.on('pageerror', e => pageErrors.push(
+    e.message + (e.stack ? '\n        ' + e.stack.split('\n').slice(0, 6).join('\n        ') : '')))
   page.on('console', m => { if (m.type() === 'error') consoleErrors.push(m.text()) })
   page.on('requestfailed', r => failedRequests.push(`${r.url()} — ${(r.failure() || {}).errorText}`))
   page.on('response', r => { if (r.status() >= 400) badResponses.push(`${r.status()} ${r.url()}`) })
@@ -141,13 +146,32 @@ const main = async () => {
   if (!check('segmentation model loads', loaded)) { await finish(browser); return }
 
   // ── B. visit the reachable states, collecting rendered text ─────────────────────────────
+  /* Which backend actually ran. WebGL and the CPU fallback do not give identical numbers, so
+     a figure compared between two runs is only comparable if this matches. */
+  const backend = await page.evaluate(
+    `(() => { try { return tf.getBackend() } catch (e) { return 'unavailable: ' + e.message } })()`)
+  log(`  tf backend: ${backend}`)
+
   const samples = await page.$$('button.sample[data-dis="dfu"]')
   log(`  samples found: ${samples.length}`)
   check('at least one sample present', samples.length > 0, `${samples.length}`)
 
+  /* Wait for the INFERENCE, not for a stopwatch. The first version slept a flat 13 s after
+     each click. Locally that was enough and every sample reported its estimate; over the
+     network the first live run showed sample 2 abstaining where the same build scored it 84 %
+     on localhost, because the panel was read while the previous state was still on screen.
+     A fixed sleep turns a slow network into a false finding, which is the one thing a release
+     check must never do. So the token below is captured before the click and the run waits for
+     the app's own `lastPred` to be replaced. */
   for (let i = 0; i < samples.length; i++) {
+    await page.evaluate('window.__rcPrev = (typeof lastPred === "undefined" ? null : lastPred)')
     await (await page.$$('button.sample[data-dis="dfu"]'))[i].click()
-    await page.waitForTimeout(13000)
+    const settled = await page.waitForFunction(
+      `typeof lastPred !== 'undefined' && lastPred && lastPred !== window.__rcPrev
+       && typeof lastTissue !== 'undefined' && lastTissue !== null`,
+      null, { timeout: 120000 }).then(() => true).catch(() => false)
+    if (!check(`sample ${i + 1} finishes inference`, settled, 'timed out after 120 s')) continue
+    await page.waitForTimeout(900)            // let the renderers run after the state lands
     const t = await capture(`sample ${i + 1} · default`)
     const est = (t.match(/Image-pattern estimate: \d+ %/) || [])[0]
     log(`    sample ${i + 1}: ${est || 'abstained (confidence below the threshold)'}`)

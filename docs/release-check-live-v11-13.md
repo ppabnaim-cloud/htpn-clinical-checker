@@ -1,0 +1,121 @@
+# Live release check — v11.13
+
+**In progress.** Item 1 (automated release check) is complete and recorded below.
+Items 2–4 (model card figures, formulary arm scoping, case log placement) follow.
+
+---
+
+## Live build stamp
+
+```
+build 2026-11-13 · v11.13
+```
+
+Served by `https://htpn-clinical-checker.vercel.app/dfu/` at the time of the run.
+
+## 1 · Automated release check
+
+Command:
+
+```
+node docs/release-check.mjs https://htpn-clinical-checker.vercel.app --expect v11.13 > /tmp/live7.log 2>&1; echo "exit=$?"
+```
+
+- **node exit code: 0**
+- **wall-clock: 59 s**
+- **result: 40 of 40 checks passed**
+
+### Complete stdout, verbatim
+
+```
+
+Wound Vision release check
+  target : https://htpn-clinical-checker.vercel.app/dfu/
+  expect : v11.13
+
+  build stamp served: build 2026-11-13 · v11.13
+  tf backend: webgl
+  samples found: 7
+    sample 1: abstained (confidence below the threshold)
+    sample 2: Image-pattern estimate: 84 %
+    sample 3: Image-pattern estimate: 76 %
+    sample 4: abstained (confidence below the threshold)
+    sample 5: Image-pattern estimate: 8 %
+    sample 6: Image-pattern estimate: 79 %
+    sample 7: Image-pattern estimate: 74 %
+  grading sub-tabs: Wagner0/5 | Texas0/4 | Antibiotic0/8
+
+  states visited: 18
+
+  source scan (comments stripped) — advisory, never fails the run:
+    ok    "likelihood of infection" appears only in comments
+    ok    "0 of 5 criteria seen here" appears only in comments
+    ok    "The model declined to classify this image" appears only in comments
+    nothing reachable found outside comments
+
+  ────────────────────────────────────────────────────────────────────────
+  PASS  build stamp is v11.13
+  PASS  build stamp is visible to a tester
+  PASS  segmentation model loads
+  PASS  at least one sample present
+  PASS  sample 1 finishes inference
+  PASS  sample 2 finishes inference
+  PASS  sample 3 finishes inference
+  PASS  sample 4 finishes inference
+  PASS  sample 5 finishes inference
+  PASS  sample 6 finishes inference
+  PASS  sample 7 finishes inference
+  PASS  examiner-confirmed severe sign still escalates
+  PASS  three grading sub-tabs render
+  PASS  wagner tab asks 5 questions
+  PASS  texas tab asks 4 questions
+  PASS  abx tab asks 8 questions
+  PASS  visible: "Image-pattern estimate"
+  PASS  visible: "no IWGDF criterion assessed yet"
+  PASS  visible: "require clinical examination and are not in any photograph"
+  PASS  visible: "not independent evidence of infection"
+  PASS  visible: "What is this estimate, and what was it trained on?"
+  PASS  visible: "slough fraction > 0.10 OR necrosis fraction > 0.15"
+  PASS  visible: "LIKELY INFECTION"
+  PASS  visible: "AWAITING YOUR EXAMINATION"
+  PASS  visible: "This screen can reach two of"
+  PASS  visible: "Peri-wound erythema beyond 0.5 cm"
+  PASS  visible: "no detector is trained yet"
+  PASS  visible: "clinical examination"
+  PASS  visible: "either is severe"
+  PASS  visible: "1,000 everyday object classes"
+  PASS  visible: "not whether the wound is infected"
+  PASS  never visible: "likelihood of infection"
+  PASS  never visible: "0 of 5 criteria seen here"
+  PASS  never visible: "flagged by the model"
+  PASS  never visible: "no signs of infection"
+  PASS  never visible: "The model declined to classify this image"
+  PASS  no page errors
+  PASS  no console errors
+  PASS  no failed requests
+  PASS  no HTTP >= 400
+  ────────────────────────────────────────────────────────────────────────
+  40 of 40 checks passed
+```
+
+### Failing checks
+
+None. All 40 checks passed.
+
+### tf backend line
+
+```
+  tf backend: webgl
+```
+
+### Per-sample lines (all seven)
+
+```
+    sample 1: abstained (confidence below the threshold)
+    sample 2: Image-pattern estimate: 84 %
+    sample 3: Image-pattern estimate: 76 %
+    sample 4: abstained (confidence below the threshold)
+    sample 5: Image-pattern estimate: 8 %
+    sample 6: Image-pattern estimate: 79 %
+    sample 7: Image-pattern estimate: 74 %
+```

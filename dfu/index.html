@@ -326,6 +326,11 @@ ol.guide b{color:var(--navy)}
 .verdict{border-radius:12px;padding:15px 17px;margin-bottom:4px}
 .verdict b{display:block;font-family:var(--serif);font-size:25px;line-height:1.1;letter-spacing:.01em}
 .verdict span{display:block;font-size:12.5px;margin-top:5px;opacity:.95}
+/* The headline rule above is `.verdict b`, and the basis line underneath also emphasises a
+   tab name with <b>. The result was the word "Grading" set as a 25px serif block in the
+   middle of a sentence, which read as a second headline. Emphasis inside the basis line is
+   emphasis, not a heading. */
+.verdict span b{display:inline;font-family:inherit;font-size:inherit;line-height:inherit;letter-spacing:inherit;font-weight:700}
 .verdict.inf{background:#B3182F;color:#fff}
 .verdict.noinf{background:var(--cloud);color:var(--text);border:1px solid var(--line)}
 .verdict.noinf span{color:var(--muted)}
@@ -1701,7 +1706,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.0</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.1</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3455,7 +3460,11 @@ function renderPublic(){
   const critPos = [], panelUnknown = [];
 
   if (eryState === 'present') critPos.push('peri-wound erythema beyond ' + ERY_CM + ' cm');
-  else if (eryState === 'needs-scale') panelUnknown.push('erythema extent, which needs a ruler scale');
+  /* The reason goes in brackets, not in a relative clause. These strings are joined with
+     " and " and then followed by "not assessed", so a comma and a clause inside one of
+     them produced "erythema extent, which needs a ruler scale and purulent discharge not
+     assessed" -- a sentence that reads as though the scale needs the discharge. */
+  else if (eryState === 'needs-scale') panelUnknown.push('erythema extent (no ruler scale set)');
   else if (eryState === 'unmeasurable') panelUnknown.push('erythema extent');
 
   const tapAns = k => pubSigns[k] !== undefined ? pubSigns[k]

@@ -1522,17 +1522,30 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
       <dt>Segmentation, held out</dt><dd>On 190 held-out images the predicted centre fell inside the expert-drawn ulcer in 89 % of cases at a mean Dice of 0.85: most outlines are close, and sloughy borders tend to be under-traced. Moved here from the assessment screen, where a coefficient from 190 other images was being offered to a clinician whose actual question was whether to trust the outline in front of them.</dd>
       <dt>Explainability</dt><dd>The wound outline and its measured area are the primary explanation. Grad‑CAM on the final convolutional map (<code>out_relu</code>) is retained as a sanity check on whether the model reads the wound or the room, and is drawn only inside the crop it actually explains.</dd>
       <dt>Training data</dt><dd id="mcData">Loading…</dd>
-      <dt>Labels — important caveat</dt><dd>Demonstrator labels are <b>weak labels</b> derived from expert wound masks (wound area for depth/severity) and wound‑bed colour features (slough, eschar for infection). They are not clinician‑adjudicated or culture‑confirmed. Step 3 and the Train tab exist precisely to replace them.</dd>
+      <dt>Labels — important caveat</dt><dd id="mcLabels">Loading…</dd>
       <dt>Held‑out performance (against the weak labels)</dt><dd id="mcPerf">Loading…</dd>
+      <!-- The tissue model had no performance entry at all while it was the thing labelling
+           every wound bed on screen. Its figures are the cross-validated ones, which are the
+           only honest ones: an earlier split pooled DFUTissue's TrainVal and Test directories
+           and scored a model on images it had trained on. -->
+      <dt>Tissue model — cross-validated</dt><dd id="mcTissue">Loading…</dd>
+      <!-- Neither of these was stated anywhere, and both change how a number should be read.
+           The app declines to answer on roughly a third of images, and a reader who does not
+           know that will mistake an abstention for a negative. -->
+      <dt>Test-time augmentation, abstention and calibration</dt><dd id="mcCal">Loading…</dd>
+      <dt>Model versions</dt><dd id="mcVer">Loading…</dd>
       <dt>Data source</dt><dd>FUSeg 2021 / AZH Wound and Vascular Center dataset, Wang C. et al., <i>Sci Rep</i> 2020;10:21897, github.com/uwm-bigdata/wound-segmentation.</dd>
       <!-- The DFUTissue release asks for this citation and nothing else. It is the one term its
            authors state, so it is honoured in the app rather than only in the README. -->
       <dt>Tissue model &mdash; data source</dt><dd>DFUTissue, 110 expert-labelled diabetic foot ulcer
       images from the AZH Wound Center: Dhar M.K. et al., <i>Wound Tissue Segmentation in Diabetic
       Foot Ulcer Images Using Deep Learning: A Pilot Study</i>, arXiv:2406.16012, 2024;
-      github.com/uwm-bigdata/DFUTissueSegNet. Its released annotations label granulation, fibrin
-      and callus only &mdash; there is no necrosis class, so necrosis on this screen continues to
-      come from the colour rule and every tissue row names which of the two produced it.</dd>
+      github.com/uwm-bigdata/DFUTissueSegNet. <b id="mcTissueN">104</b> of those were usable here.
+      Its released annotations label granulation, fibrin and callus only &mdash; <b>necrosis, pus
+      and pale/epithelial tissue never appear in the training data at all</b>, so those three
+      continue to come from the colour rule and every tissue row names which of the two produced
+      it. Pus has no viewer layer for that reason: pus and fibrinous slough share a hue window,
+      so a colour rule cannot separate them.</dd>
       <dt>Author</dt><dd>Dr Naim Bin Abdul Malek. Built as a demonstrator for the Deep Learning Healthcare Project and as the technical pilot for a DrPH study on diabetic foot ulcer infection classification, extended to pressure injury staging.</dd>
       <dt>Patient data</dt><dd>Images are processed entirely in this browser and are not transmitted anywhere. Photographs must be de&#8209;identified before use: no name, no identity card number, no face, and no identifying metadata.</dd>
     </dl>
@@ -1557,6 +1570,20 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   </section>
 
 
+</div>
+
+<!-- ═══════════════════════════ DASHBOARD TAB ═══════════════════════════ -->
+<!-- Read-only, and scoped to one arm. The two wound types are graded on different scales —
+     Wagner and Texas for a diabetic foot ulcer, NPIAP for a pressure injury — so they do not
+     share a template. Pooling them produced a card in which a Wagner grade and an NPIAP stage
+     sat in the same column, which is not a summary of anything. -->
+<div id="tab-data" class="hidden">
+
+  <!-- The case log lives here, not under Study team. It is the record of what was graded and
+       what the model said, which is what a dashboard is for; it sat beside the labelling tools
+       only because that is where it was first written. Its export, import and Sheet controls
+       come with it — this tab is no longer strictly read-only, and that is the right trade:
+       the place you look at the data is the place you want to get it out of. -->
   <section class="card" id="logCard">
     <div class="step"><span class="n">&#9679;</span><h3>Case log · model vs ground truth</h3><div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" id="copyTsv">Copy for Sheets</button>
@@ -1589,14 +1616,6 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
       <div class="note rose" style="margin-top:10px"><b>What leaves the device.</b> The clinical columns only — grades, stage, probe-to-bone, culture, tissue percentages. Never the photograph and never the thumbnail. Once a URL is set the tool no longer holds to "nothing leaves this device", so record where that sheet lives and who can open it.</div>
     </details>
   </section>
-</div>
-
-<!-- ═══════════════════════════ DASHBOARD TAB ═══════════════════════════ -->
-<!-- Read-only, and scoped to one arm. The two wound types are graded on different scales —
-     Wagner and Texas for a diabetic foot ulcer, NPIAP for a pressure injury — so they do not
-     share a template. Pooling them produced a card in which a Wagner grade and an NPIAP stage
-     sat in the same column, which is not a summary of anything. -->
-<div id="tab-data" class="hidden">
 
   <section class="card tight">
     <div class="step"><span class="n">▦</span><h3>Data readiness</h3>
@@ -2037,10 +2056,30 @@ async function loadModel(){
   refreshData();
   if (currentImg) runInference();
 }
+/* Every figure here is read from a model card at run time. None is written into this file.
+   The prose version of this section went stale in three places at once — it described a tissue
+   model with no performance figures, a classifier with no mention of the abstention that
+   silences it on a third of images, and a label rule whose thresholds appeared nowhere — and
+   nothing could have caught that, because prose is not checked by anything. */
 async function fillModelCard(){
+  const j = async u => { try { return await (await fetch(u)).json() } catch(e){ return null } };
+  const short = h => h ? String(h).slice(0, 12) : '?';
   try {
     const m = await (await fetch('model/metrics.json')).json();
     const p = m.validation_on_weak_labels;
+
+    /* The label rule, in the numbers the training script actually used. */
+    const lr = m.label_rule;
+    $('mcLabels').textContent = lr
+      ? `Demonstrator labels are WEAK LABELS, not a clinical diagnosis. Severity comes from `
+        + `wound area in the expert masks. Infection is a colour proxy: "suspected" when `
+        + `${lr.infection_suspected_if}, "none" when ${lr.infection_none_if}, and images `
+        + `between the two thresholds are excluded from the infection loss entirely. Derived `
+        + `from ${lr.derived_from}. NOT from ${lr.NOT_derived_from}. Peri-wound redness was in `
+        + `the first version of the rule and was removed because healthy granulation is also `
+        + `red. The grading session and the Train tab exist precisely to replace all of this.`
+      : 'Demonstrator labels are weak labels derived from expert wound masks and wound-bed '
+        + 'colour features. They are not clinician-adjudicated or culture-confirmed.';
     $('mcData').textContent = `${m.train_images} training and ${m.val_images} held‑out validation photographs (FUSeg 2021), 224×224 px, augmented with flips, rotation, zoom, brightness and contrast.`;
     let txt = `Whole-photo classifier — severity AUC ${p.grade.auc.toFixed(2)}, accuracy ${(p.grade.accuracy*100).toFixed(0)} %; infection AUC ${p.infection.auc.toFixed(2)}, accuracy ${(p.infection.accuracy*100).toFixed(0)} %.`;
     const r = registry['Wound-crop model'];
@@ -2048,7 +2087,57 @@ async function fillModelCard(){
     if (segMetrics) txt += ` Segmentation — Dice ${segMetrics.held_out.dice.toFixed(2)}, IoU ${segMetrics.held_out.iou.toFixed(2)} on ${segMetrics.held_out.n} held-out images.`;
     txt += ' All figures describe agreement with the weak labels, not clinical accuracy.';
     $('mcPerf').textContent = txt;
-  } catch(e){ $('mcPerf').textContent = 'metrics.json not found.'; }
+
+    /* Tissue: the cross-validated figures, named as such, with the classes that were never
+       scorable listed rather than left to be inferred from a macro average. */
+    const tm = tissueMetrics || await j('tissue/metrics.json');
+    const cv = tm && tm.cross_validated;
+    const pcDice = o => o && typeof o.dice === 'number' ? o.dice.toFixed(3) : '\u2014';
+    if (tm){
+      /* cross_validated.this_recipe holds the deployed recipe's per-class Dice. The macro is
+         the mean of the classes that CAN be scored, computed here rather than copied, so it
+         cannot drift from the two numbers beside it. */
+      const r = (cv && cv.this_recipe) || null;
+      const miss = (tm.classes_missing || []).join(', ');
+      const macro = r ? (r.gran + r.slough) / 2 : tm.macro_dice_tissue;
+      $('mcTissue').textContent = r
+        ? `${cv.folds}-fold cross-validated by case over all ${cv.images} usable images, so every `
+          + `image is scored once on a model that never saw it: granulation ${r.gran.toFixed(3)}, `
+          + `slough ${r.slough.toFixed(3)}, mean ${macro.toFixed(3)} over the two classes that can `
+          + `be scored at all. `
+          + (miss ? `${miss} never occur in the released annotations, so they cannot be scored and `
+                  + `are not in that mean. ` : '')
+          + `Slough is the weak class: its percentages should not be presented to clinicians as `
+          + `reliable. Architecture is not the lever \u2014 Attention U-Net and DeepLabV3+ were both `
+          + `tried and neither beat this.`
+        : `Single split, macro ${(tm.macro_dice_tissue || 0).toFixed(3)} \u2014 not cross-validated.`;
+      if ($('mcTissueN') && cv && cv.images) $('mcTissueN').textContent = cv.images;
+    } else $('mcTissue').textContent = 'tissue/metrics.json not found.';
+
+    /* TTA, abstention and calibration: three things that change how a number should be read
+       and none of which was stated anywhere in the app. */
+    const cal = await j('model-roi/calibration.json');
+    const ab = cal && cal.abstention, mm = ab && ab.measured_on_infection_head;
+    $('mcCal').textContent = cal
+      ? `${cal.tta_note || ''} The infection head DECLINES TO ANSWER below a confidence of `
+        + `${ab ? ab.confidence_threshold : 0.7}`
+        + (mm ? `, which keeps ${(mm.kept_fraction*100).toFixed(0)} % of images at `
+              + `${(mm.accuracy_on_kept*100).toFixed(0)} % accuracy against ${(mm.accuracy_on_all*100).toFixed(0)} % `
+              + `if every image were forced to an answer` : '')
+        + `. An abstention is shown as no estimate at all, and must not be read as a negative. `
+        + `${cal.caveat || ''}`
+      : 'calibration.json not found.';
+
+    /* Which weights produced a given row. The case log records model_sha, and this is where a
+       reader matches that hash to a description. */
+    const cards = { 'Segmentation': segMetrics, 'Tissue': tm,
+                    'Whole-photo classifier': m,
+                    'Wound-crop classifier': await j('model-roi/metrics.json') };
+    $('mcVer').textContent = 'App build ' + (typeof BUILD !== 'undefined' ? BUILD : '?') + '. '
+      + Object.entries(cards).map(([k, c]) => `${k} ${short(c && c.weights_sha256)}`).join(' \u00b7 ')
+      + '. These are sha256 over each model\u2019s weights and topology, and the case log records '
+      + 'the classifier hash on every row, so a retrain can never be pooled with what came before.';
+  } catch(e){ $('mcPerf').textContent = 'metrics.json not found \u2014 ' + e.message; }
 }
 const registry = {};                                  // name -> model entry
 function setActive(entry){
@@ -4152,7 +4241,7 @@ function srgbToLab(r, g, b){
    case log could not record which version produced a row — and a log that cannot say which
    version produced a row cannot be pooled across a retrain, which is the whole point of
    keeping one. Rendered into the footer at start-up, written into every case row. */
-const BUILD = '2026-11-13 \u00b7 v11.12';
+const BUILD = '2026-11-13 \u00b7 v11.13';
 /* Rendered rather than typed into the markup, so the footer and the case log can never
    disagree about which version is running. */
 try { const bs = document.getElementById('buildStamp');
@@ -4662,6 +4751,16 @@ $('viewer').addEventListener('click', e => {
 const NAG_KEY = 'wound_vision_formulary_v1';
 const NAG_SEV = [['mild','Diabetic foot · mild'],['moderate','Diabetic foot · moderate'],
                  ['severe','Diabetic foot · severe'],['pi','Pressure injury · systemic infection']];
+/* Only this arm's severities are shown. A diabetic foot formulary and a pressure injury one
+   are different documents from different parts of the guideline, and showing the pressure
+   injury row to someone filling in the foot formulary invited it to be filled with a foot
+   regimen — a prescribing error the data model would have manufactured, which is the same
+   reasoning that keeps NAG's own column names rather than a shape of my invention.
+
+   FILTERING IS DISPLAY ONLY. The stored formulary keeps every severity, so a team that fills
+   in both arms on one device loses nothing by switching arms, and an import carrying the other
+   arm's rows is not silently discarded. */
+const nagSev = () => NAG_SEV.filter(([k]) => DISEASE === 'pi' ? k === 'pi' : k !== 'pi');
 /* The field names follow NAG's own columns rather than a shape of my invention. That matters:
    NAG's "Alternative" for mild diabetic foot infection is amoxicillin/clavulanate, which is a
    penicillin — filing it under "if penicillin-allergic" would have been a prescribing error
@@ -5652,7 +5751,7 @@ function renderDashboard(){
 function renderFormulary(){
   const host = $('nagRows'); if (!host) return;
   const f = loadFormulary(), rows = f.rows || {};
-  host.innerHTML = NAG_SEV.map(([k, lab]) =>
+  host.innerHTML = nagSev().map(([k, lab]) =>
     `<details class="labmore"><summary>${lab} <span class="cnt${rows[k] && rows[k].first ? ' on' : ''}">${rows[k] && rows[k].first ? 'filled in' : 'empty'}</span></summary>`
     + NAG_FIELDS.map(([fk, flab, ph]) =>
         `<div class="field"><label>${flab}</label><input data-sev="${k}" data-f="${fk}" placeholder="${ph}" value="${String((rows[k] || {})[fk] || '').replace(/"/g, '&quot;')}"></div>`).join('')
@@ -5661,9 +5760,9 @@ function renderFormulary(){
   $('nagEdition').value = f.edition || '';
   if ($('nagBy') && !$('nagBy').options.length) $('nagBy').innerHTML = sel([''].concat(GRADERS, ['Other']), f.by || '');
   else if ($('nagBy')) $('nagBy').value = f.by || '';
-  const filled = NAG_SEV.filter(([k]) => rows[k] && rows[k].first).length;
+  const filled = nagSev().filter(([k]) => rows[k] && rows[k].first).length;
   $('nagStatus').innerHTML = filled
-    ? `<b>${filled} of ${NAG_SEV.length} severities filled in.</b> These are live in the assessment panel now.`
+    ? `<b>${filled} of ${nagSev().length} severities filled in.</b> These are live in the assessment panel now.`
     : '<b>Empty.</b> The assessment panel shows the infection grade and urgency, and says that no regimens have been loaded.';
 }
 

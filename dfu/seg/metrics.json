@@ -20,5 +20,6 @@
  },
  "data": "FUSeg 2021 (AZH Wound and Vascular Center); Wang et al., Sci Rep 2020;10:21897",
  "minutes": 17.6,
- "note": "Exported without any Lambda layer; TensorFlow.js cannot deserialise one."
+ "note": "Exported without any Lambda layer; TensorFlow.js cannot deserialise one.",
+ "weights_sha256": "ec6c04985254dea8b7f76f589ba8cc1f60a9df7a39141d39033ac368ebd19c08"
 }

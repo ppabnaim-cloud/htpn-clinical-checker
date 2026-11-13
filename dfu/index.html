@@ -1725,7 +1725,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.9</span>
+  <span class="study-hide" id="buildStamp"></span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -4126,6 +4126,16 @@ function srgbToLab(r, g, b){
 /* The peri-wound redness threshold, in CIE a* units above the patient's own skin further out.
    Named once because it is read in three places -- the findings row, the criteria count and
    the layer -- and when the layer had its own threshold the screen contradicted itself. */
+/* The build, in one place. It used to live only in the footer's text node, which meant the
+   case log could not record which version produced a row — and a log that cannot say which
+   version produced a row cannot be pooled across a retrain, which is the whole point of
+   keeping one. Rendered into the footer at start-up, written into every case row. */
+const BUILD = '2026-11-13 \u00b7 v11.10';
+/* Rendered rather than typed into the markup, so the footer and the case log can never
+   disagree about which version is running. */
+try { const bs = document.getElementById('buildStamp');
+      if (bs) bs.textContent = 'build ' + BUILD; } catch(e){}
+
 const ERY_DA = 3;
 /* IWGDF/IDSA: erythema extending MORE THAN 0.5 cm from the ulcer margin. */
 const ERY_CM = 0.5;
@@ -5366,7 +5376,14 @@ function renderLog(){
    cloud account would quietly end that. A paste is the clinician choosing, each time, what
    leaves — and the thumbnails are left out of it, because a 96 px wound photograph pasted into a
    spreadsheet is still a patient image. */
-const LOG_COLS = ['id','when','case_id','image','disease','skin_type','device','protocol','grader','revised','revision_log','model','ai_label','p_severe','p_infection','probs','wound_area_frac','roi_source','roi_source_px','tissue',
+/* app_build and model_sha make a row attributable to a version. Without them a retrain
+   silently pools predictions from two different models under one column name, and nothing in
+   the file can tell them apart afterwards. ery_cm is the app's only continuous measurement and
+   the most publishable thing it produces, so it is recorded as a number rather than collapsed
+   into the present/absent verdict that ery_state already carries. ery_censored marks a reading
+   that hit the edge of the search band, which is a lower bound and must not be averaged as if
+   it were a point estimate. */
+const LOG_COLS = ['id','when','case_id','image','disease','skin_type','device','protocol','grader','revised','revision_log','app_build','model','model_sha','ai_label','p_severe','p_infection','probs','wound_area_frac','roi_source','roi_source_px','tissue','ery_cm','ery_censored','ery_state',
                   'gt_grade','gt_stage','gt_wagner','probe_to_bone','specimen_date','organisms','sensitivity_notes','culture_positive',
                   'npiap_stage','blanching','deepest_structure','body_site','pi_date','outcome','pi_notes',
                   'rater2','rater2_wagner','rater2_npiap'];
@@ -5744,7 +5761,7 @@ $('importCsv').onchange = async e => {
     const rec = {};
     head.forEach((h, i) => rec[h] = r[i] ?? '');
     if (!rec.id || have.has(String(rec.id))) return;
-    ['p_severe','p_infection','wound_area_frac','roi_source_px'].forEach(k => rec[k] = rec[k] === '' ? null : +rec[k]);
+    ['p_severe','p_infection','wound_area_frac','roi_source_px','ery_cm'].forEach(k => rec[k] = rec[k] === '' ? null : +rec[k]);
     rec.culture_positive = rec.culture_positive === '' ? null : rec.culture_positive === 'true';
     rec.organisms = rec.organisms ? rec.organisms.split(';').map(x => x.trim()).filter(Boolean) : [];
     ['probs','tissue'].forEach(k => { try { rec[k] = rec[k] ? JSON.parse(rec[k]) : null; } catch(_){ rec[k] = null; } });
@@ -5782,7 +5799,7 @@ const markExported = () => { try { localStorage.setItem(LOG_KEY + '_exported', S
 
 $('exportCsv').onclick = () => {
   const log = loadLog(); if (!log.length) return toast('Nothing to export');
-  const cols = ['id','when','image','disease','model','ai_label','p_severe','p_infection','probs','wound_area_frac','roi_source','roi_source_px','tissue',
+  const cols = ['id','when','image','disease','app_build','model','model_sha','ai_label','p_severe','p_infection','probs','wound_area_frac','roi_source','roi_source_px','tissue','ery_cm','ery_censored','ery_state',
                 'gt_grade','gt_stage','gt_wagner','probe_to_bone','specimen_date','organisms','sensitivity_notes','culture_positive',
                 'npiap_stage','blanching','deepest_structure','body_site','pi_date','outcome','pi_notes'];
   const esc = v => '"' + String(Array.isArray(v) ? v.join('; ') : (v && typeof v === 'object' ? JSON.stringify(v) : (v ?? ''))).replace(/"/g, '""') + '"';
@@ -6255,9 +6272,15 @@ function labelToCase(it, key){
   const pi = poolArm(it) === 'pi', r = it.rec || {}, ex = it.ex || {};
   return { id: 'B|' + (key || labKey(it)) + '|' + (r.grader || ''), src: 'graded in step B',
     when: new Date().toISOString(), image: it.name, thumb: '',
-    model: 'not run \u2014 graded from the image list', ai_label: '',
+    /* The model is deliberately NOT run here. A grader must not see the app's answer while
+       labelling, or what gets measured afterwards is anchoring rather than agreement. The
+       app's own outputs are joined on afterwards by docs/batch-predict.mjs, which re-runs the
+       real app over the same images and writes these same columns. app_build is still
+       recorded, because it says which version the GRADING was done against. */
+    app_build: BUILD, model: 'not run \u2014 graded from the image list', model_sha: '', ai_label: '',
     p_severe: null, p_infection: null, probs: null, wound_area_frac: null,
     roi_source: '', roi_source_px: null, tissue: null,
+    ery_cm: null, ery_censored: null, ery_state: '',
     disease: pi ? 'pressure injury' : 'diabetic foot ulcer',
     case_id: (r.case_id || '').trim().toUpperCase() || caseIdOf(it.name),
     skin_type: it.skin || '', device: deviceId(), protocol: '',

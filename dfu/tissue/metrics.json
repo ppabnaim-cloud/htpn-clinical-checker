@@ -111,5 +111,6 @@
   },
   "improvement_note": "The gain over the previous model is not a new architecture. The monitored metric averaged over classes absent from the data, each scoring a constant 1.0, so early stopping was selecting epochs on whether an untrainable class stayed silent. Fixing it took slough from 0.438 to 0.495 and removed the collapsed folds: the previous recipe produced one wrecked fold in every configuration tried."
  },
- "supersedes": "The model shipped before 2026-11-08 reported gran 0.774 / slough 0.564. Those came from a split that pooled DFUTissue's TrainVal and Test directories and dealt them at random, so roughly 13 of the 16 official test images were trained on and the figures were optimistic. Not comparable with these."
+ "supersedes": "The model shipped before 2026-11-08 reported gran 0.774 / slough 0.564. Those came from a split that pooled DFUTissue's TrainVal and Test directories and dealt them at random, so roughly 13 of the 16 official test images were trained on and the figures were optimistic. Not comparable with these.",
+ "weights_sha256": "03c64607abbe3c6c1b4cd5ca0712c3f10e71cde2a4304036cd801b21fe3082cc"
 }

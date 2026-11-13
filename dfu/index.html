@@ -1729,7 +1729,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.7</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.8</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -1784,12 +1784,21 @@ let pubSigns = {}, cmpSev = null, featPred = {};
    curLayer and setCam runs from the image-load path — a const further down the file would be
    in its temporal dead zone the first time an image is opened. That exact bug has cost this
    file two silent failures already. */
+/* No "Pus" layer here. The colour rule cannot produce one: pus and fibrinous slough occupy
+   the same yellow hue window, so a pus layer could only ever read 0 % or restate slough. It
+   used to be offered on the grounds that 0 % is a measurement rather than a missing feature.
+   That was wrong in the way this whole panel has been wrong before — it implied a measurement
+   the method cannot make, and invited a reader to take "Pus 0 %" as evidence of no pus.
+
+   Pus is still a labelling class below, because it is drawn by hand in step B and that is what
+   will train a head. It comes back as a layer when something can actually predict it, and it
+   will be reported as presence rather than area, because the IWGDF criterion is purulent
+   discharge, not a percentage of the bed. */
 const LAYERS = [
   ['all',    'All tissue'],
   ['gran',   'Granulation'],
   ['slough', 'Slough'],
   ['necro',  'Necrosis'],
-  ['pus',    'Pus'],
   ['ery',    'Peri-wound redness']
 ];
 let curLayer = 'all';
@@ -4094,8 +4103,8 @@ const TISSUE = [
   { id:'slough', name:'Slough',         rgb:[232,163, 61],  hint:'yellow, fibrinous' },
   { id:'necro',  name:'Necrosis',       rgb:[ 59, 46, 74],  hint:'black eschar'  },
   /* No colour rule returns pus and no public dataset labels it, so this class exists only to
-     be drawn by hand in step B and, once enough has been drawn, predicted. Until then its
-     layer is offered and reads 0 %, which is a measurement rather than a missing feature. */
+     be drawn by hand in step B and, once enough has been drawn, predicted. It is deliberately
+     NOT offered as a viewer layer: see the note above LAYERS. */
   { id:'pus',    name:'Pus',            rgb:[246,224,120],  hint:'opaque, glossy, pooling' },
   { id:'pale',   name:'Epithelial/pale',rgb:[242,184,198],  hint:'pale, re-epithelialising' },
   { id:'other',  name:'Unclassified',   rgb:[150,160,172],  hint:'no rule fits'  }

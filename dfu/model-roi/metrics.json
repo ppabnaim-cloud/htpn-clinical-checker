@@ -52,5 +52,6 @@
   "erythema_dropped_in_v2": "peri-wound redness was in the v1 rule and was removed: healthy granulation is also red, and it made the labels noisy (held-out AUC 0.72)",
   "consequence": "the infection score is largely a restatement of the wound-bed slough and necrosis percentages, not independent evidence of infection"
  },
- "criteria_guideline": "IWGDF/IDSA Guideline on the diagnosis and treatment of diabetes-related foot infection, 2023"
+ "criteria_guideline": "IWGDF/IDSA Guideline on the diagnosis and treatment of diabetes-related foot infection, 2023",
+ "transfer": "ImageNet: 1.28 million general photographs in 1,000 everyday object classes \u2014 dogs, cars, mushrooms. No wounds at all. Only the small head on top was trained on wound images; everything beneath it learned to see on pictures of something else."
 }

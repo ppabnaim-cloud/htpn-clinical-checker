@@ -69,7 +69,16 @@ const REQUIRED = [
   'What is this estimate, and what was it trained on?',
   'slough fraction > 0.10 OR necrosis fraction > 0.15',
   'LIKELY INFECTION',
-  'AWAITING YOUR EXAMINATION'
+  'AWAITING YOUR EXAMINATION',
+  /* The explainability table (v11.4). Its whole job is to make the app's boundary visible:
+     which of the five criteria a photograph can reach, and which are physical findings it
+     cannot. A later edit that quietly drops it would leave "2 of 5" meaning nothing again. */
+  'This screen can reach two of',
+  'Peri-wound erythema beyond 0.5 cm',
+  'no trained detector yet, so you answer it',
+  'clinical examination',
+  'either is severe',
+  '1,000 everyday object classes'
 ]
 
 /* Phrases a user must NEVER see. Each one is here because it was shipped and was wrong.

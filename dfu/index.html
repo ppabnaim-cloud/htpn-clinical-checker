@@ -343,6 +343,21 @@ ol.guide b{color:var(--navy)}
 .est{display:block;font-size:12.5px;line-height:1.5;color:var(--muted);margin:7px 2px 0}
 .est b{color:var(--text);font-size:14px}
 .est .why{display:block;margin-top:4px}
+/* The five criteria, with what this app can and cannot reach. Built as rows rather than a
+   four-column table because four columns do not survive a phone, and the row shape matches
+   the .sxr findings rows directly below it, so the explanation reads as part of the panel
+   rather than as a leaflet dropped into it. */
+.critt{border:1px solid var(--rule);border-radius:10px;overflow:hidden;margin:10px 0}
+.critrow{display:flex;align-items:flex-start;gap:9px;padding:9px 11px;border-top:1px solid var(--rule)}
+.critrow:first-child{border-top:0}
+.critrow .n{font-family:var(--mono);font-size:11px;color:var(--faint);min-width:11px;padding-top:2px}
+.critrow .c{flex:1;min-width:0}
+.critrow .c b{display:block;font-size:12.5px;font-weight:600;color:var(--navy);line-height:1.4}
+.critrow .c em{display:block;font-style:normal;font-size:11px;color:var(--muted);line-height:1.45;margin-top:2px}
+.critrow .can{flex-shrink:0;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px;margin-top:1px;white-space:nowrap}
+.critrow .can.yes{background:rgba(28,184,160,.14);color:#0f766e}
+.critrow .can.partly{background:rgba(250,178,25,.2);color:#7a5200}
+.critrow .can.no{background:var(--cloud);color:var(--muted)}
 details.prov{margin-top:8px}
 details.prov>summary{font-size:12px}
 table.provt{width:100%;border-collapse:collapse;margin-top:8px;font-size:11.5px;line-height:1.5}
@@ -1714,7 +1729,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.3</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.4</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3626,7 +3641,7 @@ function renderPublic(){
     ? `<details class="labmore prov"><summary>What is this estimate, and what was it trained on?</summary>
         <table class="provt">
           ${provRow('Model', (card.display_name || (active && active.name) || 'classifier') + ' — ' + (card.backbone || 'MobileNetV2'))}
-          ${provRow('Transferred from', 'ImageNet: 1.28 million general photographs, no wounds. Only the head on top was trained on wound images.')}
+          ${provRow('Transferred from', card.transfer || 'ImageNet: 1.28 million general photographs, no wounds. Only the head on top was trained on wound images.')}
           ${provRow('Fine-tuned on', (card.dataset || 'FUSeg 2021') + (card.train_images ? ' — ' + card.train_images + ' training, ' + (card.val_images || '?') + ' validation images' : ''))}
           ${lr ? provRow('The label means', lr.infection_suspected_if, true) : ''}
           ${lr ? provRow('… and "none" means', lr.infection_none_if) : ''}
@@ -3641,6 +3656,35 @@ function renderPublic(){
         </table>
        </details>`
     : '';
+
+  /* ── the five criteria, and which of them this app can actually reach ──────────────────
+     This was a prose sentence. Everything was in it, but a clinician had to parse the sentence
+     to work out which criteria the app can see — and that boundary is the most important thing
+     this screen has to communicate. It is the honest form of the count: "2 of 5" means nothing
+     until you know that three of the five are not in any photograph.
+
+     Built from the same constants the logic uses — ERY_CM for the threshold, CRIT_BEDSIDE for
+     the three that need hands — so the table cannot drift away from the rule it describes.
+     That is the whole failure mode this panel keeps hitting: a description living in one place
+     and the behaviour in another.
+
+     It describes the METHOD'S CAPABILITY, which never changes, not this patient's findings,
+     which are the rows below. Showing per-image status here as well would be the same evidence
+     in a third place, and double-counting is the fault we have already fixed twice. */
+  const CAN_LBL = { yes:'Yes', partly:'Partly', no:'No' };
+  const critRows = [
+    ['1', `Peri-wound erythema beyond ${ERY_CM} cm`, 'yes',
+     'measured from the photograph \u2014 needs a ruler scale'],
+    ['2', 'Purulent discharge', 'partly',
+     'no trained detector yet, so you answer it'],
+  ].concat(CRIT_BEDSIDE.map((c, i) => [
+    String(i + 3), c.charAt(0).toUpperCase() + c.slice(1), 'no',
+    'clinical examination \u2014 asked under Grading'
+  ]));
+  const critTable = `<div class="critt">${critRows.map(([n, crit, can, from]) =>
+    `<div class="critrow"><span class="n">${n}</span>
+       <div class="c"><b>${crit}</b><em>${from}</em></div>
+       <span class="can ${can}">${CAN_LBL[can]}</span></div>`).join('')}</div>`;
 
   /* The headline wording for the number. It names what the model estimates, not what a reader
      would like it to estimate, and it says in the same breath that it is not independent of
@@ -3662,11 +3706,11 @@ function renderPublic(){
     <div class="sx">${tissueRows.join('')}</div>
     <h4 class="sxh">Signs of infection</h4>
     <p class="sxsub">Infection is defined by the <b>IWGDF/IDSA guideline on diabetes-related foot
-      infection</b> as two or more of five local criteria: peri-wound erythema beyond 0.5 cm,
-      purulent discharge, local warmth, swelling or induration, and tenderness or pain. The
-      first two are below. The other three require clinical examination and are asked under
-      <b>Grading</b>. Abscess and wet gangrene are not among the five but are severe on their
-      own.</p>
+      infection</b> as <b>two or more</b> of five local criteria. This screen can reach two of
+      them. The other three are physical findings and are in no photograph.</p>
+    ${critTable}
+    <p class="sxsub">Abscess and wet gangrene are not among the five, but either is severe
+      infection on its own.</p>
     <div class="sx">${seen.join('')}${taps}</div>
     ${ringNote}
     ${tiss}

@@ -1706,7 +1706,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
   judgement and does not replace it. Under evaluation — the outcomes are being studied.
   <!-- The version is a maintenance detail, not something a patient or a visiting clinician needs
        to read. It stays for the study team, who need it to tell a real fault from a cached copy. -->
-  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.1</span>
+  <span class="study-hide" id="buildStamp">build 2026-11-13 &middot; v11.2</span>
 </footer>
 <div class="toast" id="toast"></div>
 
@@ -3441,9 +3441,31 @@ function renderPublic(){
 
      Two rules now hold.
 
-     The model may ESCALATE, never DE-ESCALATE. An uncalibrated probability is evidence that
-     something is wrong; it is not evidence that nothing is. So mp >= 0.5 still raises the
-     alarm, and mp < 0.5 no longer silences anything.
+     The model may PROMPT, never CONCLUDE. For a while mp >= 0.5 raised the headline by
+     itself, on the reasoning that an uncalibrated probability is evidence something is wrong
+     even when it is not evidence that nothing is. That reasoning held, and the result still
+     broke the panel: LIKELY INFECTION printed over "0 of 5 seen", which is the same
+     self-contradiction as before with the sign reversed.
+
+     Three facts decide it. The infection head is trained on WEAK LABELS derived from the same
+     images' masks and colour features, so its number is the probability of a proxy that was
+     itself computed from the picture, not of infection. It is UNCALIBRATED: 76 % looks like a
+     frequency and is not one. And four of the five IWGDF criteria -- warmth, tenderness,
+     swelling or induration, and most purulence -- are NOT IN THE PIXELS, so no architecture
+     can put them there. A high score with no criteria seen is therefore not "the model saw
+     what the criteria missed"; it is a correlation whose cause is unknown.
+
+     The cost of being wrong is asymmetric. A false infection call in a foot clinic means
+     antibiotics and sometimes an admission, and after three or four of them the headline
+     stops being read at all. Alert fatigue is permanent; a slightly weaker prompt is not.
+
+     So the model keeps the job it can do honestly: it raises the floor on the prompt to
+     examine. A high score with the criteria unmet reads AWAITING YOUR EXAMINATION, never
+     LIKELY INFECTION. It still cannot de-escalate -- it never could -- so nothing the criteria
+     catch stops being caught, and the only thing given up is a verdict on cases where the
+     correct next step was an examination anyway. The percentage stays on screen and is logged
+     per case, which is what makes a later calibration and prospective comparison possible;
+     that is the route by which the model earns the headline, not assertion.
 
      The headline is the IWGDF/IDSA count. Infection is defined as two or more of five local
      criteria — swelling or induration, erythema beyond 0.5 cm, tenderness or pain, local
@@ -3478,8 +3500,12 @@ function renderPublic(){
   if (tapAns('abscess') === true) severe.push('abscess');
   if (tapAns('wet_gangrene') === true) severe.push('wet gangrene');
 
-  const infected = critPos.length >= 2 || severe.length > 0 || (mp !== null && mp >= 0.5);
-  const awaiting = !infected && panelUnknown.length > 0;
+  const modelFlag = mp !== null && mp >= 0.5;
+  const infected  = critPos.length >= 2 || severe.length > 0;
+  /* A model flag with the criteria unmet is a reason to examine, so it lands in AWAITING
+     rather than in NOT ENOUGH TO CALL INFECTION. The distinction is the whole point of the
+     change: the app still escalates the ACTION, it just stops asserting the DIAGNOSIS. */
+  const awaiting  = !infected && (panelUnknown.length > 0 || modelFlag);
   pubInfected = infected;
 
   /* Both models side by side, which is the comparison this study exists to make, and as a
@@ -3497,7 +3523,7 @@ function renderPublic(){
                         : 'No estimate for this photograph — your examination is the only evidence here');
 
   const nPos = critPos.length + severe.length;
-  const modelOnly = !severe.length && critPos.length < 2 && mp !== null && mp >= 0.5;
+  const modelOnly = !infected && modelFlag;
   const parts = [];
   /* The first clause has to say WHY the headline reads as it does, or the panel contradicts
      itself again in miniature: "LIKELY INFECTION" over "0 of 5 criteria seen here" is the
@@ -3508,14 +3534,16 @@ function renderPublic(){
     parts.push(`${severe.join(' and ')} — severe infection on its own`);
   else if (critPos.length >= 2)
     parts.push(`${critPos.join(' and ')} — ${critPos.length} of 5 criteria, at the threshold`);
-  else if (modelOnly)
-    parts.push(`flagged by the model, not by the criteria — ${critPos.length} of 5 seen`
-      + (critPos.length ? ` (${critPos.join(', ')})` : ''));
   else if (critPos.length)
     parts.push(`${critPos.join(' and ')} — ${critPos.length} of 5 criteria, below the threshold of 2`);
   else
     parts.push('0 of 5 criteria seen here');
   if (panelUnknown.length) parts.push(`${panelUnknown.join(' and ')} not assessed`);
+  /* The model's flag, worded as what it is: a reason to finish the examination, not a finding
+     and not a verdict. It comes AFTER the criteria line, never before it, so the checkable
+     evidence is read first. */
+  if (modelOnly)
+    parts.push(`the model rates this image ${Math.round(mp * 100)} % — an estimate from training data, not a finding, and not enough to call infection on its own, so examine before discounting it`);
   parts.push(`${CRIT_BEDSIDE.join(', ')} need your examination — record the call under <b>Grading</b>`);
 
   /* Never a bare negative while a row above says Present, and never the words "no signs":

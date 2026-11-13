@@ -65,9 +65,30 @@ These were all adopted after something went wrong. They transfer unchanged to an
 
 ### Clinical safety
 
-1. **A model may escalate a concern, never clear one.** An uncalibrated probability is evidence
-   that something may be wrong. It is never evidence that nothing is. Low model output must not
-   be able to produce a reassuring headline.
+1. **A model may prompt an action, never pronounce a diagnosis — and never clear one.** An
+   uncalibrated probability is evidence that something may be wrong. It is never evidence that
+   nothing is, so a low output must not be able to produce a reassuring headline. But nor may a
+   high one produce a diagnostic headline on its own, and this half of the rule cost us a
+   production defect before it was written down. We shipped `infected = criteria >= 2 || model
+   >= 0.5` on the reasoning that escalation is the safe direction to be wrong in. It printed
+   LIKELY INFECTION above its own line reading "0 of 5 seen" — rule 2 broken by rule 1.
+
+   Three questions decide whether a model's output may be a verdict, and ours failed all three.
+   *What is it a probability of?* Ours was trained on weak labels derived from the same images'
+   masks and colour features, so it estimated a proxy computed from the picture, not the
+   condition. *Is it calibrated?* A percentage reads as a frequency; an AUC does not make it
+   one. *Can the input carry the answer at all?* Four of our five guideline criteria are
+   physical findings that are not in the pixels, so no architecture could supply them.
+
+   Until all three are answered, the model raises the floor on the prompt to examine and stops
+   there: a high score with the criteria unmet reads AWAITING YOUR EXAMINATION, not a diagnosis.
+   Keep the number on screen and log it per case — that is the route by which it later earns
+   the headline, through calibration and prospective comparison rather than assertion. Note the
+   asymmetry that makes this safe rather than timid: nothing the criteria catch stops being
+   caught, and the cases given up are ones whose correct next step was an examination anyway.
+   Against that, a false positive from a weak-label model spends antibiotics, sometimes an
+   admission, and eventually the clinician's attention — alert fatigue is permanent, a slightly
+   weaker prompt is not.
 2. **The headline may never contradict the evidence shown above it.** If a row says a sign is
    present, no summary beneath it may say there are none. This is the single most dangerous
    defect class in this kind of interface, and it is easy to ship by accident, because the

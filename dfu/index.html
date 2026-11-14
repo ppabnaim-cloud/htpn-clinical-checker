@@ -4274,7 +4274,7 @@ function srgbToLab(r, g, b){
    case log could not record which version produced a row — and a log that cannot say which
    version produced a row cannot be pooled across a retrain, which is the whole point of
    keeping one. Rendered into the footer at start-up, written into every case row. */
-const BUILD = '2026-11-14 \u00b7 v11.16';
+const BUILD = '2026-11-14 \u00b7 v11.17';
 /* Rendered rather than typed into the markup, so the footer and the case log can never
    disagree about which version is running. */
 try { const bs = document.getElementById('buildStamp');
@@ -5468,6 +5468,17 @@ function renderPending(){
    double-graded; the tissue and infection ticks cannot, under the current storage. Those cells
    read "—" and the note underneath says why, because a dash a reader can interpret beats a
    zero they cannot. */
+/* The per-grader views of one tick record. A record written before v11.17 has no map, so its
+   flat fields are presented as the single view of whoever is recorded against it — which is
+   the truth about that record: one grader's ticks, not two. Where no grader was recorded,
+   nothing is returned rather than a view attributed to nobody. */
+const graderViews = e => {
+  if (!e) return {};
+  if (e.byGrader && Object.keys(e.byGrader).length) return e.byGrader;
+  const g = ((e.r || {}).grader || '').trim();
+  return g ? { [g]: { w: e.w, n: e.n, f: e.f || [], s: e.s || null } } : {};
+};
+
 const TARGET_KEY = 'wound_vision_targets_v1';
 const loadTargets = () => { try { return JSON.parse(localStorage.getItem(TARGET_KEY) || '{}'); } catch(e){ return {}; } };
 /* 40 per stratum is the handover's figure: at 25-30 % prevalence you need about forty
@@ -5540,13 +5551,25 @@ function renderReadyMatrix(){
       const run = latestRun('wagner');
       trained = run && run.per_class ? (run.per_class[val] ?? run.per_class['W' + val] ?? null) : null;
     } else {
-      const ticked = Object.keys(store).filter(k => (store[k].f || []).includes(val));
+      /* An image counts once, and a tick by ANY grader counts as a label for this class. */
+      const ticked = Object.keys(store).filter(k => {
+        const vs = graderViews(store[k]);
+        return (store[k].f || []).includes(val)
+            || Object.keys(vs).some(g => (vs[g].f || []).includes(val));
+      });
       labelled = ticked.length;
+      /* Two graders ticking the same feature on the same image IS the expert consensus this
+         block's heading names, and it is computable now that the ticks carry a grader. It was
+         a dash until v11.17 because the store physically could not hold a second opinion. */
+      const agreed = ticked.filter(k => {
+        const vs = graderViews(store[k]);
+        return Object.keys(vs).filter(g => (vs[g].f || []).includes(val)).length > 1;
+      }).length;
       confirmed = ref === 'cx'
         ? ticked.filter(k => cultured.has(String(k.split('|')[0]))).length
-        : null;                                   // no expert-consensus record exists yet
-      perGrader = graders.map(() => null);        // tick store is one entry per image
-      both = null;
+        : agreed;
+      perGrader = graders.map(g => ticked.filter(k => ((graderViews(store[k])[g] || {}).f || []).includes(val)).length);
+      both = agreed;
       const run = latestRun('feat:' + val);
       trained = run && run.per_class
         ? (run.per_class['present'] ?? run.per_class[val] ?? run.per_class['1'] ?? null) : null;
@@ -5581,10 +5604,13 @@ function renderReadyMatrix(){
       <b>Confirmed</b> means something different per block and the heading of each says which:
       culture settles infection, it does not settle depth or tissue type.
       ${graders.length ? `Grader columns are <b>${graders.join('</b> and <b>')}</b>, the two with the most rows.` : 'No grader is recorded on any row yet.'}
-      A dash means the figure cannot be computed, not that it is zero — the tick store keeps one
-      entry per image, so the tissue and infection ticks cannot be split by grader or
-      double-graded, and no field records expert consensus. Wagner can be, because the case log
-      is keyed by image and grader.</p>`;
+      A dash means the figure cannot be computed, not that it is zero.
+      <b>Grader columns on the tissue and infection rows count only ticks made from v11.17
+      onwards</b>, when the tick store began keeping a record per grader; before that it held
+      one set of ticks per image and a second grader overwrote the first, so earlier labels
+      appear under whoever was recorded against them and cannot be retro-split.
+      <b>Both</b> means two graders ticked the same class on the same image, which on the tissue
+      and peri-wound rows is what their <i>confirmed</i> column measures.</p>`;
 
   el.querySelectorAll('input[data-rmx]').forEach(inp => inp.onchange = () => {
     const t = loadTargets();
@@ -6741,8 +6767,35 @@ function saveLabels(){
   pool.forEach(it => { const k = labKey(it);
     const any = labelled(it) || it.skin || it.flag || it.typeSet
              || Object.keys(it.ex || {}).length || Object.keys(it.rec || {}).length;
-    if (any) m[k] = { w: it.wagner, n: it.npiap, f: [...it.feats], s: it.skin || null, q: !!it.flag,
-                      t: it.wtype, ts: !!it.typeSet, e: it.ex || {}, r: it.rec || {} };
+    if (any) {
+      /* ── the grader dimension ─────────────────────────────────────────────────
+         labKey is the IMAGE (name + size), so this record held ONE set of ticks however many
+         people ticked it: the second grader overwrote the first and the disagreement — which is
+         the whole measurement — was destroyed on save. Inter-rater agreement on the findings
+         was therefore unreachable, which is what the readiness matrix was reporting as a dash.
+
+         ADDITIVE on purpose. The flat fields stay exactly as they were, so every existing read
+         path is untouched and nothing that works today can break; `byGrader` is kept beside
+         them. The alternative, putting the grader in labKey, would have orphaned every label
+         already in a browser, because reattachment matches on that key.
+
+         MERGED, not rebuilt. This function regenerates m[k] from the in-memory pool on every
+         save, so byGrader has to be carried across or the previous grader's ticks would be
+         wiped by the next save — the same destruction in a new place. */
+      const prev = m[k] || {};
+      const byGrader = Object.assign({}, prev.byGrader);
+      /* A record from before this build has one grader's ticks in its flat fields. Migrate it
+         into the map the first time it is re-saved, so history is not stranded. It can only be
+         filed under the grader it recorded; where none was recorded none is invented. */
+      if (!prev.byGrader && prev.f && ((prev.r || {}).grader || '').trim())
+        byGrader[(prev.r.grader || '').trim()] =
+          { w: prev.w, n: prev.n, f: [...(prev.f || [])], s: prev.s || null, when: prev.when || null };
+      const who = ((it.rec || {}).grader || '').trim();
+      if (who) byGrader[who] = { w: it.wagner, n: it.npiap, f: [...it.feats],
+                                 s: it.skin || null, when: new Date().toISOString() };
+      m[k] = { w: it.wagner, n: it.npiap, f: [...it.feats], s: it.skin || null, q: !!it.flag,
+               t: it.wtype, ts: !!it.typeSet, e: it.ex || {}, r: it.rec || {}, byGrader };
+    }
     else delete m[k]; });
   try { localStorage.setItem(LABELS_KEY, JSON.stringify(m)); }
   catch(e){ toast('Labels could not be stored \u2014 export the CSV before reloading'); }

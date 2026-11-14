@@ -1,0 +1,80 @@
+{
+  "buildStamp": "build 2026-11-13 · v11.13",
+  "modelCard": {
+    "mcLabels": "Demonstrator labels are WEAK LABELS, not a clinical diagnosis. Severity comes from wound area in the expert masks. Infection is a colour proxy: \"suspected\" when slough fraction > 0.10 OR necrosis fraction > 0.15 of the wound bed, \"none\" when slough < 0.01 AND necrosis < 0.02, and images between the two thresholds are excluded from the infection loss entirely. Derived from FUSeg wound masks plus HSV colour thresholds. NOT from clinical diagnosis, tissue culture, or any clinician adjudication. Peri-wound redness was in the first version of the rule and was removed because healthy granulation is also red. The grading session and the Train tab exist precisely to replace all of this.",
+    "mcPerf": "Whole-photo classifier — severity AUC 0.93, accuracy 84 %; infection AUC 0.80, accuracy 75 %. Wound-crop classifier — severity AUC 0.96, accuracy 93 %; infection AUC 0.83, accuracy 82 %. Cropping to the segmented wound is what accounts for the difference. Segmentation — Dice 0.85, IoU 0.76 on 190 held-out images. All figures describe agreement with the weak labels, not clinical accuracy.",
+    "mcTissue": "3-fold cross-validated by case over all 104 usable images, so every image is scored once on a model that never saw it: granulation 0.711, slough 0.495, mean 0.603 over the two classes that can be scored at all. necro, pus, pale never occur in the released annotations, so they cannot be scored and are not in that mean. Slough is the weak class: its percentages should not be presented to clinicians as reliable. Architecture is not the lever — Attention U-Net and DeepLabV3+ were both tried and neither beat this.",
+    "mcCal": "Identity plus horizontal, vertical and both flips, probabilities averaged. Infection AUC 0.834 -> 0.863; severity 0.963 -> 0.965. The infection head DECLINES TO ANSWER below a confidence of 0.7, which keeps 66 % of images at 89 % accuracy against 83 % if every image were forced to an answer. An abstention is shown as no estimate at all, and must not be read as a negative. Fitted on the FUSeg validation split against WEAK labels. Refit on clinician-adjudicated, culture-confirmed data before any clinical claim.",
+    "mcVer": "App build 2026-11-13 · v11.13. Segmentation ec6c04985254 · Tissue 03c64607abbe · Whole-photo classifier 1a69624511de · Wound-crop classifier ddbbc08b6cfb. These are sha256 over each model’s weights and topology, and the case log records the classifier hash on every row, so a retrain can never be pooled with what came before.",
+    "mcTissueN": "104"
+  },
+  "formularyDfu": {
+    "rows": [
+      "Diabetic foot · mild filled in",
+      "Diabetic foot · moderate filled in",
+      "Diabetic foot · severe filled in"
+    ],
+    "nagSevLength": 4,
+    "nagSevKeys": [
+      "mild",
+      "moderate",
+      "severe",
+      "pi"
+    ],
+    "nagSevLabels": [
+      "Diabetic foot · mild",
+      "Diabetic foot · moderate",
+      "Diabetic foot · severe",
+      "Pressure injury · systemic infection"
+    ],
+    "nagSevFiltered": [
+      "Diabetic foot · mild",
+      "Diabetic foot · moderate",
+      "Diabetic foot · severe"
+    ],
+    "disease": "dfu",
+    "status": "3 of 3 severities filled in. These are live in the assessment panel now."
+  },
+  "logCard": {
+    "found": true,
+    "ancestorTabId": "tab-data"
+  },
+  "logControls": {
+    "exportCsv": {
+      "present": true,
+      "visible": true,
+      "text": "Export CSV"
+    },
+    "importCsvLabel": {
+      "present": true,
+      "visible": true,
+      "text": "Import CSV"
+    },
+    "copyTsv": {
+      "present": true,
+      "visible": true,
+      "text": "Copy for Sheets"
+    }
+  },
+  "logCardVisible": true,
+  "formularyPi": {
+    "rows": [
+      "Pressure injury · systemic infection filled in"
+    ],
+    "nagSevLength": 4,
+    "nagSevLabels": [
+      "Diabetic foot · mild",
+      "Diabetic foot · moderate",
+      "Diabetic foot · severe",
+      "Pressure injury · systemic infection"
+    ],
+    "nagSevFiltered": [
+      "Pressure injury · systemic infection"
+    ],
+    "disease": "pi",
+    "status": "1 of 1 severities filled in. These are live in the assessment panel now."
+  },
+  "pageErrors": [],
+  "consoleErrors": [],
+  "failedRequests": []
+}

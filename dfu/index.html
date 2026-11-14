@@ -354,6 +354,18 @@ ol.guide b{color:var(--navy)}
 .critrow .c{flex:1;min-width:0}
 .critrow .c b{display:block;font-size:12.5px;font-weight:600;color:var(--navy);line-height:1.4}
 .critrow .c em{display:block;font-style:normal;font-size:11px;color:var(--muted);line-height:1.45;margin-top:2px}
+.rmx{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.rmx th{text-align:left;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:0 6px 6px 0;vertical-align:bottom}
+.rmx td{padding:6px 6px 6px 0;border-top:1px solid var(--rule);vertical-align:middle;font-family:var(--mono);font-size:11.5px}
+.rmx td.lab{font-family:inherit;font-size:12.5px;color:var(--navy);font-weight:600;white-space:nowrap}
+.rmx td.lab em{display:block;font-style:normal;font-size:10.5px;color:var(--faint);font-weight:400;font-family:var(--mono)}
+.rmx tr.grp th{padding-top:12px;color:var(--navy);font-size:11px}
+.rmx .na{color:var(--faint)}
+.rmx input{width:52px;padding:3px 5px;border:1px solid var(--line);border-radius:6px;font-family:var(--mono);font-size:11.5px;text-align:right}
+.rmxbar{display:block;height:5px;border-radius:3px;background:var(--cloud);overflow:hidden;min-width:54px}
+.rmxbar i{display:block;height:100%;background:var(--teal)}
+.rmxbar.low i{background:#d97706}
+.rmxbar.none i{background:#b3182f}
 details.prov{margin-top:8px}
 details.prov>summary{font-size:12px}
 table.provt{width:100%;border-collapse:collapse;margin-top:8px;font-size:11.5px;line-height:1.5}
@@ -1638,6 +1650,10 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
       <div class="tile"><div class="v" id="kCult">—</div><div class="k">Culture positive</div><div class="s">of those with a result</div></div>
       <div class="tile"><div class="v" id="kKappa">—</div><div class="k">Inter-rater κ</div><div class="s">needs 10 or more usable pairs</div></div>
     </div>
+    <!-- Per-class readiness. The tiles above answer "how much data do I have" in aggregate,
+         which cannot show that one stratum is starved: 400 Wagner 2 and 3 Wagner 4 look
+         healthy in a total. A study fails on the empty stratum, so it gets its own table. -->
+    <div id="readyMatrix" style="margin-top:14px"></div>
     <div class="note" id="kappaNote" style="margin:10px 0 0"></div>
     <div id="pending" style="margin-top:10px"></div>
 
@@ -4258,7 +4274,7 @@ function srgbToLab(r, g, b){
    case log could not record which version produced a row — and a log that cannot say which
    version produced a row cannot be pooled across a retrain, which is the whole point of
    keeping one. Rendered into the footer at start-up, written into every case row. */
-const BUILD = '2026-11-14 \u00b7 v11.15';
+const BUILD = '2026-11-14 \u00b7 v11.16';
 /* Rendered rather than typed into the markup, so the footer and the case log can never
    disagree about which version is running. */
 try { const bs = document.getElementById('buildStamp');
@@ -5438,6 +5454,147 @@ function renderPending(){
   });
 }
 
+/* ── per-class readiness ──────────────────────────────────────────────────────
+   EVERY CLASS HAS ITS OWN REFERENCE STANDARD, and the column says which. Culture confirms
+   INFECTION, so it is the right standard for pus, abscess and wet gangrene and the wrong one
+   everywhere else: a culture result says nothing about whether an ulcer reaches bone, and
+   nothing about whether a bed is sloughy. Printing a culture count against Wagner 1 would put
+   a number under a heading that means nothing, which is the fault this app has been cleared of
+   repeatedly. So the standard is named per row and the count follows it.
+
+   WHAT IS NOT AVAILABLE IS SAID, NOT GUESSED. The tick store is keyed by image
+   (`labKey = name + '|' + size`), so it holds ONE entry per image however many people tick it.
+   The case log is keyed by image AND grader. So Wagner can be split by grader and
+   double-graded; the tissue and infection ticks cannot, under the current storage. Those cells
+   read "—" and the note underneath says why, because a dash a reader can interpret beats a
+   zero they cannot. */
+const TARGET_KEY = 'wound_vision_targets_v1';
+const loadTargets = () => { try { return JSON.parse(localStorage.getItem(TARGET_KEY) || '{}'); } catch(e){ return {}; } };
+/* 40 per stratum is the handover's figure: at 25-30 % prevalence you need about forty
+   positives per sign before kappa stops being an anecdote. It is a DEFAULT, not a finding —
+   every cell is editable and what you type is what the bar measures against. */
+const TARGET_DEFAULT = 40;
+
+const RMX_ROWS = [
+  ['grp', 'Meggitt–Wagner grade', 'second grader recorded the same grade'],
+  ['w1', 'Wagner 1', 'wagner', '1', 'pr'],
+  ['w2', 'Wagner 2', 'wagner', '2', 'pr'],
+  ['w3', 'Wagner 3', 'wagner', '3', 'pr'],
+  ['w4', 'Wagner 4', 'wagner', '4', 'pr'],
+  ['w5', 'Wagner 5', 'wagner', '5', 'pr'],
+  ['grp', 'Signs of infection', 'a culture result is recorded for the case'],
+  ['pus', 'Pus', 'feat', 'pus', 'cx'],
+  ['abscess', 'Abscess', 'feat', 'abscess', 'cx'],
+  ['wet_gangrene', 'Wet gangrene', 'feat', 'wet_gangrene', 'cx'],
+  ['grp', 'Tissue and peri-wound', 'expert consensus on the image — no microbiology adjudicates these'],
+  ['granulation', 'Granulation', 'feat', 'granulation', 'ec'],
+  ['slough', 'Slough', 'feat', 'slough', 'ec'],
+  ['necrosis', 'Necrosis / eschar', 'feat', 'necrosis', 'ec'],
+  ['periwound_erythema', 'Peri-wound erythema', 'feat', 'periwound_erythema', 'ec']
+];
+const REF_WORD = { pr: 'probe / adjudication', cx: 'culture', ec: 'expert consensus' };
+
+function renderReadyMatrix(){
+  const el = $('readyMatrix'); if (!el) return;
+  if (DISEASE === 'pi'){ el.innerHTML = ''; return; }   // Wagner and these ticks are foot-ulcer
+
+  const isPi = r => rowArm(r) === 'pi';
+  const log = loadLog().filter(r => !isPi(r));
+  const store = loadLabels();
+  const runs = loadRuns();
+  const targets = loadTargets();
+
+  /* Culture by image, so an infection tick can be matched to the case that carries the result. */
+  const cultured = new Set(log.filter(r => (r.organisms || []).length).map(r => String(r.image)));
+
+  /* The two graders with the most rows, named. "Grader 1" and "grader 2" as positions would
+     silently re-point at different people as the log grows. */
+  const byGrader = {};
+  log.forEach(r => { const g = (r.grader || '').trim(); if (g) byGrader[g] = (byGrader[g] || 0) + 1; });
+  const graders = Object.keys(byGrader).sort((a, b) => byGrader[b] - byGrader[a]).slice(0, 2);
+
+  const latestRun = t => runs.find(r => r.target === t) || null;
+
+  const cell = (v, na) => v === null || v === undefined
+    ? `<td class="na" title="${na || ''}">—</td>` : `<td>${v}</td>`;
+
+  const rows = RMX_ROWS.map(spec => {
+    if (spec[0] === 'grp')
+      return `<tr class="grp"><th colspan="${4 + graders.length + 2}">${spec[1]}
+              <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--faint)">
+              · confirmed = ${spec[2]}</span></th></tr>`;
+
+    const [key, label, kind, val, ref] = spec;
+    let labelled, confirmed, perGrader, both, trained;
+
+    if (kind === 'wagner'){
+      const mine = log.filter(r => String(r.gt_wagner) === val);
+      labelled = mine.length;
+      /* Confirmed: a second grader recorded the SAME grade. Disagreement is not confirmation,
+         and counting any rater2 entry would have made a contradiction look like evidence. */
+      confirmed = mine.filter(r => r.rater2_wagner && String(r.rater2_wagner) === val).length;
+      perGrader = graders.map(g => mine.filter(r => (r.grader || '').trim() === g).length);
+      const imgs = {};
+      mine.forEach(r => { const i = String(r.image); (imgs[i] = imgs[i] || new Set()).add((r.grader || '?').trim()); });
+      both = Object.values(imgs).filter(x => x.size > 1).length;
+      const run = latestRun('wagner');
+      trained = run && run.per_class ? (run.per_class[val] ?? run.per_class['W' + val] ?? null) : null;
+    } else {
+      const ticked = Object.keys(store).filter(k => (store[k].f || []).includes(val));
+      labelled = ticked.length;
+      confirmed = ref === 'cx'
+        ? ticked.filter(k => cultured.has(String(k.split('|')[0]))).length
+        : null;                                   // no expert-consensus record exists yet
+      perGrader = graders.map(() => null);        // tick store is one entry per image
+      both = null;
+      const run = latestRun('feat:' + val);
+      trained = run && run.per_class
+        ? (run.per_class['present'] ?? run.per_class[val] ?? run.per_class['1'] ?? null) : null;
+    }
+
+    const tgt = targets[key] ?? TARGET_DEFAULT;
+    const pct = tgt > 0 ? Math.min(100, Math.round(100 * labelled / tgt)) : 0;
+    const bar = `<span class="rmxbar ${pct === 0 ? 'none' : pct < 50 ? 'low' : ''}"><i style="width:${pct}%"></i></span>`;
+    const noTick = 'the tick store holds one entry per image, so this cannot be split by grader';
+
+    return `<tr>
+      <td class="lab">${label}<em>${REF_WORD[ref]}</em></td>
+      <td>${labelled}</td>
+      ${cell(trained, 'no training run has targeted this class yet')}
+      ${cell(confirmed, ref === 'ec' ? 'no expert-consensus field exists yet' : '')}
+      ${perGrader.map(v => cell(v, noTick)).join('')}
+      ${cell(both, noTick)}
+      <td><input type="number" min="0" max="9999" value="${tgt}" data-rmx="${key}"></td>
+      <td style="width:70px">${bar}</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `<p class="small qgroup" style="margin-bottom:0">Readiness by class
+      <span>target is editable · default ${TARGET_DEFAULT}</span></p>
+    <table class="rmx">
+      <tr><th>Class</th><th>Labelled</th><th>Trained</th><th>Confirmed</th>
+        ${graders.map(g => `<th>${g.split(' ').slice(-1)[0] || g}</th>`).join('')}
+        <th>Both</th><th>Target</th><th>Progress</th></tr>
+      ${rows}
+    </table>
+    <p class="small" style="margin:8px 0 0;color:var(--muted)">
+      <b>Confirmed</b> means something different per block and the heading of each says which:
+      culture settles infection, it does not settle depth or tissue type.
+      ${graders.length ? `Grader columns are <b>${graders.join('</b> and <b>')}</b>, the two with the most rows.` : 'No grader is recorded on any row yet.'}
+      A dash means the figure cannot be computed, not that it is zero — the tick store keeps one
+      entry per image, so the tissue and infection ticks cannot be split by grader or
+      double-graded, and no field records expert consensus. Wagner can be, because the case log
+      is keyed by image and grader.</p>`;
+
+  el.querySelectorAll('input[data-rmx]').forEach(inp => inp.onchange = () => {
+    const t = loadTargets();
+    const v = parseInt(inp.value, 10);
+    if (Number.isFinite(v) && v >= 0) t[inp.dataset.rmx] = v; else delete t[inp.dataset.rmx];
+    try { localStorage.setItem(TARGET_KEY, JSON.stringify(t)); } catch(e){}
+    renderReadyMatrix();
+  });
+}
+
 /* ── inter-rater agreement ─────────────────────────────────────────────────────────────────
    Every accuracy figure in this app is agreement with one clinician's opinion. Wagner grading
    and NPIAP staging both have documented disagreement between observers, so without a second
@@ -5751,6 +5908,7 @@ function renderDashboard(){
   $('dashTiles').innerHTML = tiles.map(([k, v, lab, sub]) =>
     `<div class="tile${k === 'w' ? ' warn' : ''}"><div class="v">${v}</div><div class="k">${lab}</div><div class="s">${sub}</div></div>`).join('');
   $('dashWhen').textContent = log.length ? 'counted just now' : 'nothing on this arm yet';
+  renderReadyMatrix();
   /* Kept, but out of the tile grid: it is the only number here that spans both arms, and sitting
      among arm-scoped tiles it read as this arm's total. */
   if ($('dashSeen')) $('dashSeen').innerHTML =
@@ -5803,8 +5961,16 @@ function renderDashboard(){
       : '<table class="keep"><tr><th>when</th><th>label</th><th>trained on</th><th>held out</th><th>accuracy</th><th>macro F1</th></tr>'
         + runs.slice(0, 10).map(r => `<tr><td>${new Date(r.when).toLocaleString()}</td>
             <td>${r.target || '?'}</td>
-            <td>${r.n_train_images} images${r.aug ? ' (\u00d73 flips)' : ''}<br><small>${Object.entries(r.per_class || {}).map(([c, n]) => c + ' ' + n).join(' \u00b7 ')}</small></td>
-            <td>${r.n_val}</td><td>${(r.accuracy * 100).toFixed(0)} %</td><td>${r.macro_f1.toFixed(2)}</td></tr>`).join('')
+            <td>${r.n_train_images ?? '\u2014'} images${r.aug ? ' (\u00d73 flips)' : ''}<br><small>${Object.entries(r.per_class || {}).map(([c, n]) => c + ' ' + n).join(' \u00b7 ')}</small></td>
+            <td>${r.n_val ?? '\u2014'}</td>
+            <!-- Guarded. A run record missing accuracy or macro_f1 used to throw inside this
+                 map, which took out the WHOLE of renderDashboard: the readiness tiles, the
+                 per-class matrix and the history itself all vanished because one row of one
+                 table lacked one number. The history keeps forty runs, so a record written by
+                 an older build outlives the build that wrote it. A dash costs nothing; a blank
+                 dashboard costs the screen. -->
+            <td>${typeof r.accuracy === 'number' ? (r.accuracy * 100).toFixed(0) + ' %' : '\u2014'}</td>
+            <td>${typeof r.macro_f1 === 'number' ? r.macro_f1.toFixed(2) : '\u2014'}</td></tr>`).join('')
         + '</table>';
   }
 }

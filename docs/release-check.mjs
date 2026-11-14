@@ -126,6 +126,8 @@ const check = (name, ok, detail) => { results.push({ name, ok, detail }); return
 const main = async () => {
   const browser = await chromium.launch()
   const page = await browser.newPage({ viewport: { width: 560, height: 1400 } })
+  /* APP is resolved below; the seeded-log stage further down opens its own context so the
+     main run is never contaminated by a populated log. */
 
   const pageErrors = [], consoleErrors = [], badResponses = [], failedRequests = []
   /* The stack, not just the message. The first live run failed on "Cannot read properties
@@ -287,6 +289,114 @@ const main = async () => {
   check('no console errors', consoleErrors.length === 0, consoleErrors.join(' | '))
   check('no failed requests', failedRequests.length === 0, failedRequests.join(' | '))
   check('no HTTP >= 400', badResponses.length === 0, badResponses.join(' | '))
+
+  // ── D2. the case log, with a log in it ─────────────────────────────────────────
+  /* Everything above runs against an EMPTY case log, because a fresh browser profile has one.
+     That left the whole case-log path unvisited, and it is where a real defect lived for an
+     unknown length of time: culture_positive was written only when organisms were entered, so a
+     fresh row carried `undefined`, and the guards on it tested `!== null`, which undefined
+     passes. An uncultured row counted as having a culture result and drew an "agrees with C&S"
+     chip against a culture that did not exist. Forty checks passed throughout.
+
+     So the log is seeded and the card is read. The seed covers the states the card can report,
+     and the chip assertion is deliberately two-sided: EXACTLY ONE row has both a culture and a
+     prediction, so exactly one chip must appear. "No chips" would pass if the feature were
+     deleted, and that is not what we want to know.
+
+     This runs in a separate browser context. Nothing is written to anyone's real profile, and
+     the context is discarded with the run. */
+  const ctx2 = await browser.newContext({ viewport: { width: 760, height: 1400 } })
+  const pg2 = await ctx2.newPage()
+  const seedErrors = []
+  pg2.on('pageerror', e => seedErrors.push(e.message))
+  pg2.on('console', m => { if (m.type() === 'error') seedErrors.push('console: ' + m.text()) })
+
+  await pg2.goto(`${APP}?arm=dfu`, { waitUntil: 'domcontentloaded' })
+  await pg2.waitForTimeout(1500)
+
+  /* Read the key from the page rather than hardcoding it, so a rename cannot leave this
+     silently seeding a key nothing reads — which would look exactly like a pass. */
+  const logKey = await pg2.evaluate(`typeof LOG_KEY !== 'undefined' ? LOG_KEY : ''`)
+  check('the case-log storage key is readable', !!logKey, logKey || 'LOG_KEY not found')
+
+  if (logKey) {
+    await pg2.evaluate(`(() => {
+      const now = Date.now(), day = 86400000, K = ${JSON.stringify(logKey)}
+      const mk = (i, over) => Object.assign({
+        id: 'RC|' + i, when: new Date(now - i * day).toISOString(),
+        case_id: 'P' + (100 + i), image: 'RC_' + (100 + i) + '.JPG',
+        disease: 'diabetic foot ulcer', grader: 'Release Check', gt_wagner: '3',
+        gt_grade: '', gt_stage: '', ai_label: '', organisms: [], outcome: '',
+        skin_type: '', thumb: '', sheet_sent: null, p_infection: null
+        /* culture_positive is deliberately ABSENT from the defaults. That is how rows written
+           before v11.15 actually look, and absence — not null — is what the original defect
+           turned on: the guards tested "!== null", which "undefined" passes. Seeding it as null
+           hides the very fault this stage exists to catch, and did: the first version of this
+           seed set it to null, the defect was put back in a throwaway copy, and the check
+           passed anyway. */
+      }, over || {})
+      localStorage.setItem(K, JSON.stringify([
+        mk(1),                                                                  // needs everything
+        mk(2, { organisms: ['Staph aureus'], culture_positive: true,
+                outcome: 'Healed', skin_type: 'IV',
+                sheet_sent: new Date().toISOString() }),                        // culture, no prediction
+        mk(3, { organisms: ['E. coli'], culture_positive: true,
+                p_infection: 0.81, ai_label: 'suspected', skin_type: 'III' }),  // BOTH -> the one chip
+        /* THE PROBE. A prediction, and no culture_positive key at all. A correct guard draws no
+           chip here; the old "!== null" guard draws one, giving two chips and failing below. */
+        mk(4, { p_infection: 0.42, ai_label: 'none', skin_type: 'II' }),
+        mk(40)                                                                  // predates tracking
+      ]))
+      localStorage.setItem(K + '_exported', String(now - 27 * day))
+      localStorage.setItem(K + '_sheettrack', String(now - 5 * day))
+      localStorage.setItem('wound_vision_sheet_url', 'https://script.google.com/macros/s/RELEASECHECK/exec')
+    })()`)
+
+    await pg2.reload({ waitUntil: 'domcontentloaded' })
+    await pg2.waitForTimeout(1800)
+    try {
+      if (await pg2.isVisible('#ack1')) { await pg2.check('#ack1'); await pg2.check('#ack2') }
+      if (await pg2.isVisible('#enter')) {
+        await pg2.waitForSelector('#enter:not([disabled])', { timeout: 15000 })
+        await pg2.click('#enter')
+      }
+    } catch (e) { /* gate already passed in this profile */ }
+    await pg2.waitForTimeout(1200)
+
+    // the case log is on the Dashboard, which is study-gated
+    await pg2.evaluate(`(() => { try { setStudyMode(true) } catch (e) {} })()`)
+    await pg2.waitForTimeout(400)
+    try { await pg2.click('#tabData') } catch (e) { /* reported by the checks below */ }
+    await pg2.waitForTimeout(1200)
+
+    const seen = await pg2.evaluate(`(() => ({
+      /* \\s, not \s. This string is a TEMPLATE LITERAL evaluated in the page, so JavaScript
+         resolves \s to a plain "s" before the regex is ever compiled: /\s+/ silently became
+         /s+/ and the whitespace collapse turned into an s-remover. "still needs" came back as
+         " till need ", and the assertion looking for "still needs" failed on text the app had
+         rendered perfectly. */
+      rows: [...document.querySelectorAll('#logList li')].map(li => li.innerText.replace(/\\s+/g, ' ').trim()),
+      chips: document.querySelectorAll('#logList .agree').length,
+      storage: (document.getElementById('logStorage') || {}).innerText || '',
+      dash: (document.getElementById('tab-data') || {}).innerText || ''
+    }))()`)
+
+    const rowText = seen.rows.join(' | ')
+    log(`\n  seeded log: ${seen.rows.length} rows rendered, ${seen.chips} agreement chip(s)`)
+    seen.rows.forEach(r => log('    | ' + r.slice(0, 120)))
+
+    check('seeded log renders its rows', seen.rows.length >= 5, `${seen.rows.length} rows`)
+    check('no "model ?" placeholder', !/model \?/.test(rowText),
+          (rowText.match(/model \?/g) || []).length + ' occurrence(s)')
+    check('an incomplete row says what it needs', /still needs/.test(rowText))
+    check('exactly one agreement chip, on the row with culture AND prediction',
+          seen.chips === 1, seen.chips + ' chips — 0 means the comparison never renders, 2 means it fires on a row with no culture result')
+    check('storage note leads with the risk', /There is no server/.test(seen.storage), seen.storage.slice(0, 90))
+    check('storage note reports Sheet coverage', /Confirmed written to the Google Sheet/.test(seen.storage))
+    check('storage note separates export from send', /Last CSV export/.test(seen.storage))
+    check('no page or console errors with a populated log', seedErrors.length === 0, seedErrors.join(' | '))
+  }
+  await ctx2.close()
 
   // ── E. the weaker source scan, for states the browser never reached ─────────────────────
   const served = await (await fetch(APP)).text()

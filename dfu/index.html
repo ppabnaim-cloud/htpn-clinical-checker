@@ -1591,14 +1591,10 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
         <label class="btn btn-ghost btn-sm" style="cursor:pointer">Import CSV<input type="file" accept=".csv,text/csv" id="importCsv" hidden></label>
       </div></div>
     <div class="sheetstate" id="sheetState"></div>
-    <div class="kpis">
-      <div class="kpi"><b id="kCases">0</b><span>cases logged</span></div>
-      <div class="kpi"><b id="kInf">—</b><span>infection agreement</span></div>
-      <div class="kpi"><b id="kCult">—</b><span>culture positive</span></div>
-      <div class="kpi"><b id="kKappa">—</b><span>inter-rater κ</span></div>
-    </div>
-    <div class="note" id="kappaNote" style="margin:0 0 10px"></div>
-    <div id="pending"></div>
+    <!-- The summary tiles, the kappa note and the awaiting-culture list moved up into Data
+         readiness. "cases logged" and "Cases in the log" were the same number printed twice on
+         one screen, and the two culture counts disagreed because they scoped the arm by
+         different predicates. A log is a log; the counting belongs in one place. -->
     <p class="small" style="margin:2px 0 8px;color:var(--muted)">Written from your grading in <b>step B</b> — one row per image per grader. Tap a case to add what was not known when you graded it: the culture result, and the outcome at follow-up.</p>
     <ul class="log-list" id="logList"></ul>
     <p id="logEmpty" class="small" style="margin-top:8px;color:var(--faint)">No cases logged yet.</p>
@@ -1623,6 +1619,17 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
     <div class="tiles" id="dashTiles"></div>
     <div class="note" id="dashVerdict" style="margin-top:12px"></div>
     <p class="small" id="dashSeen" style="margin:9px 0 0"></p>
+
+    <!-- Agreement, moved here from the case log so every count on this arm is in one card.
+         Styled as readiness tiles rather than the old .kpi row, so the two rows read as one
+         grid instead of two competing summaries. -->
+    <div class="tiles" id="dashAgree" style="margin-top:10px">
+      <div class="tile"><div class="v" id="kInf">—</div><div class="k">Infection agreement</div><div class="s">model against culture</div></div>
+      <div class="tile"><div class="v" id="kCult">—</div><div class="k">Culture positive</div><div class="s">of those with a result</div></div>
+      <div class="tile"><div class="v" id="kKappa">—</div><div class="k">Inter-rater κ</div><div class="s">needs 10 or more usable pairs</div></div>
+    </div>
+    <div class="note" id="kappaNote" style="margin:10px 0 0"></div>
+    <div id="pending" style="margin-top:10px"></div>
 
     <!-- Reachable with no images loaded, which is the point: the files you picked do not survive
          a reload, so a control living in the labelling card is unreachable exactly when this
@@ -4241,7 +4248,7 @@ function srgbToLab(r, g, b){
    case log could not record which version produced a row — and a log that cannot say which
    version produced a row cannot be pooled across a retrain, which is the whole point of
    keeping one. Rendered into the footer at start-up, written into every case row. */
-const BUILD = '2026-11-13 \u00b7 v11.13';
+const BUILD = '2026-11-14 \u00b7 v11.14';
 /* Rendered rather than typed into the markup, so the footer and the case log can never
    disagree about which version is running. */
 try { const bs = document.getElementById('buildStamp');
@@ -4838,7 +4845,7 @@ function renderAssessJourney(){
                    : [['Meggitt–Wagner', ruleWagner(a)], ['University of Texas', ruleTexas(a)]];
   const settled = rules.filter(([, r]) => r.label);
   const log = loadLog();
-  const waiting = log.filter(r => r.disease !== 'pressure injury' && !(r.organisms || []).length).length;
+  const waiting = awaitingCulture(log).length;
   /* Read "has this been recorded" from the log rather than a session flag. Switching between a
      foot ulcer and a pressure injury asks a different clinical question about the same
      photograph, so a flag would leave step 3 ticked for a record made about the other one. The
@@ -5392,9 +5399,18 @@ function wireFollowup(li, r){
 
 /* A worklist of cases whose microbiology has not come back. The hard part of closing this loop is
    not typing an organism name — it is remembering, three days later, that a swab was sent. */
+/* Awaiting a culture result, scoped the way every other per-arm count in this file is scoped.
+   Two call sites used `r.disease !== 'pressure injury'` while the readiness tile used rowArm(),
+   and the two disagreed by one on any row whose disease field was never set. One predicate, in
+   one place, so they cannot drift apart again. */
+const awaitingCulture = log => {
+  const isPi = DISEASE === 'pi';
+  return log.filter(r => (rowArm(r) === 'pi') === isPi && !(r.organisms || []).length);
+};
+
 function renderPending(){
   const log = loadLog();
-  const waiting = log.filter(r => r.disease !== 'pressure injury' && !(r.organisms || []).length)
+  const waiting = awaitingCulture(log)
     .map(r => ({ r, days: Math.floor((Date.now() - new Date(r.when).getTime()) / 86400000) }))
     .sort((a, b) => b.days - a.days);
   const el = $('pending');
@@ -5457,7 +5473,7 @@ function renderLog(){
      read down a column, and the agreement figures above it would be computed across two scales. */
   const isPi = DISEASE === 'pi';
   const log = loadLog().filter(r => (rowArm(r) === 'pi') === isPi);
-  $('kCases').textContent = log.length; $('logEmpty').classList.toggle('hidden', log.length > 0);
+  $('logEmpty').classList.toggle('hidden', log.length > 0);
   const withCult = log.filter(r => r.culture_positive !== null && r.p_infection !== null);
   const agree = withCult.filter(r => (r.p_infection >= 0.5) === r.culture_positive).length;
   $('kInf').textContent = withCult.length ? `${Math.round(100*agree/withCult.length)} %` : '—';
@@ -5660,6 +5676,9 @@ function renderDashboard(){
   const byImage = {};
   log.forEach(r => { (byImage[r.image] = byImage[r.image] || new Set()).add(r.grader || '?'); });
   const doubled = Object.values(byImage).filter(x => x.size > 1).length;
+  /* The same predicate renderKappa() uses, so the tile and the note cannot disagree. */
+  const kappaPairs = log.filter(r => (r.gt_wagner && r.rater2_wagner)
+                                  || (r.npiap_stage && r.rater2_npiap)).length;
 
   /* The tiles differ by arm, not only in their numbers. "Awaiting culture" is a foot-ulcer
      question; a pressure injury is not cultured, so counting it there would invent a gap that
@@ -5677,15 +5696,23 @@ function renderDashboard(){
     [last ? 'v' : 'w', last ? last.n_train_images : 0, 'Used in last training', last ? `+ ${last.n_val} held out` : 'never trained on this arm'],
     ['v', log.length, 'Cases in the log', pi ? 'pressure injuries only' : 'foot ulcers only'],
     ['v', graders.size, 'Graders', [...graders].join(', ') || 'none yet'],
-    [doubled ? 'v' : 'w', doubled, 'Double-graded', doubled ? 'available for \u03ba' : '\u03ba not computable'],
+    /* "available for \u03ba" was false. `doubled` counts images carrying more than one GRADER ROW,
+       while \u03ba reads the rater2_* fields on a single row \u2014 so the screen could show "4
+       double-graded, available for \u03ba" directly above "No second grading yet". Both facts are
+       worth having, so the tile now reports the count \u03ba can actually use and says where the
+       rest went. */
+    [kappaPairs ? 'v' : 'w', kappaPairs, 'Usable for \u03ba',
+     kappaPairs ? 'second grade recorded'
+     : doubled ? doubled + ' image' + (doubled === 1 ? '' : 's') + ' have two graders, but no second grade is filled in'
+     : '\u03ba not computable'],
     [noGrader ? 'w' : 'v', noGrader, 'No grader recorded', noGrader ? 'attribute them above' : 'all attributed'],
     [outcomes ? 'v' : 'w', outcomes, 'With an outcome', 'follow-up recorded'],
     [noSkin ? 'w' : 'v', noSkin, 'Missing skin type', noSkin ? 'cannot report by tone' : 'complete'],
     [withTissue ? 'v' : 'w', withTissue, 'With tissue findings', withTissue ? 'of ' + log.length + ' cases' : 'can be added later']
   ];
   if (!pi) tiles.splice(9, 0,
-    [log.filter(r => !(r.organisms || []).length).length ? 'w' : 'v',
-     log.filter(r => !(r.organisms || []).length).length, 'Awaiting culture', 'deep tissue specimen']);
+    [awaitingCulture(log).length ? 'w' : 'v',
+     awaitingCulture(log).length, 'Awaiting culture', 'deep tissue specimen']);
 
   $('dashTiles').innerHTML = tiles.map(([k, v, lab, sub]) =>
     `<div class="tile${k === 'w' ? ' warn' : ''}"><div class="v">${v}</div><div class="k">${lab}</div><div class="s">${sub}</div></div>`).join('');

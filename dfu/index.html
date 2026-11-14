@@ -1585,7 +1585,7 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
        come with it — this tab is no longer strictly read-only, and that is the right trade:
        the place you look at the data is the place you want to get it out of. -->
   <section class="card" id="logCard">
-    <div class="step"><span class="n">&#9679;</span><h3>Case log · model vs ground truth</h3><div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+    <div class="step"><span class="n">&#9679;</span><h3>Case log</h3><div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" id="copyTsv">Copy for Sheets</button>
         <button class="btn btn-ghost btn-sm" id="exportCsv">Export CSV</button>
         <label class="btn btn-ghost btn-sm" style="cursor:pointer">Import CSV<input type="file" accept=".csv,text/csv" id="importCsv" hidden></label>
@@ -1595,7 +1595,17 @@ body.arm-pi .armbar{background:rgba(255,255,255,.14);border-color:rgba(255,255,2
          readiness. "cases logged" and "Cases in the log" were the same number printed twice on
          one screen, and the two culture counts disagreed because they scoped the arm by
          different predicates. A log is a log; the counting belongs in one place. -->
-    <p class="small" style="margin:2px 0 8px;color:var(--muted)">Written from your grading in <b>step B</b> — one row per image per grader. Tap a case to add what was not known when you graded it: the culture result, and the outcome at follow-up.</p>
+    <!-- It was called "model vs ground truth" and could not show that comparison: step B does
+         not run the model, deliberately, because a grader who can see the app's answer is being
+         measured for anchoring rather than agreement. So every row read "model ?" and always
+         would. The comparison happens afterwards and outside the app. -->
+    <p class="small" style="margin:2px 0 8px;color:var(--muted)">Written from your grading in
+      <b>step B</b> — one row per image per grader. Tap a case to add what was not known when you
+      graded it: the culture result, and the outcome at follow-up. <b>The app's own predictions
+      are not recorded here</b>, because the models are not run while you grade; they are joined
+      on afterwards by <code>docs/batch-predict.mjs</code>. Newest first, so you can check that
+      the last sitting saved — the list of cases waiting longest for a culture is under
+      <b>Data readiness</b>.</p>
     <ul class="log-list" id="logList"></ul>
     <p id="logEmpty" class="small" style="margin-top:8px;color:var(--faint)">No cases logged yet.</p>
     <div class="note" id="logStorage" style="margin-top:10px"></div>
@@ -4248,7 +4258,7 @@ function srgbToLab(r, g, b){
    case log could not record which version produced a row — and a log that cannot say which
    version produced a row cannot be pooled across a retrain, which is the whole point of
    keeping one. Rendered into the footer at start-up, written into every case row. */
-const BUILD = '2026-11-14 \u00b7 v11.14';
+const BUILD = '2026-11-14 \u00b7 v11.15';
 /* Rendered rather than typed into the markup, so the footer and the case log can never
    disagree about which version is running. */
 try { const bs = document.getElementById('buildStamp');
@@ -5474,22 +5484,40 @@ function renderLog(){
   const isPi = DISEASE === 'pi';
   const log = loadLog().filter(r => (rowArm(r) === 'pi') === isPi);
   $('logEmpty').classList.toggle('hidden', log.length > 0);
-  const withCult = log.filter(r => r.culture_positive !== null && r.p_infection !== null);
+  /* `!= null` on purpose: it catches undefined as well as null. See culture_positive in the
+     record builder — rows written before this build carry undefined. */
+  const withCult = log.filter(r => r.culture_positive != null && r.p_infection != null);
   const agree = withCult.filter(r => (r.p_infection >= 0.5) === r.culture_positive).length;
   $('kInf').textContent = withCult.length ? `${Math.round(100*agree/withCult.length)} %` : '—';
-  const cult = log.filter(r => r.culture_positive !== null);
+  const cult = log.filter(r => r.culture_positive != null);
   $('kCult').textContent = cult.length ? `${cult.filter(r => r.culture_positive).length}/${cult.length}` : '—';
   renderKappa(log);
   renderStorage(); renderPending(); renderAssessJourney(); labelSheetPush(); renderSheetState();
   $('logList').innerHTML = log.slice(0, 8).map(r => {
-    const a = (r.culture_positive === null || r.p_infection === null) ? '' : `<span class="agree ${(r.p_infection>=0.5)===r.culture_positive?'':'no'}">${(r.p_infection>=0.5)===r.culture_positive?'agrees with C&S':'disagrees with C&S'}</span>`;
+    const a = (r.culture_positive == null || r.p_infection == null) ? '' : `<span class="agree ${(r.p_infection>=0.5)===r.culture_positive?'':'no'}">${(r.p_infection>=0.5)===r.culture_positive?'agrees with C&S':'disagrees with C&S'}</span>`;
     const pi = r.disease === 'pressure injury';
     const gt = pi
       ? (r.npiap_stage ? 'NPIAP ' + r.npiap_stage : '?')
       : ([r.gt_grade && r.gt_stage ? r.gt_grade + r.gt_stage : '', r.gt_wagner ? 'W' + r.gt_wagner : ''].filter(Boolean).join(' / ') || '?');
-    const tail = pi ? [r.body_site, r.outcome].filter(Boolean).join(' · ') || 'no site recorded'
-                    : ((r.organisms || []).join(', ') || 'no C&S yet');
-    const head = pi ? `clinician ${gt} · no model` : `model ${r.ai_label || '?'} · clinician ${gt}`;
+    /* What this row still needs, rather than one field's absence repeated down the list. The
+       old tail printed "no C&S yet" on every row of a log where no row has a culture, which
+       told a reader nothing and looked like a column that had failed to load. */
+    const needs = [
+      (r.organisms || []).length ? null : 'culture',
+      r.outcome ? null : 'outcome',
+      pi ? (r.body_site ? null : 'site') : null,
+      r.skin_type ? null : 'skin type',
+      r.grader ? null : 'grader'
+    ].filter(Boolean);
+    const got = pi ? [r.body_site, r.outcome].filter(Boolean).join(' · ')
+                   : (r.organisms || []).join(', ');
+    const tail = got || (needs.length ? 'still needs ' + needs.join(', ') : 'complete');
+    /* No "model ?". ai_label is empty on every row written by step B and always will be, so
+       printing a question mark 558 times read as a gap someone should fill. When a prediction
+       HAS been joined on, it is worth showing, so the clause stays — it simply no longer
+       invents a placeholder for the normal case. */
+    const head = (!pi && r.ai_label) ? `model ${r.ai_label} · clinician ${gt}`
+                                     : `clinician ${gt}`;
     const isOpen = String(openCase) === String(r.id);
     const rev = r.revised ? ` · corrected ×${r.revised}` : '';
     return `<li class="${isOpen ? 'open' : ''}" data-id="${r.id}"><img src="${r.thumb || ''}" alt=""><div class="who"><b>${head}</b><small>${r.image} · ${new Date(r.when).toLocaleString()} · ${tail}${rev}</small></div>${a}${isOpen ? followupHtml(r) : ''}</li>`;
@@ -5586,6 +5614,12 @@ async function pushToSheet(rows, label){
       ? `${label}: ${j.added} new row${j.added === 1 ? '' : 's'} written, ${send.length - j.added} already there.`
         + ((j.newColumns && j.newColumns.length) ? ` Added ${j.newColumns.length} new column${j.newColumns.length === 1 ? '' : 's'} to the sheet: ${j.newColumns.join(', ')}.` : '')
       : `${label}: sent, but the script did not reply with a row count — check the sheet.`;
+    /* Mark the rows that actually arrived. "Google Sheet connected. Every case is sent the
+       moment you save it" is a statement about a SETTING, not about the rows already in this
+       browser: anything saved before the sheet was connected, or while auto-send was off, or
+       during a failed POST, never went anywhere and nothing recorded that. A claim about
+       configuration was reading as a guarantee about data. */
+    markSheetSent(rows);
     markExported();
     return true;
   } catch (e) {
@@ -5936,14 +5970,54 @@ function renderStorage(){
   }
   const last = +(localStorage.getItem(LOG_KEY + '_exported') || 0);
   const since = last ? Math.floor((Date.now() - last) / 86400000) : null;
-  const warn = pct >= 70 || since === null || since > 7;
-  el.className = 'note' + (pct >= 85 ? ' rose' : (warn ? '' : ' teal'));
-  el.innerHTML = `<b>${log.length} case${log.length === 1 ? '' : 's'} in this browser</b>, about ${mb.toFixed(2)} MB of a roughly 5 MB limit (${pct} %).`
-    + (pct >= 70 ? ' <b>Approaching the limit</b> — once it is reached a saved case is silently lost. Export, then clear older cases.' : '')
-    + (last ? ` Last exported ${since === 0 ? 'today' : since + ' day' + (since === 1 ? '' : 's') + ' ago'}.` : ' <b>Never exported.</b>')
-    + ' Thumbnails are the bulk of this, and they are not included in the export or the copy.';
+
+  /* Sheet coverage, counted from the rows rather than read off the connection setting. A row
+     carries sheet_sent only once a push has actually carried it, so three states exist and are
+     reported as three: confirmed in the sheet, saved since the last send, and unknown because
+     the row predates this tracking. Unknown is NOT reported as unsent — those rows may well be
+     in the sheet, and claiming otherwise would be the same unfounded statement in the other
+     direction. */
+  const sent = log.filter(r => r.sheet_sent).length;
+  const tracked = +(localStorage.getItem(LOG_KEY + '_sheettrack') || 0);
+  const unknown = tracked ? log.filter(r => !r.sheet_sent && new Date(r.when).getTime() < tracked).length : log.length - sent;
+  const unsent = log.length - sent - unknown;
+
+  /* The real risk on this screen, said at the volume it deserves. There is no server: if this
+     browser's site data is cleared, every case that has not left the device is gone. That was
+     previously one grey sentence under a list. */
+  const atRisk = unsent + (sheetUrl() ? 0 : unknown);
+  const bad = pct >= 85 || since === null || (since !== null && since > 14) || atRisk > 0;
+  el.className = 'note' + (bad ? ' rose' : (pct >= 70 || (since !== null && since > 7) ? '' : ' teal'));
+
+  el.innerHTML = `<b>${log.length} case${log.length === 1 ? '' : 's'} in this browser</b>, about ${mb.toFixed(2)} MB of a roughly 5 MB limit (${pct} %). `
+    + `<b>There is no server.</b> Clearing this browser’s site data deletes every case that has not left the device. `
+    + (pct >= 70 ? '<b>Approaching the storage limit</b> — once it is reached a saved case is silently lost. Export, then clear older cases. ' : '')
+    + (last ? `Last CSV export ${since === 0 ? 'today' : since + ' day' + (since === 1 ? '' : 's') + ' ago'}. `
+            : '<b>Never exported to CSV.</b> ')
+    + (sheetUrl()
+        ? `Confirmed written to the Google Sheet: <b>${sent}</b> of ${log.length}.`
+          + (unsent ? ` <b>${unsent} saved since the last send</b> — press <i>Send all cases now</i>.` : '')
+          + (unknown ? ` ${unknown} ${unknown === 1 ? 'was' : 'were'} saved before sending was tracked, so whether the sheet has ${unknown === 1 ? 'it' : 'them'} is unknown; one <i>Send all cases now</i> settles it, and duplicates are not added twice.` : '')
+        : `<b>No Google Sheet is connected</b>, so the CSV export is the only copy.`)
+    + ' Thumbnails are the bulk of the size here, and they are not included in the export or the copy.';
 }
 const markExported = () => { try { localStorage.setItem(LOG_KEY + '_exported', String(Date.now())); } catch(e){} renderStorage(); };
+/* Stamps sheet_sent on the rows a successful push carried. Rows saved before this build carry
+   nothing, and are reported as UNKNOWN rather than as unsent — they may well be in the sheet.
+   Claiming they are not would be the same kind of unfounded statement in the other direction. */
+/* The moment this build first ran. Rows saved after it are tracked, so "unknown" describes a
+   fixed set of historical rows rather than quietly absorbing new ones. */
+try { if (!localStorage.getItem(LOG_KEY + '_sheettrack')) localStorage.setItem(LOG_KEY + '_sheettrack', String(Date.now())); } catch(e){}
+const markSheetSent = rows => {
+  try {
+    const ids = new Set(rows.map(r => String(r.id)));
+    const log = loadLog();
+    let n = 0;
+    log.forEach(r => { if (ids.has(String(r.id)) && !r.sheet_sent){ r.sheet_sent = new Date().toISOString(); n++; } });
+    if (n) saveLog(log);
+  } catch(e){}
+  renderStorage();
+};
 
 $('exportCsv').onclick = () => {
   const log = loadLog(); if (!log.length) return toast('Nothing to export');
@@ -6429,6 +6503,10 @@ function labelToCase(it, key){
     p_severe: null, p_infection: null, probs: null, wound_area_frac: null,
     roi_source: '', roi_source_px: null, tissue: null,
     ery_cm: null, ery_censored: null, ery_state: '',
+    /* Explicitly null, not absent. It used to be written only when organisms were entered, so a
+       fresh row carried `undefined` — and every guard on it tested `!== null`, which undefined
+       passes. An unculttured row therefore counted as having a culture result. */
+    culture_positive: null,
     disease: pi ? 'pressure injury' : 'diabetic foot ulcer',
     case_id: (r.case_id || '').trim().toUpperCase() || caseIdOf(it.name),
     skin_type: it.skin || '', device: deviceId(), protocol: '',

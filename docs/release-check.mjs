@@ -398,6 +398,80 @@ const main = async () => {
   }
   await ctx2.close()
 
+  /* ── D2. does the page fit a phone? ───────────────────────────────────────
+     Added because a 27px horizontal page overflow lived on EVERY tab in study mode and no check
+     noticed: 49 checks all read text, and text reads the same whether or not the page scrolls
+     sideways under it. On a phone a sideways page drags the whole app out from under a thumb.
+
+     It measures documentElement.scrollWidth against clientWidth, which is the browser's own
+     answer, and it names the widest offending element so a failure is diagnosable rather than
+     merely red. Elements inside an overflow-x container are excluded deliberately: a wide table
+     that scrolls INSIDE its card is correct behaviour, not a fault, and counting it would make
+     this check fire on the thing it is supposed to permit.
+
+     Study mode is on, because that is what reveals the lock pill that caused the original fault,
+     and the tester's view would have passed. */
+  const ctx3 = await browser.newContext({ viewport: { width: 390, height: 1200 } })
+  const pg3 = await ctx3.newPage()
+  await pg3.goto(`${APP}?arm=dfu`, { waitUntil: 'domcontentloaded' })
+  await pg3.waitForTimeout(1500)
+  try {
+    if (await pg3.isVisible('#ack1')) { await pg3.check('#ack1'); await pg3.check('#ack2') }
+    if (await pg3.isVisible('#enter')) {
+      await pg3.waitForSelector('#enter:not([disabled])', { timeout: 12000 })
+      await pg3.click('#enter')
+    }
+  } catch (e) { /* the measurements below report whatever state we reached */ }
+  await pg3.waitForTimeout(600)
+  await pg3.evaluate(`(() => { try { setStudyMode(true) } catch (e) {} })()`)
+  await pg3.waitForTimeout(400)
+
+  for (const [sel, label] of [['#tabFindings', 'findings'], ['#tabGrading', 'grading'],
+                              ['#tabTrain', 'study team'], ['#tabData', 'dashboard']]) {
+    try { await pg3.click(sel) } catch (e) { continue }
+    await pg3.waitForTimeout(700)
+    const m = await pg3.evaluate(`(() => {
+      const vw = document.documentElement.clientWidth
+      let worst = null
+      document.querySelectorAll('*').forEach(el => {
+        const b = el.getBoundingClientRect()
+        if (!(b.width > 0) || b.right <= vw + 1) return
+        const st = getComputedStyle(el)
+        if (st.display === 'none' || el.offsetParent === null) return
+        /* Walk up for a scroll container. If one exists, this element is clipped and is not
+           what moves the page. */
+        let q = el.parentElement
+        while (q) {
+          const ov = getComputedStyle(q).overflowX
+          if (ov === 'auto' || ov === 'scroll' || ov === 'hidden') return
+          q = q.parentElement
+        }
+        const id = el.tagName + (el.id ? '#' + el.id : '')
+        if (!worst || b.right > worst.right) worst = { id, right: Math.round(b.right) }
+      })
+      return { vw, sw: document.documentElement.scrollWidth, worst }
+    })()`)
+    const over = m.sw > m.vw
+    check(`no sideways page scroll at 390px · ${label}`, !over,
+          over ? `scrollWidth ${m.sw} vs ${m.vw}` +
+                 (m.worst ? ` — widest unclipped: ${m.worst.id} right=${m.worst.right}` : '')
+               : `scrollWidth ${m.sw}`)
+  }
+
+  /* And the wide table must still scroll inside its own card rather than be cut off, which is
+     the behaviour the exclusion above assumes. Asserting it here keeps that assumption honest. */
+  const rmx = await pg3.evaluate(`(() => {
+    const w = document.querySelector('.rmxwrap'), t = document.querySelector('.rmx')
+    if (!w || !t) return null
+    return { wrap: w.clientWidth, tbl: Math.round(t.getBoundingClientRect().width),
+             scrollable: w.scrollWidth > w.clientWidth + 1 }
+  })()`)
+  check('the readiness table scrolls inside its card on a phone',
+        !!rmx && rmx.scrollable && rmx.wrap <= 390,
+        rmx ? `table ${rmx.tbl}px in a ${rmx.wrap}px wrapper, scrollable=${rmx.scrollable}`
+            : 'no .rmxwrap / .rmx on the page')
+  await ctx3.close()
+
   // ── E. the weaker source scan, for states the browser never reached ─────────────────────
   const served = await (await fetch(APP)).text()
   const stripped = served

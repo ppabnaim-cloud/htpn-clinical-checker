@@ -82,7 +82,14 @@ body.arm-dfu .only-pi,body.arm-pi .only-dfu{display:none}
 
 /* ── layout ── */
 header{background:linear-gradient(135deg,var(--navy),var(--navy-mid));color:#fff;padding:calc(14px + env(safe-area-inset-top)) 18px 0}
-header .wrap{max-width:600px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:12px}
+header .wrap{max-width:600px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px 8px;padding-bottom:12px;flex-wrap:wrap}
+/* The lock pill is 134px and must not break its text, so on a phone the three header
+   items cannot share one line: the row pushed the PAGE sideways by 27px at 390px, on
+   every tab, from the moment study mode revealed the pill. Wrapping fixes it where
+   shrinking cannot, because a nowrap pill has no narrower width to shrink to. min-width:0
+   lets the title block narrow rather than hold the row open at its text's width. */
+header .wrap>div:first-child{min-width:0;flex:1 1 auto}
+header .wrap>.pill,header .wrap>button{flex:0 0 auto}
 header h1{font-family:var(--serif);font-size:21px;font-weight:400;letter-spacing:.01em}
 header h1 span{color:var(--teal)}
 header small{display:block;font-size:11.5px;opacity:.7;margin-top:1px}
@@ -359,6 +366,25 @@ ol.guide b{color:var(--navy)}
 .rmx td{padding:6px 6px 6px 0;border-top:1px solid var(--rule);vertical-align:middle;font-family:var(--mono);font-size:11.5px}
 .rmx td.lab{font-family:inherit;font-size:12.5px;color:var(--navy);font-weight:600;white-space:nowrap}
 .rmx td.lab em{display:block;font-style:normal;font-size:10.5px;color:var(--faint);font-weight:400;font-family:var(--mono)}
+.rmx th.n,.rmx td.n{text-align:right;padding-right:10px}
+.rmx td.na{text-align:right;padding-right:10px}
+.rmx td.t{text-align:right;padding-right:6px;width:62px}
+.rmx td.t .rmxbar{margin-top:4px;min-width:0}
+.rmx td.lab{white-space:nowrap}
+/* The table carries ten numeric columns, so on a narrow screen it scrolls rather than
+   wrapping every heading onto three lines or dropping Progress off the right edge. */
+/* min-width:0 matters: without it the wrapper refuses to shrink below its content, so the
+   TABLE cannot scroll inside the card. Measured at 390 px: the wrapper holds at 326 px
+   and the 533 px table scrolls within it.
+   An earlier version of this comment claimed it also removed a page-level overflow. It
+   did not. The page overflow measured alongside it was the header's lock pill, a
+   separate fault on every tab in study mode, fixed in the `header .wrap` rule. The
+   table never contributed to it, because this wrapper already clipped it. */
+.rmxwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;min-width:0;max-width:100%}
+.rmx{min-width:500px}
+.rmx th,.rmx td{padding:5px 4px}
+.rmx th.n,.rmx td.n,.rmx td.na{padding-right:8px}
+.rmx td.lab{padding-right:12px}
 .rmx tr.grp th{padding-top:12px;color:var(--navy);font-size:11px}
 .rmx .na{color:var(--faint)}
 .rmx input{width:52px;padding:3px 5px;border:1px solid var(--line);border-radius:6px;font-family:var(--mono);font-size:11.5px;text-align:right}
@@ -4274,7 +4300,7 @@ function srgbToLab(r, g, b){
    case log could not record which version produced a row — and a log that cannot say which
    version produced a row cannot be pooled across a retrain, which is the whole point of
    keeping one. Rendered into the footer at start-up, written into every case row. */
-const BUILD = '2026-11-14 \u00b7 v11.17';
+const BUILD = '2026-11-15 \u00b7 v11.18';
 /* Rendered rather than typed into the markup, so the footer and the case log can never
    disagree about which version is running. */
 try { const bs = document.getElementById('buildStamp');
@@ -5503,7 +5529,20 @@ const RMX_ROWS = [
   ['necrosis', 'Necrosis / eschar', 'feat', 'necrosis', 'ec'],
   ['periwound_erythema', 'Peri-wound erythema', 'feat', 'periwound_erythema', 'ec']
 ];
-const REF_WORD = { pr: 'probe / adjudication', cx: 'culture', ec: 'expert consensus' };
+const REF_WORD = { pr: 'probe', cx: 'culture', ec: 'consensus' };
+
+/* A column heading needs a short name, and taking the LAST word is wrong here. In
+   "Dr Naim Bin Abdul Malek", Malek is the father's name, not a surname — bin and binti mean
+   "son of" and "daughter of". The heading read MALEK and HASAN, which named the wrong people.
+   The given name comes first in Malay names, so that is what is used, after dropping an
+   honorific. */
+const NAME_TITLES = ['dr', 'dr.', 'prof', 'prof.', 'mr', 'mrs', 'ms', 'miss', 'datuk', 'dato',
+                     "dato'", 'datin', 'tan', 'sri', 'hj', 'hjh', 'haji', 'hajjah', 'sr', 'ir'];
+const shortName = full => {
+  const parts = String(full || '').trim().split(/\s+/)
+    .filter(w => !NAME_TITLES.includes(w.toLowerCase().replace(/[.,]/g, '')));
+  return parts[0] || String(full || '').trim() || '?';
+};
 
 function renderReadyMatrix(){
   const el = $('readyMatrix'); if (!el) return;
@@ -5527,27 +5566,37 @@ function renderReadyMatrix(){
   const latestRun = t => runs.find(r => r.target === t) || null;
 
   const cell = (v, na) => v === null || v === undefined
-    ? `<td class="na" title="${na || ''}">—</td>` : `<td>${v}</td>`;
+    ? `<td class="na" title="${na || ''}">—</td>` : `<td class="n">${v}</td>`;
 
   const rows = RMX_ROWS.map(spec => {
     if (spec[0] === 'grp')
-      return `<tr class="grp"><th colspan="${4 + graders.length + 2}">${spec[1]}
+      return `<tr class="grp"><th colspan="${6 + graders.length + 1}">${spec[1]}
               <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--faint)">
               · confirmed = ${spec[2]}</span></th></tr>`;
 
     const [key, label, kind, val, ref] = spec;
-    let labelled, confirmed, perGrader, both, trained;
+    let labelled, confirmed, perGrader, both, trained, other = 0;
 
     if (kind === 'wagner'){
       const mine = log.filter(r => String(r.gt_wagner) === val);
-      labelled = mine.length;
+      /* IMAGES, not rows. The case log holds one row per image PER GRADER, so counting rows
+         made a double-graded image count twice toward its target and the progress bar read
+         further along than the collection actually was — the opposite of what a readiness
+         dashboard is for. It also mixed units inside one row, because "both" has always
+         counted images. Everything here is now images. */
+      const imgs = {};
+      mine.forEach(r => { const i = String(r.image);
+        (imgs[i] = imgs[i] || new Set()).add((r.grader || '').trim()); });
+      const names = Object.values(imgs);
+      labelled = names.length;
       /* Confirmed: a second grader recorded the SAME grade. Disagreement is not confirmation,
          and counting any rater2 entry would have made a contradiction look like evidence. */
-      confirmed = mine.filter(r => r.rater2_wagner && String(r.rater2_wagner) === val).length;
-      perGrader = graders.map(g => mine.filter(r => (r.grader || '').trim() === g).length);
-      const imgs = {};
-      mine.forEach(r => { const i = String(r.image); (imgs[i] = imgs[i] || new Set()).add((r.grader || '?').trim()); });
-      both = Object.values(imgs).filter(x => x.size > 1).length;
+      confirmed = new Set(mine.filter(r => r.rater2_wagner && String(r.rater2_wagner) === val)
+                              .map(r => String(r.image))).size;
+      perGrader = graders.map(g => Object.keys(imgs).filter(i => imgs[i].has(g)).length);
+      other = Object.keys(imgs).filter(i =>
+        ![...imgs[i]].some(g => graders.includes(g))).length;
+      both = names.filter(x => [...x].filter(Boolean).length > 1).length;
       const run = latestRun('wagner');
       trained = run && run.per_class ? (run.per_class[val] ?? run.per_class['W' + val] ?? null) : null;
     } else {
@@ -5569,6 +5618,15 @@ function renderReadyMatrix(){
         ? ticked.filter(k => cultured.has(String(k.split('|')[0]))).length
         : agreed;
       perGrader = graders.map(g => ticked.filter(k => ((graderViews(store[k])[g] || {}).f || []).includes(val)).length);
+      /* Ticks that belong to nobody in the two named columns — a third grader, or a label
+         carrying no grader at all, which is most of what predates v11.17. Without this the
+         columns did not add up to the total and the table looked broken when it was merely
+         incomplete. */
+      other = ticked.filter(k => {
+        const vs = graderViews(store[k]);
+        const who = Object.keys(vs).filter(g => (vs[g].f || []).includes(val));
+        return !who.some(g => graders.includes(g));
+      }).length;
       both = agreed;
       const run = latestRun('feat:' + val);
       trained = run && run.per_class
@@ -5582,24 +5640,24 @@ function renderReadyMatrix(){
 
     return `<tr>
       <td class="lab">${label}<em>${REF_WORD[ref]}</em></td>
-      <td>${labelled}</td>
+      <td class="n">${labelled}</td>
       ${cell(trained, 'no training run has targeted this class yet')}
-      ${cell(confirmed, ref === 'ec' ? 'no expert-consensus field exists yet' : '')}
-      ${perGrader.map(v => cell(v, noTick)).join('')}
-      ${cell(both, noTick)}
-      <td><input type="number" min="0" max="9999" value="${tgt}" data-rmx="${key}"></td>
-      <td style="width:70px">${bar}</td>
+      ${cell(confirmed, '')}
+      ${perGrader.map(v => cell(v, '')).join('')}
+      ${cell(other || 0, 'a grader outside the two columns, or none recorded')}
+      ${cell(both, '')}
+      <td class="t"><input type="number" min="0" max="9999" value="${tgt}" data-rmx="${key}">${bar}</td>
     </tr>`;
   }).join('');
 
   el.innerHTML = `<p class="small qgroup" style="margin-bottom:0">Readiness by class
       <span>target is editable · default ${TARGET_DEFAULT}</span></p>
-    <table class="rmx">
-      <tr><th>Class</th><th>Labelled</th><th>Trained</th><th>Confirmed</th>
-        ${graders.map(g => `<th>${g.split(' ').slice(-1)[0] || g}</th>`).join('')}
-        <th>Both</th><th>Target</th><th>Progress</th></tr>
+    <div class="rmxwrap"><table class="rmx">
+      <tr><th>Class</th><th class="n">Images</th><th class="n">Trained</th><th class="n">Confirmed</th>
+        ${graders.map(g => `<th class="n" title="${g}">${shortName(g)}</th>`).join('')}
+        <th class="n">Other</th><th class="n">Both</th><th class="n">Target</th></tr>
       ${rows}
-    </table>
+    </table></div>
     <p class="small" style="margin:8px 0 0;color:var(--muted)">
       <b>Confirmed</b> means something different per block and the heading of each says which:
       culture settles infection, it does not settle depth or tissue type.

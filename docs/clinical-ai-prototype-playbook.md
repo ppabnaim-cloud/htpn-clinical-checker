@@ -150,6 +150,21 @@ Then **make the check fail on purpose before you trust it.** Inject the fault it
 to catch into a throwaway copy and confirm it goes red and exits non-zero. A green check that
 has never been seen to go red is not evidence.
 
+Two refinements, each learned by watching the step fail.
+
+**Restore one fault at a time.** Restoring several together can delete the conditions another
+one needs. A width check was shown its fault alongside an unrelated change that happened to
+remove the long caption causing the overflow; it passed, and looked proven. Restored alone, it
+reported the exact measurement and exited non-zero. If a proof run comes back green, that is
+not the fault being absent — it is the proof being wrong, and it must be chased.
+
+**A text check cannot see layout.** Forty-nine assertions reading rendered text all passed
+while the page scrolled sideways on a phone, because text reads the same whether or not it
+does. Anything geometric — overflow, truncation, a control pushed off-screen — needs a
+measurement, not a string. Compare `scrollWidth` with `clientWidth`, and have the failure name
+the widest offending element so it is diagnosable rather than merely red. Exclude what a scroll
+container legitimately clips, or the check fires on the behaviour it exists to permit.
+
 ### Claims
 
 12. **State what would refute the claim.** It is what separates a claim from an assertion, and

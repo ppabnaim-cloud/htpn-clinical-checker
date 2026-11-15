@@ -345,7 +345,14 @@ const main = async () => {
         /* THE PROBE. A prediction, and no culture_positive key at all. A correct guard draws no
            chip here; the old "!== null" guard draws one, giving two chips and failing below. */
         mk(4, { p_infection: 0.42, ai_label: 'none', skin_type: 'II' }),
-        mk(40)                                                                  // predates tracking
+        mk(40),                                                                 // predates tracking
+        /* An image in the log with NO Wagner grade. It exercises the "No Wagner grade" line of
+           the readiness table, which is the only place such an image is visible at all, and it
+           renders that line's longer caption — the string whose width, under the old nowrap
+           label rule, pushed Both and Target off the right of the card on a desktop. Without an
+           ungraded row seeded here the width check could not see that fault: it passed with the
+           fault restored, which is exactly the kind of check this file exists not to have. */
+        mk(5, { gt_wagner: '', skin_type: 'V' })
       ]))
       localStorage.setItem(K + '_exported', String(now - 27 * day))
       localStorage.setItem(K + '_sheettrack', String(now - 5 * day))
@@ -395,6 +402,38 @@ const main = async () => {
     check('storage note reports Sheet coverage', /Confirmed written to the Google Sheet/.test(seen.storage))
     check('storage note separates export from send', /Last CSV export/.test(seen.storage))
     check('no page or console errors with a populated log', seedErrors.length === 0, seedErrors.join(' | '))
+
+    /* The readiness table must fit its card on a DESKTOP. It briefly did not: `td.lab` was
+       nowrap with no cap, so the longest caption in the table set the class column's width for
+       every row and pushed Both and Target off the right of the card. Nothing caught it,
+       because the phone check deliberately permits that table to scroll inside its wrapper —
+       correct behaviour at 390px, a fault at 760. So the width is asserted at both ends. */
+    const deskRmx = await pg2.evaluate(`(() => {
+      const w = document.querySelector('.rmxwrap'), t = document.querySelector('.rmx')
+      if (!w || !t) return null
+      const th = [...t.querySelectorAll('tr')[0].querySelectorAll('th')]
+      return { wrap: w.clientWidth, tbl: Math.round(t.getBoundingClientRect().width),
+               scrolls: w.scrollWidth > w.clientWidth + 1,
+               lastCol: th.length ? th[th.length - 1].innerText.trim() : '' }
+    })()`)
+    check('the readiness table fits its card on a desktop',
+          !!deskRmx && !deskRmx.scrolls,
+          deskRmx ? `table ${deskRmx.tbl}px in a ${deskRmx.wrap}px card; last column "${deskRmx.lastCol}"`
+                  : 'no .rmx on the dashboard')
+
+    const rmxText = await pg2.evaluate(`(() => (document.getElementById('readyMatrix') || {}).innerText || '')()`)
+    const tileText = await pg2.evaluate(`(() => (document.getElementById('dashTiles') || {}).innerText || '')()`)
+    /* An image logged with no Wagner grade appears in no Wagner row, so without this line the
+       column simply summed to less than the log and nothing said why. */
+    check('the readiness table has a line for ungraded images', /No Wagner grade/.test(rmxText),
+          rmxText.slice(0, 80).replace(/\s+/g, ' '))
+    /* Rows and images are different numbers and both are on this screen. Each must name which. */
+    check('the case-log tile names its unit as rows', /Case-log rows/.test(tileText))
+    check('the case-log tile also gives the image count', /\d+ images? \u00b7 one row per grader/.test(tileText),
+          (tileText.match(/Case-log rows[\s\S]{0,60}/) || [''])[0].replace(/\s+/g, ' '))
+    check('the tissue tile says cases, not class ticks', /Cases with tissue findings/.test(tileText))
+    /* Superseded by the table, which names every grader and splits them per class. */
+    check('the bare Graders tile is gone', !/^Graders$/m.test(tileText))
   }
   await ctx2.close()
 

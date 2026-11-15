@@ -368,9 +368,13 @@ ol.guide b{color:var(--navy)}
 .rmx td.lab em{display:block;font-style:normal;font-size:10.5px;color:var(--faint);font-weight:400;font-family:var(--mono)}
 .rmx th.n,.rmx td.n{text-align:right;padding-right:10px}
 .rmx td.na{text-align:right;padding-right:10px}
-.rmx td.t{text-align:right;padding-right:6px;width:62px}
+.rmx td.t{text-align:right;padding-right:2px;width:52px}
 .rmx td.t .rmxbar{margin-top:4px;min-width:0}
-.rmx td.lab{white-space:nowrap}
+/* normal, not nowrap. With nowrap and no cap the longest caption in the table set the
+   width of the class column for every row — 218px of 536, so Both and Target fell off the
+   right of the card on a DESKTOP and had to be scrolled to. Wrapping costs a second line on
+   two labels and buys back the two columns. */
+.rmx td.lab{white-space:normal;max-width:148px}
 /* The table carries ten numeric columns, so on a narrow screen it scrolls rather than
    wrapping every heading onto three lines or dropping Progress off the right edge. */
 /* min-width:0 matters: without it the wrapper refuses to shrink below its content, so the
@@ -383,11 +387,14 @@ ol.guide b{color:var(--navy)}
 .rmxwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;min-width:0;max-width:100%}
 .rmx{min-width:500px}
 .rmx th,.rmx td{padding:5px 4px}
-.rmx th.n,.rmx td.n,.rmx td.na{padding-right:8px}
-.rmx td.lab{padding-right:12px}
+.rmx th.n,.rmx td.n,.rmx td.na{padding-right:5px}
+.rmx td.lab{padding-right:10px}
 .rmx tr.grp th{padding-top:12px;color:var(--navy);font-size:11px}
 .rmx .na{color:var(--faint)}
-.rmx input{width:52px;padding:3px 5px;border:1px solid var(--line);border-radius:6px;font-family:var(--mono);font-size:11.5px;text-align:right}
+.rmx tr.gap td{background:var(--slate-soft)}
+.rmx tr.gap.bad td.lab,.rmx tr.gap.bad td.n{color:#b3182f}
+.rmx tr.gap td.lab em{color:var(--faint)}
+.rmx input{width:44px;padding:3px 5px;border:1px solid var(--line);border-radius:6px;font-family:var(--mono);font-size:11.5px;text-align:right}
 .rmxbar{display:block;height:5px;border-radius:3px;background:var(--cloud);overflow:hidden;min-width:54px}
 .rmxbar i{display:block;height:100%;background:var(--teal)}
 .rmxbar.low i{background:#d97706}
@@ -4300,7 +4307,7 @@ function srgbToLab(r, g, b){
    case log could not record which version produced a row — and a log that cannot say which
    version produced a row cannot be pooled across a retrain, which is the whole point of
    keeping one. Rendered into the footer at start-up, written into every case row. */
-const BUILD = '2026-11-15 \u00b7 v11.18';
+const BUILD = '2026-11-15 \u00b7 v11.19';
 /* Rendered rather than typed into the markup, so the footer and the case log can never
    disagree about which version is running. */
 try { const bs = document.getElementById('buildStamp');
@@ -5519,6 +5526,10 @@ const RMX_ROWS = [
   ['w3', 'Wagner 3', 'wagner', '3', 'pr'],
   ['w4', 'Wagner 4', 'wagner', '4', 'pr'],
   ['w5', 'Wagner 5', 'wagner', '5', 'pr'],
+  /* An image can sit in the log carrying NO Wagner grade, and until now it appeared in no row
+     of this table at all: the Wagner rows summed to less than the log and nothing said why.
+     That is a readiness gap, so it gets a line. It is the one row whose target is zero. */
+  ['nograde', 'No Wagner grade', 'nograde', '', 'pr'],
   ['grp', 'Signs of infection', 'a culture result is recorded for the case'],
   ['pus', 'Pus', 'feat', 'pus', 'cx'],
   ['abscess', 'Abscess', 'feat', 'abscess', 'cx'],
@@ -5561,7 +5572,8 @@ function renderReadyMatrix(){
      silently re-point at different people as the log grows. */
   const byGrader = {};
   log.forEach(r => { const g = (r.grader || '').trim(); if (g) byGrader[g] = (byGrader[g] || 0) + 1; });
-  const graders = Object.keys(byGrader).sort((a, b) => byGrader[b] - byGrader[a]).slice(0, 2);
+  const allGraders = Object.keys(byGrader).sort((a, b) => byGrader[b] - byGrader[a]);
+  const graders = allGraders.slice(0, 2);
 
   const latestRun = t => runs.find(r => r.target === t) || null;
 
@@ -5575,6 +5587,27 @@ function renderReadyMatrix(){
               · confirmed = ${spec[2]}</span></th></tr>`;
 
     const [key, label, kind, val, ref] = spec;
+
+    if (kind === 'nograde'){
+      /* Images, not rows, so a double-graded ungraded image is one gap and not two. */
+      const imgs = {};
+      log.filter(r => !String(r.gt_wagner || '').trim()).forEach(r => {
+        const i = String(r.image); (imgs[i] = imgs[i] || new Set()).add((r.grader || '').trim()); });
+      const n = Object.keys(imgs).length;
+      const per = graders.map(g => Object.keys(imgs).filter(i => imgs[i].has(g)).length);
+      const oth = Object.keys(imgs).filter(i => ![...imgs[i]].some(g => graders.includes(g))).length;
+      return `<tr class="gap${n ? ' bad' : ''}">
+        <td class="lab">${label}<em>${n ? 'grade these first' : 'none'}</em></td>
+        <td class="n">${n}</td>
+        <td class="na">\u2014</td>
+        <td class="na">\u2014</td>
+        ${per.map(v => `<td class="n">${v}</td>`).join('')}
+        <td class="n">${oth}</td>
+        <td class="na">\u2014</td>
+        <td class="t"><span class="small" style="color:var(--faint)">target 0</span></td>
+      </tr>`;
+    }
+
     let labelled, confirmed, perGrader, both, trained, other = 0;
 
     if (kind === 'wagner'){
@@ -5661,7 +5694,12 @@ function renderReadyMatrix(){
     <p class="small" style="margin:8px 0 0;color:var(--muted)">
       <b>Confirmed</b> means something different per block and the heading of each says which:
       culture settles infection, it does not settle depth or tissue type.
-      ${graders.length ? `Grader columns are <b>${graders.join('</b> and <b>')}</b>, the two with the most rows.` : 'No grader is recorded on any row yet.'}
+      ${allGraders.length
+        ? `Graders on this arm, by rows contributed: ${allGraders.map(g =>
+            `<b>${g}</b> ${byGrader[g]}${graders.includes(g) ? '' : ' <i>(in Other)</i>'}`).join(', ')}.
+           Only the two with the most rows get a column; the rest are counted under <b>Other</b>,
+           which is why that column can be non-zero while both named graders read 0.`
+        : 'No grader is recorded on any row yet.'}
       A dash means the figure cannot be computed, not that it is zero.
       <b>Grader columns on the tissue and infection rows count only ticks made from v11.17
       onwards</b>, when the tick store began keeping a record per grader; before that it held
@@ -5950,6 +5988,12 @@ function renderDashboard(){
 
   const byImage = {};
   log.forEach(r => { (byImage[r.image] = byImage[r.image] || new Set()).add(r.grader || '?'); });
+  /* Rows and images are DIFFERENT NUMBERS and the dashboard prints both. The log holds one row
+     per image per grader, so 6 images read by two people each is 12 rows. Measured on a seeded
+     log: 10 rows over 6 images, while the table below summed 5 images. Both were right and the
+     screen said neither, so a reader comparing them concluded one was broken. Every tile now
+     names its unit. */
+  const logImages = Object.keys(byImage).length;
   const doubled = Object.values(byImage).filter(x => x.size > 1).length;
   /* The same predicate renderKappa() uses, so the tile and the note cannot disagree. */
   const kappaPairs = log.filter(r => (r.gt_wagner && r.rater2_wagner)
@@ -5967,27 +6011,38 @@ function renderDashboard(){
     [devices.size ? 'v' : 'w', devices.size, 'Devices contributing', 'distinct, from the case log'],
     ['v', use.sittings || 0, 'Sittings on this device', use.first ? 'since ' + use.first.slice(0,10) : 'first one now'],
     [files ? 'v' : 'w', files, 'Image files loaded now', files ? 'ready to train' : 'none \u2014 re-select in step A'],
-    [labelled_n ? 'v' : 'w', labelled_n, 'Labelled on this arm', pi ? 'pressure injuries' : 'foot ulcers'],
-    [last ? 'v' : 'w', last ? last.n_train_images : 0, 'Used in last training', last ? `+ ${last.n_val} held out` : 'never trained on this arm'],
-    ['v', log.length, 'Cases in the log', pi ? 'pressure injuries only' : 'foot ulcers only'],
-    ['v', graders.size, 'Graders', [...graders].join(', ') || 'none yet'],
+    [labelled_n ? 'v' : 'w', labelled_n, 'Images labelled', pi ? 'pressure injuries' : 'foot ulcers'],
+    [last ? 'v' : 'w', last ? last.n_train_images : 0, 'Images in last training', last ? `+ ${last.n_val} held out` : 'never trained on this arm'],
+    ['v', log.length, 'Case-log rows', `${logImages} image${logImages === 1 ? '' : 's'} \u00b7 one row per grader`],
+    /* The Graders tile is gone. The table below names every grader and gives each one's share
+       per class, which is the same fact with the dimension that makes it useful. A count alone
+       told you two people had graded; it could not tell you they had graded different strata. */
     /* "available for \u03ba" was false. `doubled` counts images carrying more than one GRADER ROW,
        while \u03ba reads the rater2_* fields on a single row \u2014 so the screen could show "4
        double-graded, available for \u03ba" directly above "No second grading yet". Both facts are
        worth having, so the tile now reports the count \u03ba can actually use and says where the
        rest went. */
-    [kappaPairs ? 'v' : 'w', kappaPairs, 'Usable for \u03ba',
-     kappaPairs ? 'second grade recorded'
+    [kappaPairs ? 'v' : 'w', kappaPairs, 'Rows usable for \u03ba',
+     kappaPairs ? 'rows with a second grade filled in'
      : doubled ? doubled + ' image' + (doubled === 1 ? '' : 's') + ' have two graders, but no second grade is filled in'
      : '\u03ba not computable'],
     [noGrader ? 'w' : 'v', noGrader, 'No grader recorded', noGrader ? 'attribute them above' : 'all attributed'],
     [outcomes ? 'v' : 'w', outcomes, 'With an outcome', 'follow-up recorded'],
     [noSkin ? 'w' : 'v', noSkin, 'Missing skin type', noSkin ? 'cannot report by tone' : 'complete'],
-    [withTissue ? 'v' : 'w', withTissue, 'With tissue findings', withTissue ? 'of ' + log.length + ' cases' : 'can be added later']
+    /* Cases, not class-ticks. One image with slough, granulation and necrosis is ONE case here
+       and THREE rows in the table below. Seeded and measured: tile 1, table 3. */
+    [withTissue ? 'v' : 'w', withTissue, 'Cases with tissue findings',
+     withTissue ? 'any finding \u00b7 the table splits by class' : 'can be added later']
   ];
-  if (!pi) tiles.splice(9, 0,
-    [awaitingCulture(log).length ? 'w' : 'v',
-     awaitingCulture(log).length, 'Awaiting culture', 'deep tissue specimen']);
+  /* Positioned by LABEL, not by index. Removing the Graders tile moved index 9 from "with an
+     outcome" to "missing skin type", and a hardcoded index would have silently relocated this
+     tile every time the list changed. */
+  if (!pi) {
+    const at = tiles.findIndex(t => t[2] === 'No grader recorded');
+    tiles.splice(at < 0 ? tiles.length : at + 1, 0,
+      [awaitingCulture(log).length ? 'w' : 'v',
+       awaitingCulture(log).length, 'Awaiting culture', 'deep tissue specimen']);
+  }
 
   $('dashTiles').innerHTML = tiles.map(([k, v, lab, sub]) =>
     `<div class="tile${k === 'w' ? ' warn' : ''}"><div class="v">${v}</div><div class="k">${lab}</div><div class="s">${sub}</div></div>`).join('');

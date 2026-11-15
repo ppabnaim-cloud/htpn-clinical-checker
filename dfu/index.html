@@ -4307,7 +4307,7 @@ function srgbToLab(r, g, b){
    case log could not record which version produced a row — and a log that cannot say which
    version produced a row cannot be pooled across a retrain, which is the whole point of
    keeping one. Rendered into the footer at start-up, written into every case row. */
-const BUILD = '2026-11-15 \u00b7 v11.19';
+const BUILD = '2026-11-15 \u00b7 v11.20';
 /* Rendered rather than typed into the markup, so the footer and the case log can never
    disagree about which version is running. */
 try { const bs = document.getElementById('buildStamp');
@@ -5517,7 +5517,57 @@ const loadTargets = () => { try { return JSON.parse(localStorage.getItem(TARGET_
 /* 40 per stratum is the handover's figure: at 25-30 % prevalence you need about forty
    positives per sign before kappa stops being an anecdote. It is a DEFAULT, not a finding —
    every cell is editable and what you type is what the bar measures against. */
-const TARGET_DEFAULT = 40;
+const TARGET_DEFAULT = 20;
+
+/* ── where these numbers come from ───────────────────────────────────────────────────────────
+   The target is the number of POSITIVE examples of a class, and it sizes the AGREEMENT
+   endpoint: can two graders be shown to agree on this sign better than chance-plus-a-bit.
+
+   For two raters and a binary rating, testing kappa = 0.7 against a null of 0.4 at alpha 0.05
+   with 80 % power needs roughly:
+
+       prevalence 0.50 -> ~45 images -> ~23 positives
+       prevalence 0.30 -> ~62 images -> ~19 positives
+       prevalence 0.20 -> ~92 images -> ~18 positives
+       prevalence 0.10 -> ~199 images -> ~20 positives
+
+   The striking part is that the number of POSITIVES barely moves. What prevalence changes is
+   how many feet you must photograph to find them. So 20 positives is the floor for every class,
+   and a rare sign is not a smaller study, it is a longer one.
+
+   Forty is used where a false positive escalates care. Pus, abscess and wet gangrene can each
+   set the headline to LIKELY INFECTION on their own, and peri-wound erythema is the one IWGDF
+   criterion this app measures rather than asks about. For those, agreement has to be shown
+   tighter — kappa = 0.8 against a null of 0.6 — which costs roughly double.
+
+   WHAT THIS TARGET IS NOT. It does not size a training set. Fine-tuning a head to detect pus
+   needs positives in the hundreds, not forty; the grading session sizes the agreement study and
+   the bar below measures that, nothing else. Reading a full green bar as "ready to train" would
+   be the same category error this dashboard exists to prevent.
+
+   TARGETS ARE NOT LOWERED TO WHAT IS REACHABLE. Wagner 5 will sit red for a long time, because
+   extensive gangrene is rare and those patients go to theatre rather than to a camera. That red
+   bar is the finding: it says a per-class claim about Wagner 5 is not available from this
+   series, and the analysis should pool it with Wagner 4 rather than quote a kappa on four cases.
+   Setting it to 4 so the bar turns green would manufacture the readiness it is meant to report.
+
+   Every number is editable and what you type is what the bar measures against. These are
+   planning figures resting on assumed clinic prevalences; replace them with HTPN's own. */
+const TARGET_BASIS = {
+  w1: [20, 'agreement endpoint'],  w2: [20, 'agreement endpoint'],
+  w3: [20, 'agreement endpoint'],  w4: [20, 'agreement endpoint'],
+  /* Deliberately not lowered. See above. */
+  w5: [20, 'agreement endpoint — rare; expect to pool with Wagner 4'],
+  pus:                [40, 'can set the headline on its own — tighter agreement required'],
+  abscess:            [40, 'can set the headline on its own — tighter agreement required'],
+  wet_gangrene:       [40, 'can set the headline on its own — tighter agreement required'],
+  granulation:        [20, 'agreement endpoint'],
+  slough:             [20, 'agreement endpoint'],
+  necrosis:           [20, 'agreement endpoint'],
+  periwound_erythema: [40, 'the one IWGDF criterion measured here — tighter agreement required']
+};
+const targetFor = key => (TARGET_BASIS[key] || [TARGET_DEFAULT, ''])[0];
+const targetWhy = key => (TARGET_BASIS[key] || [0, ''])[1];
 
 const RMX_ROWS = [
   ['grp', 'Meggitt–Wagner grade', 'second grader recorded the same grade'],
@@ -5666,7 +5716,7 @@ function renderReadyMatrix(){
         ? (run.per_class['present'] ?? run.per_class[val] ?? run.per_class['1'] ?? null) : null;
     }
 
-    const tgt = targets[key] ?? TARGET_DEFAULT;
+    const tgt = targets[key] ?? targetFor(key);
     const pct = tgt > 0 ? Math.min(100, Math.round(100 * labelled / tgt)) : 0;
     const bar = `<span class="rmxbar ${pct === 0 ? 'none' : pct < 50 ? 'low' : ''}"><i style="width:${pct}%"></i></span>`;
     const noTick = 'the tick store holds one entry per image, so this cannot be split by grader';
@@ -5679,12 +5729,12 @@ function renderReadyMatrix(){
       ${perGrader.map(v => cell(v, '')).join('')}
       ${cell(other || 0, 'a grader outside the two columns, or none recorded')}
       ${cell(both, '')}
-      <td class="t"><input type="number" min="0" max="9999" value="${tgt}" data-rmx="${key}">${bar}</td>
+      <td class="t" title="${targetWhy(key)}"><input type="number" min="0" max="9999" value="${tgt}" data-rmx="${key}">${bar}</td>
     </tr>`;
   }).join('');
 
   el.innerHTML = `<p class="small qgroup" style="margin-bottom:0">Readiness by class
-      <span>target is editable · default ${TARGET_DEFAULT}</span></p>
+      <span>targets are editable · positives needed, not images to photograph</span></p>
     <div class="rmxwrap"><table class="rmx">
       <tr><th>Class</th><th class="n">Images</th><th class="n">Trained</th><th class="n">Confirmed</th>
         ${graders.map(g => `<th class="n" title="${g}">${shortName(g)}</th>`).join('')}
@@ -5706,7 +5756,19 @@ function renderReadyMatrix(){
       one set of ticks per image and a second grader overwrote the first, so earlier labels
       appear under whoever was recorded against them and cannot be retro-split.
       <b>Both</b> means two graders ticked the same class on the same image, which on the tissue
-      and peri-wound rows is what their <i>confirmed</i> column measures.</p>`;
+      and peri-wound rows is what their <i>confirmed</i> column measures.</p>
+    <p class="small" style="margin:8px 0 0;color:var(--muted)">
+      <b>The target is the number of positive examples needed to show inter-rater agreement</b>
+      — κ of 0.7 against a null of 0.4, two graders, 80 % power — which works out at about 20
+      whatever the sign's prevalence. Prevalence does not change how many positives you need; it
+      changes how many feet you must photograph to find them, so a rare sign is a longer study,
+      not a smaller one. <b>40</b> is used where a false positive escalates care: pus, abscess
+      and wet gangrene each set the headline on their own, and peri-wound erythema is the one
+      IWGDF criterion measured here, so those need the tighter κ of 0.8 against 0.6.
+      <b>This does not size a training set.</b> A pus detector needs positives in the hundreds;
+      a full bar here means the agreement study is powered, not that the class is ready to train.
+      Targets are not lowered to what is reachable — Wagner 5 will stay red, and that is the
+      finding: pool it with Wagner 4 rather than quote a κ on four cases.</p>`;
 
   el.querySelectorAll('input[data-rmx]').forEach(inp => inp.onchange = () => {
     const t = loadTargets();

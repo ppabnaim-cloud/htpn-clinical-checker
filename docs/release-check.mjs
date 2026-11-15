@@ -434,6 +434,37 @@ const main = async () => {
     check('the tissue tile says cases, not class ticks', /Cases with tissue findings/.test(tileText))
     /* Superseded by the table, which names every grader and splits them per class. */
     check('the bare Graders tile is gone', !/^Graders$/m.test(tileText))
+
+    /* The targets were a blanket 40 placeholder for two builds. They are now per class and
+       carry a stated basis, so the thing to protect is that the basis is on the screen next to
+       the numbers — a target with no stated derivation is the "default 40" problem wearing
+       different digits. */
+    const tgt = await pg2.evaluate(`(() => {
+      const t = document.querySelector('.rmx')
+      if (!t) return null
+      const vals = {}
+      t.querySelectorAll('input[data-rmx]').forEach(i => { vals[i.dataset.rmx] = i.value })
+      const withWhy = [...t.querySelectorAll('td.t')].filter(c => c.querySelector('input'))
+      return { vals, titled: withWhy.filter(c => (c.title || '').length > 5).length,
+               total: withWhy.length }
+    })()`)
+    check('targets differ by class rather than one blanket number',
+          !!tgt && new Set(Object.values(tgt.vals)).size > 1,
+          tgt ? JSON.stringify(tgt.vals) : 'no target inputs found')
+    /* RELATIVE, not absolute. The first version of this check asserted those four equal 40 and
+       so passed under a blanket 40 for every class — the very placeholder it exists to catch.
+       What matters is that the signs which can escalate care are held to a HIGHER bar than an
+       ordinary class, which a uniform table cannot satisfy however large its number. */
+    const HIGH = ['pus', 'abscess', 'wet_gangrene', 'periwound_erythema']
+    const ORD  = ['w1', 'w2', 'w3', 'granulation', 'necrosis']
+    const lowMax = tgt ? Math.max(...ORD.map(k => Number(tgt.vals[k]) || 0)) : 0
+    check('signs that can escalate care are held to a higher target than ordinary classes',
+          !!tgt && HIGH.every(k => (Number(tgt.vals[k]) || 0) > lowMax),
+          tgt ? `escalating: ${HIGH.map(k => k + '=' + tgt.vals[k]).join(' ')} vs highest ordinary ${lowMax}` : '')
+    check('every target states its basis', !!tgt && tgt.total > 0 && tgt.titled === tgt.total,
+          tgt ? `${tgt.titled} of ${tgt.total} target cells carry a reason` : '')
+    check('the table says the target does not size a training set',
+          /does not size a training set/i.test(rmxText), rmxText.slice(-160).replace(/\s+/g, ' '))
   }
   await ctx2.close()
 

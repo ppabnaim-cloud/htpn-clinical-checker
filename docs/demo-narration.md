@@ -67,13 +67,12 @@ They grade separately, without conferring, so I can measure how much they agree.
 **Then the Meggitt–Wagner grade, and the findings present in the image — pus, abscess,
 wet gangrene, slough, granulation, necrosis, peri-wound erythema.**
 
-**This labelling is where I believe the contribution is.** *(See the novelty notes below —
-use the checked wording.)*
+**This labelling is where I believe the contribution is — pus, abscess and wet gangrene, which
+have no open model to start from.** *(Use the checked wording in the novelty notes below.)*
 
-**There is also a Fitzpatrick skin type field. I have left it as not recorded, and I want to
-be honest about why: I do not have the manpower to do it properly in this round. I am keeping
-the field because it matters — darker skin is under-represented in the published diabetic foot
-datasets, and a Malaysian cohort is well placed to help fill that gap later.**
+**There is also a Fitzpatrick skin type field, left as not recorded. I do not have the manpower
+to do it properly in this round, so I am keeping the field for future work rather than claiming
+anything from it.**
 
 **You can also draw the tissue map by hand, if you want to mark the regions yourself.**
 
@@ -215,65 +214,75 @@ complete model.**
 
 ## Novelty — what the literature actually says
 
-I searched before writing this. Two of the four claims need rewording. A supervisor who
-searches will find these papers in a few minutes, and an overstated claim costs more than a
-narrower true one.
+Checked by search before writing. **Fitzpatrick is removed from the novelty list** — the gap is
+already published and you have not staffed it, so it is future work, not a contribution.
 
-| Your claim | Verdict | Why |
+| Claim | Verdict | Why |
 |---|---|---|
-| No DFU model trained for pus, abscess, wet gangrene | **Partly wrong — reword** | A ResNet50 model (Clf4DFU) already uses *Infection2 = deep abscess or osteomyelitis*, and splits gangrene into *localised* vs *whole-foot*. Another study segments seven classes including gangrene and infection. **Abscess and gangrene already exist as classes.** |
-| No DFU model trained on a Malaysian population | **Not contradicted, but unproven** | Public sets are Iraqi (Kaggle/Nasiriyah) and UK-led (DFUC, Manchester Met). I found no Malaysian DFU dataset — but absence in one search is not proof. |
-| No dataset matches each image to a ground truth such as tissue C&S | **Strongest claim — mostly holds** | DFUC2021 infection labels were assigned by **visual inspection** by a podiatrist and a consultant, checked against records — not microbiology. One Warsaw wound study did use positive culture + antibiotics, so it is not unprecedented. |
-| Fitzpatrick datasets lack darker-skin DFU | **True but already published** | A 2025 paper on skin-tone fairness in DFU CNNs reports exactly this under-representation. Noticing the gap is not novel; **supplying the images is.** |
+| **No open-source model or weights exist to transfer-learn pus, abscess or wet gangrene** | **Holds — lead with this** | The released wound weights are all geometry or tissue type: FUSegNet (wound boundary), uwm-bigdata wound-segmentation (MobileNetV2, wound area), DFUTissueSegNet (granulation/slough — the one you already use), a SegFormer from the DFU challenge. None classifies these three signs. |
+| No DFU model trained for pus, abscess, wet gangrene *(original wording)* | **Too broad** | Clf4DFU (ResNet50) does use *deep abscess or osteomyelitis* as a class and splits gangrene by extent. State it as above instead. |
+| No DFU dataset from a Malaysian population | **Not contradicted, unproven** | Public sets are Iraqi (Kaggle/Nasiriyah) and UK-led (DFUC). Say "could not find", not "does not exist". |
+| No dataset ties each image to a ground truth such as tissue C&S | **Mostly holds — your strongest point** | DFUC2021 infection labels were assigned by **visual inspection** by a podiatrist and a consultant. One Warsaw wound study did use culture, so not unprecedented. |
 
-### Safe wording — say this instead
+### Why the open-source framing is the right one
 
-**On pus, abscess and wet gangrene:**
+Clf4DFU names abscess as a class in a paper, but **publishes no code and no weights**, and part of
+its training set (823 images from Xiangya Hospital) was never released. So the class exists in the
+literature as a *result*, not as something anyone can build on. That distinction is the whole point:
+a published number you cannot download is not a starting point for the next study.
 
-> **"Published DFU models do classify infection, and one separates deep abscess from
-> osteomyelitis. What I could not find is a model that treats purulent discharge as its own
-> labelled class, or that separates wet from dry gangrene — the published work divides gangrene
-> by how far it has spread, not by whether it is wet. Those are the three signs that change
-> management fastest, so that is where I am putting the labelling effort."**
+One genuine exception to know about, in case you are asked. **SurgWound** (HuggingFace, ~690 images,
+CC BY-SA 4.0) annotates exudate in six categories including **purulent**, labelled by three surgeons.
+But they are **surgical wounds, not diabetic foot ulcers**, and it has no abscess or gangrene class.
+Worth knowing as a possible pre-training source before fine-tuning on your own DFU images.
 
-**On the Malaysian population:**
+### Say this — pus, abscess, wet gangrene
+
+> **"There are open-source wound models I can build on, and I do — the tissue segmentation in this
+> app starts from released weights. But everything that is published as a downloadable model does
+> wound outline or tissue type: granulation, slough, necrosis. For pus, abscess and wet gangrene
+> there is no open model and no released weights to transfer-learn from. One paper does name deep
+> abscess as a class, but it publishes no code and part of its data was never released, so there is
+> nothing to start from. Those three signs are what change management fastest, and that is where I
+> am putting the labelling effort."**
+
+### Say this — Malaysian population
 
 > **"The public datasets I could find are from Iraq and the United Kingdom. I could not find a
-> diabetic foot ulcer dataset drawn from a Malaysian population. I want to say 'could not find'
-> rather than 'does not exist', because I have not done a systematic search."**
+> diabetic foot ulcer dataset drawn from a Malaysian population. I say 'could not find' rather than
+> 'does not exist', because I have not done a systematic search."**
 
-**On the reference standard — your strongest point:**
+### Say this — the reference standard (your strongest point)
 
-> **"In the main public DFU dataset, infection is labelled by a clinician looking at the
-> photograph. So a model trained on it learns to agree with an expert's visual impression, not
-> with what is actually in the wound. In my design each image is tied to the patient's own deep
-> tissue culture result, so the label has an anchor outside the photograph."**
+> **"In the main public DFU dataset, infection is labelled by a clinician looking at the photograph.
+> So a model trained on it learns to agree with an expert's visual impression, not with what is
+> actually in the wound. In my design each image is tied to the patient's own deep tissue culture
+> result, so the label has an anchor outside the photograph."**
 
-> ⚠️ **Pre-empt this, because a good supervisor will raise it.** IWGDF and IDSA define diabetic
-> foot infection **clinically** — at least two local signs — not by culture. So culture is not a
-> *better* truth than clinical diagnosis; it is a **second, independent axis**, and the
-> disagreement between them is itself the interesting finding. Say this before they do. Also
-> note swab culture is imperfect against tissue biopsy (pooled sensitivity ~85%, specificity
-> ~68%), which is exactly why you specify a **deep tissue specimen**.
+> ⚠️ **Pre-empt this, because a good supervisor will raise it.** IWGDF and IDSA define diabetic foot
+> infection **clinically** — at least two local signs — not by culture. Culture is therefore not a
+> *better* truth; it is a **second, independent axis**, and the disagreement between the two is
+> itself the finding. Say it before they do. Note also that swab culture is imperfect against tissue
+> biopsy (pooled sensitivity ~85%, specificity ~68%), which is exactly why you specify a **deep
+> tissue specimen**.
 
-**On Fitzpatrick skin type:**
+### If asked about skin tone
 
-> **"Under-representation of darker skin in wound datasets is already documented — there is a
-> 2025 paper on skin-tone fairness in diabetic foot ulcer models showing it. So noticing it is
-> not my contribution. Contributing actual darker-skin diabetic foot images from a Malaysian
-> cohort would be. I have kept the field in the app but I have not been able to staff it this
-> round, so I am presenting it as future work, not as a result."**
+> **"Under-representation of darker skin in wound datasets is already documented, so noticing it is
+> not my contribution. Contributing darker-skin diabetic foot images from a Malaysian cohort would
+> be. I have kept the field in the app, but I could not staff it this round, so it is future work."**
 
 ### Sources
 
-- [Construction and validation of a deep learning-based diagnostic model for segmentation and classification of diabetic foot (Clf4DFU)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12014428/)
+- [Smart diabetic foot ulcer scoring system (Clf4DFU) — no code or weights released](https://www.nature.com/articles/s41598-024-62076-1)
+- [FUSegNet — released foot-ulcer segmentation code and weights](https://github.com/mrinal054/FUSegNet)
+- [uwm-bigdata wound-segmentation — released MobileNetV2 wound-area model](https://github.com/uwm-bigdata/wound-segmentation)
+- [uwm-bigdata DFUTissueSegNet — released tissue segmentation](https://github.com/uwm-bigdata/DFUTissueSegNet)
 - [Diabetic Foot Ulcer Grand Challenge 2021: Evaluation and Summary](https://arxiv.org/pdf/2111.10376)
-- [Analysis Towards Classification of Infection and Ischaemia of Diabetic Foot Ulcers (DFUC labelling)](https://ar5iv.labs.arxiv.org/html/2104.03068)
-- [Evaluating Skin Tone Fairness in CNNs for the Classification of Diabetic Foot Ulcers](https://www.researchgate.net/publication/394024268_Evaluating_Skin_Tone_Fairness_in_Convolutional_Neural_Networks_for_the_Classification_of_Diabetic_Foot_Ulcers)
-- [Skin Tone Benchmark Dataset for Diabetic Foot Ulcers](https://mondallab.cs.fiu.edu/wp-content/uploads/sites/50/2024/04/Skin-Tone-Benchmark-Dataset-for-Diabetic-Foot-Ulcers-and-Machine-Learning-to-Discover-the-Salient-Features.pdf)
-- [Swab cultures vs tissue biopsy for diagnosing diabetic foot infections: systematic review and meta-analysis](https://pmc.ncbi.nlm.nih.gov/articles/PMC13494358/)
-- [Advances in Image-Based Diagnosis of Diabetic Foot Ulcers Using Deep Learning: A Systematic Review](https://pmc.ncbi.nlm.nih.gov/articles/PMC12730623/)
-- [Artificial intelligence models for wound infection recognition compared with human results (Warsaw, culture-based labels)](https://www.sciencedirect.com/science/article/abs/pii/S0208521625000610)
+- [Analysis Towards Classification of Infection and Ischaemia of DFUs — how labels were assigned](https://ar5iv.labs.arxiv.org/html/2104.03068)
+- [SurgWound — surgical wound dataset with a purulent exudate class](https://huggingface.co/datasets/xuxuxuxuxu/SurgWound)
+- [Swab cultures vs tissue biopsy for diagnosing diabetic foot infections](https://pmc.ncbi.nlm.nih.gov/articles/PMC13494358/)
+- [Evaluating Skin Tone Fairness in CNNs for DFU Classification](https://www.researchgate.net/publication/394024268_Evaluating_Skin_Tone_Fairness_in_Convolutional_Neural_Networks_for_the_Classification_of_Diabetic_Foot_Ulcers)
 
 ### Two questions to be ready for
 

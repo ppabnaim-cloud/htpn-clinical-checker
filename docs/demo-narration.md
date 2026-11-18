@@ -108,9 +108,21 @@ to produce a figure it cannot stand behind."**
 ### Where I am now
 
 **"To be straight about progress: I am still short of images for pus, abscess and wet gangrene.
-If I may have until the end of December, I will finish collecting, balance the classes across
-Wagner 1 to 5 and across the tissue findings, complete the training and validate it. Then I can
-show you the complete version."**
+And the arithmetic is unforgiving — the target is forty positive examples each. At clinic rates
+that is about two hundred photographs to reach forty with pus, four hundred for abscess, and
+something like six hundred for wet gangrene. I will not reach the last two by December.**
+
+**So my plan is to train one pooled head — any severe infection sign present, meaning pus or
+abscess or wet gangrene together — rather than three separate ones. That needs about a hundred
+and thirty images for forty positives, which is reachable. It also matches how the app already
+behaves: any one of those three raises the alarm on its own, so a single pooled detector matches
+the decision it actually drives. The three signs stay recorded separately in the log, so they can
+be separated later when the numbers exist.**
+
+**By end of December I can therefore show you the pooled severe-sign detector, trained and
+validated, and the agreement figures between my two graders for the common classes. What I will
+not be able to show is a model that tells pus from abscess from wet gangrene — I would rather say
+that now than promise it."**
 
 ---
 
@@ -136,7 +148,8 @@ wound bed and gives a percentage for granulation, slough and necrosis, and for p
 erythema.**
 
 **What is not there yet is pus, abscess and wet gangrene. That is the part I am collecting for.
-By end of December I expect to show those three mapped and measured the same way."**
+By end of December I expect to show a pooled detector for those three — whether a severe sign is
+present — rather than three separate maps, for reasons of sample size I will come to."**
 
 ---
 
@@ -204,9 +217,11 @@ analysis rather than quote a result on four cases.**
 tissue mapping with percentages, Wagner and Texas grading, antibiotic support, and a dashboard
 that tells me honestly how far from ready I am.**
 
-**What is not finished is the data. I am short on pus, abscess and wet gangrene. With time until
-end of December to finish collection, balance the classes and validate, I can present the
-complete model.**
+**What is not finished is the data. I am short on pus, abscess and wet gangrene, and the
+prevalence arithmetic means I will not reach forty of each by December. With time until the end
+of December I can deliver the pooled severe-sign detector and the inter-rater agreement figures.
+Separating the three signs individually is a later piece of work, and I would rather scope it
+honestly than over-promise.**
 
 **Thank you."**
 
@@ -231,10 +246,12 @@ its training set (823 images from Xiangya Hospital) was never released. So the c
 literature as a *result*, not as something anyone can build on. That distinction is the whole point:
 a published number you cannot download is not a starting point for the next study.
 
-One genuine exception to know about, in case you are asked. **SurgWound** (HuggingFace, ~690 images,
-CC BY-SA 4.0) annotates exudate in six categories including **purulent**, labelled by three surgeons.
-But they are **surgical wounds, not diabetic foot ulcers**, and it has no abscess or gangrene class.
-Worth knowing as a possible pre-training source before fine-tuning on your own DFU images.
+One dataset to know about, in case you are asked. **SurgWound** (686 images, surgeons at Ohio
+State) annotates exudate in six categories including **purulent**. It was investigated as a
+pre-training source and **rejected**: the published table gives **purulent = 19 images, 2.8 %** —
+fewer positives than this study will collect itself. They are also surgical wounds, not diabetic
+foot ulcers, and there is no abscess or gangrene class. Cite it as **precedent for the labelling
+schema and the adjudication protocol**, not as data.
 
 ### Say this — pus, abscess, wet gangrene
 

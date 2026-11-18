@@ -5,6 +5,19 @@ Deep Learning Healthcare Project, Hospital Tengku Permaisuri Norashikin
 
 ---
 
+> **Update, 18 November 2026 — the first head will be POOLED.** This guide describes a head per
+> sign, which is still the destination. It is not what the December series can train. At clinic
+> prevalence, forty positives needs roughly 160–200 photographs for pus, ~400 for abscess and
+> ~500–800 for wet gangrene, against a planned 150–200 — so only pus is individually reachable.
+> The first head is therefore binary over the three together, **any severe sign present**, which
+> needs about 130 images for forty positives and matches what the app already does with them
+> (`severe.length > 0` escalates regardless of which one fired).
+>
+> Nothing in the labelling changes. The three signs are defined, ticked and logged separately,
+> exactly as this guide sets out, including abscess as a *likelihood* rather than a sighting.
+> Only the training target is pooled, and only until the per-sign counts exist. The reasoning
+> and the arithmetic are in section 4b of `docs/handover-2026-11-15.md`.
+
 ## What a findings head is, and why it exists
 
 The Findings tab lists six rows, and they are **not** six signs of infection, which is what
